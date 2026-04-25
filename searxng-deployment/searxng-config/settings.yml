@@ -2,8 +2,7 @@ use_default_settings: true
 
 general:
   instance_name: "Learnova AI Search"
-  description: "Private search instance for Learnova AI platform"
-  contact_url: ~
+  debug: false
   enable_metrics: false
 
 search:
@@ -15,18 +14,13 @@ search:
     - json
 
 server:
-  port: 8080
-  bind_address: "0.0.0.0"
-  secret_key: "learnova-ai-searxng-secret-key-2025"
+  secret_key: "learnova-ai-secret-key-2025-change-this"
   limiter: false
   image_proxy: false
 
 ui:
   static_use_hash: true
   default_theme: "simple"
-  default_locale: "en"
-  theme_args:
-    simple_style: "auto"
 
 engines:
   - name: google
@@ -42,14 +36,4 @@ engines:
   - name: duckduckgo
     engine: duckduckgo
     shortcut: ddg
-    disabled: false
-  
-  - name: wikipedia
-    engine: wikipedia
-    shortcut: wp
-    disabled: false
-  
-  - name: brave
-    engine: brave
-    shortcut: br
     disabled: false
