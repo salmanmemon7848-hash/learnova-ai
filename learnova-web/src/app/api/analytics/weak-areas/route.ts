@@ -10,6 +10,10 @@ import {
   updateUserLevel,
 } from '@/lib/analytics/weakAreaEngine'
 
+// Prevent static generation - this route requires runtime database access
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // GET - Get analytics data
 export async function GET(req: NextRequest) {
   try {

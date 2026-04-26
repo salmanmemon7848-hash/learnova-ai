@@ -4,6 +4,10 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { getWeeklyStats } from '@/lib/analytics/weakAreaEngine'
 
+// Prevent static generation - this route requires runtime database access
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // GET - Get weekly report
 export async function GET(req: NextRequest) {
   try {

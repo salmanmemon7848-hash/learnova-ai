@@ -3,6 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 
+// Prevent static generation
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // GET - Fetch all study notes for user
 export async function GET(req: NextRequest) {
   try {
