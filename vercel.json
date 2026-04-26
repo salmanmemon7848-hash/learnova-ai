@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd learnova-web && npx prisma generate && next build",
-  "outputDirectory": "learnova-web/.next",
-  "framework": "nextjs"
-}
