@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+:root {
+  /* Unified Dark Theme */
+  --background: #0f1117;
+  --surface: #13151e;
+  --surface-hover: #1e2130;
+  --active-bg: #1e1b4b;
+  
+  --primary: #a78bfa;
+  --primary-dark: #7c3aed;
+  --primary-darker: #6d28d9;
+  --primary-focus: #5b21b6;
+  --primary-border: #3730a3;
+  
+  --success: #10B981;
+  --success-light: #064E3B;
+  
+  --warning: #F59E0B;
+  --warning-light: #78350F;
+  
+  --error: #EF4444;
+  --error-light: #7F1D1D;
+  --error-hover: #1e1010;
+  
+  --foreground: #e2e8f0;
+  --foreground-secondary: #9ca3af;
+  --foreground-muted: #4b5563;
+  --foreground-hint: #6b7280;
+  
+  --border: #2a2d3a;
+  
+  --pro-badge-bg: #7c3aed;
+  --pro-badge-text: #ede9fe;
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-accent-dark: var(--accent-dark);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-error: var(--error);
+  --color-error-light: var(--error-light);
+  --font-sans: 'Inter', var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #111827;
+    --surface: #1F2937;
+    --surface-hover: #374151;
+    --foreground: #F9FAFB;
+    --foreground-secondary: #9CA3AF;
+    --border: #374151;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background-color: #0f1117;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-muted);
+}
+
+/* Improve text readability */
+p, span, div, input, textarea, button {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Better contrast for secondary text */
+.text-secondary {
+  color: var(--foreground-secondary) !important;
+}
+
+/* Input styling */
+input, textarea {
+  color: var(--foreground) !important;
+  font-size: 1rem !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--foreground-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+/* Custom Utility Classes */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-hover {
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Streak Fire Animation */
+@keyframes fire-flicker {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+}
+
+.fire-animation {
+  animation: fire-flicker 2s ease-in-out infinite;
+}
+
+/* Progress Ring Animation */
+@keyframes progress-fill {
+  from { stroke-dashoffset: 283; }
+}
+
+.progress-ring {
+  animation: progress-fill 1.5s ease-out;
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection Color */
+::selection {
+  background: var(--active-bg);
+  color: var(--primary);
+}
+
+/* Focus States */
+*:focus-visible {
+  outline: 2px solid var(--primary-dark);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Message Fade In Animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}

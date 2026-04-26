@@ -1,0 +1,253 @@
+// This is your Prisma schema file,
+// learn more at https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  userType      String    @default("student") // "student" or "business"
+  toneMode      String    @default("balanced") // "simple-bhai", "class", "expert", "business", "revision"
+  language      String    @default("en") // "en", "hi", "hinglish"
+  examDate      DateTime?
+  examTarget    String? // "JEE", "NEET", "UPSC", "CBSE", etc.
+  businessGoal  String?
+  streakCount   Int       @default(0)
+  xpPoints      Int       @default(0)
+  userLevel     String    @default("Beginner") // "Beginner", "Scholar", "Topper", "Legend", "Genius"
+  lastStudyDate DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[]
+  usage         Usage?
+  subscription  Subscription?
+  preferences   UserPreferences?
+  doubtSolves   DoubtSolver[]
+  studyNotes    StudyNote[]
+  examAttempts  ExamAttempt[]
+  streakHistory StudyStreak[]
+  weakAreaTracking WeakAreaTracking[]
+  parentLinksAsChild   ParentLink[]   @relation("ChildUser")
+  parentLinksAsParent  ParentLink[]   @relation("ParentUser")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("New Conversation")
+  messages  Json
+  recap     Json?
+  mode      String   @default("balanced")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Usage {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  chatsToday        Int      @default(0)
+  lastChatDate      DateTime @default(now())
+  examsThisMonth    Int      @default(0)
+  validationsThisMonth Int   @default(0)
+  writesThisMonth   Int      @default(0)
+  lastResetDate     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  plan            String    @default("free") // "free", "student", "competitive", "pro"
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  status          String    @default("active") // "active", "canceled", "past_due"
+  startDate       DateTime  @default(now())
+  endDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserPreferences {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  dailyTipSeen    String[] @default([])
+  lastTipDate     DateTime @default(now())
+  studySubjects   String[] @default([])
+  businessTopics  String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// AI Doubt Solver - Store uploaded images and solutions
+model DoubtSolver {
+  id              String   @id @default(cuid())
+  userId          String
+  imageUrl        String?  // Base64 or storage URL
+  questionText    String?  // If typed instead of image
+  subject         String?  // Auto-detected: Physics, Math, etc.
+  chapter         String?  // NCERT chapter
+  topic           String?  // Specific topic
+  difficultyLevel String?  // Easy, Medium, Hard
+  solution        Json     // Step-by-step solution
+  examRelevance   Json?    // Exam appearance data
+  language        String   @default("en")
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyNotes      StudyNote[]
+
+  @@index([userId])
+  @@index([subject])
+}
+
+// Study Notes - Saved responses from chat or doubt solver
+model StudyNote {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  content         String   @db.Text
+  subject         String?  // Tag by subject
+  topic           String?  // Tag by topic
+  folder          String   @default("General") // Folder organization
+  sourceType      String   // "chat", "doubt-solver", "exam"
+  sourceId        String?  // Link to original conversation or doubt
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doubtSolver     DoubtSolver? @relation(fields: [sourceId], references: [id])
+
+  @@index([userId])
+  @@index([subject])
+  @@index([folder])
+}
+
+// Exam Attempts - Detailed performance tracking
+model ExamAttempt {
+  id              String   @id @default(cuid())
+  userId          String
+  examType        String   // "JEE", "NEET", "Board", "Custom", etc.
+  subject         String
+  topic           String?
+  score           Float
+  totalQuestions  Int
+  correctAnswers  Int
+  wrongAnswers    Int
+  timeTaken       Int      // In seconds
+  questionDetails Json     // Per-question performance
+  weakTopics      String[] @default([])
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([examType])
+}
+
+// Study Streak - Daily streak and XP tracking
+model StudyStreak {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @default(now())
+  minutesStudied  Int      @default(0)
+  xpEarned        Int      @default(0)
+  activities      Json?    // What they did that day
+  isStreakDay     Boolean  @default(true)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+// Weak Area Tracking - Performance by topic
+model WeakAreaTracking {
+  id              String   @id @default(cuid())
+  userId          String
+  subject         String
+  topic           String
+  attempts        Int      @default(0)
+  correct         Int      @default(0)
+  accuracy        Float    @default(0)
+  lastAttempt     DateTime @default(now())
+  category        String   @default("average") // "strong", "average", "weak"
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, subject, topic])
+  @@index([userId])
+  @@index([category])
+}
+
+// Parent Link - Connect parent to child account
+model ParentLink {
+  id              String   @id @default(cuid())
+  parentUserId    String   // Parent's user ID
+  childUserId     String   @unique // Child's user ID
+  relationship    String   @default("parent") // "parent", "guardian", "teacher"
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  childUser       User     @relation("ChildUser", fields: [childUserId], references: [id], onDelete: Cascade)
+  parentUser      User     @relation("ParentUser", fields: [parentUserId], references: [id], onDelete: Cascade)
+
+  @@index([parentUserId])
+  @@index([childUserId])
+}
