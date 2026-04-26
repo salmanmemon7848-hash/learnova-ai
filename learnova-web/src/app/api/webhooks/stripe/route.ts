@@ -6,10 +6,13 @@ import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // @ts-ignore - API version mismatch between Stripe package and dashboard
-  apiVersion: '2024-12-18.acacia',
-})
+// Lazy initialize Stripe only when needed (not at build time)
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_build', {
+    // @ts-ignore - API version mismatch between Stripe package and dashboard
+    apiVersion: '2024-12-18.acacia',
+  })
+}
 
 export async function POST(req: Request) {
   const body = await req.text()
@@ -18,7 +21,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
@@ -30,7 +33,7 @@ export async function POST(req: Request) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
-      const subscription = await stripe.subscriptions.retrieve(
+      const subscription = await getStripe().subscriptions.retrieve(
         session.subscription as string
       )
 
