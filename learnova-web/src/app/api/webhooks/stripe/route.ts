@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 
+// Prevent static generation
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   // @ts-ignore - API version mismatch between Stripe package and dashboard
   apiVersion: '2024-12-18.acacia',
