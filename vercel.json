@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd learnova-web && npm install && npx prisma generate && next build",
+  "buildCommand": "cd learnova-web && npx prisma generate && next build",
   "outputDirectory": "learnova-web/.next",
-  "installCommand": "cd learnova-web && npm install",
   "framework": "nextjs"
 }
