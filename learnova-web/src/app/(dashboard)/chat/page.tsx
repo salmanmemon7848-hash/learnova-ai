@@ -213,32 +213,33 @@ export default function ChatPage() {
     <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex flex-col">
       {/* Header with Controls */}
       <div className="flex-shrink-0 rounded-xl border p-3 sm:p-4 mb-3 sm:mb-4" style={{ backgroundColor: '#13151e', borderBottom: '0.5px solid #2a2d3a' }}>
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          {/* Greeting — truncate only if truly needed on mobile */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold mb-1 truncate" style={{ color: '#e2e8f0' }}>
-              {getGreeting()}, {userName}
+            <h1 className="text-base sm:text-lg lg:text-xl font-semibold truncate max-w-[160px] sm:max-w-none" style={{ color: '#e2e8f0' }}>
+              {getGreeting()}, {userName} 👋
             </h1>
             <p className="text-xs sm:text-sm hidden sm:block" style={{ color: '#9ca3af' }}>
               Ask me anything — study questions, exam prep, or general help
             </p>
           </div>
           
-          <div className="flex gap-1 sm:gap-2">
+          {/* Controls — shrink on mobile, never overflow */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Language Selector */}
             <div className="relative">
               <button
                 onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors"
+                className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
                 style={{
                   backgroundColor: '#1e2130',
                   borderColor: '#2a2d3a',
                   color: '#9ca3af'
                 }}
               >
-                <Globe className="w-4 h-4" />
-                <span className="text-sm hidden sm:inline">{currentLanguage.flag}</span>
-                <span className="text-sm sm:hidden">{currentLanguage.flag}</span>
-                <ChevronDown className="w-4 h-4" />
+                <Globe className="w-3.5 h-3.5" />
+                <span>{currentLanguage.flag}</span>
+                <ChevronDown className="w-3.5 h-3.5" />
               </button>
               
               {showLanguageSelector && (
@@ -272,7 +273,7 @@ export default function ChatPage() {
             {/* Depth Toggle */}
             <button
               onClick={toggleDepth}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors hover:bg-[#1e2130]"
+              className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
               style={{
                 backgroundColor: depthLevel === 'detailed' ? '#1e1b4b' : '#1e2130',
                 borderColor: depthLevel === 'detailed' ? '#3730a3' : '#2a2d3a',
@@ -280,30 +281,24 @@ export default function ChatPage() {
               }}
             >
               {depthLevel === 'simple' ? (
-                <Minimize2 className="w-4 h-4" />
+                <Minimize2 className="w-3.5 h-3.5" />
               ) : (
-                <Maximize2 className="w-4 h-4" />
+                <Maximize2 className="w-3.5 h-3.5" />
               )}
-              <span className="text-xs font-medium hidden sm:inline">
-                {depthLevel === 'simple' ? 'Simple' : 'Detailed'}
-              </span>
             </button>
           
             {/* Tone Switcher */}
             <button
               onClick={() => setShowToneSelector(!showToneSelector)}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors"
+              className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
               style={{
                 backgroundColor: '#1e1b4b',
                 borderColor: '#3730a3',
                 color: '#a78bfa'
               }}
             >
-              <span className="text-lg">{currentMode.icon}</span>
-              <span className="font-medium text-sm hidden sm:inline">
-                {currentMode.name}
-              </span>
-              <ChevronDown className="w-4 h-4" />
+              <span className="text-base">{currentMode.icon}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -338,7 +333,7 @@ export default function ChatPage() {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 mb-3 sm:mb-4">
+      <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 mb-3 sm:mb-4 px-3 pt-3 pb-[80px] lg:pb-4">
         {messages.length === 0 && (
           <div className="text-center py-8 sm:py-12">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-[14px] mb-6" style={{ backgroundColor: '#1e1b4b' }}>
@@ -508,13 +503,14 @@ export default function ChatPage() {
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="flex-shrink-0 border p-3 sm:p-4 rounded-[12px]" style={{ backgroundColor: '#0f1117', borderColor: '#2a2d3a' }}>
-        <div className="flex gap-2">
+        {/* Input row — must stay within screen width */}
+        <div className="flex gap-2 w-full">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything..."
-            className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border rounded-lg transition-all text-base"
+            className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-3 border rounded-lg transition-all text-base"
             style={{ 
               backgroundColor: '#0f1117',
               borderColor: '#2a2d3a',
@@ -527,23 +523,25 @@ export default function ChatPage() {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-6 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium text-sm hover:bg-[#6d28d9]"
+            className="flex-shrink-0 w-11 h-11 sm:w-auto sm:px-6 py-3 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium text-sm hover:bg-[#6d28d9]"
             style={{ backgroundColor: '#7c3aed' }}
           >
             <Send className="w-4 h-4" />
             <span className="hidden sm:inline">Send</span>
           </button>
         </div>
-        <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border" style={{ backgroundColor: '#1e2130', borderColor: '#2a2d3a', color: '#6b7280' }}>
+        
+        {/* Mode pills row — scrollable, never wraps or overflows */}
+        <div className="flex items-center gap-2 mt-2 overflow-x-auto scrollbar-hide pb-0.5">
+          <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border" style={{ backgroundColor: '#1e2130', borderColor: '#2a2d3a', color: '#6b7280' }}>
             {currentMode.icon} {currentMode.name}
           </span>
-          <span className="text-xs" style={{ color: '#6b7280' }}>•</span>
-          <span className="inline-flex items-center gap-1 text-xs" style={{ color: '#6b7280' }}>
+          <span className="flex-shrink-0 text-xs" style={{ color: '#6b7280' }}>•</span>
+          <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs" style={{ color: '#6b7280' }}>
             {currentLanguage.flag} {currentLanguage.name}
           </span>
-          <span className="text-xs" style={{ color: '#6b7280' }}>•</span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border" style={{ backgroundColor: '#1e2130', borderColor: '#2a2d3a', color: '#6b7280' }}>
+          <span className="flex-shrink-0 text-xs" style={{ color: '#6b7280' }}>•</span>
+          <span className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border" style={{ backgroundColor: '#1e2130', borderColor: '#2a2d3a', color: '#6b7280' }}>
             {depthLevel === 'simple' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
             {depthLevel === 'simple' ? 'Simple' : 'Detailed'}
           </span>

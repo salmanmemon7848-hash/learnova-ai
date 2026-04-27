@@ -658,16 +658,16 @@ export default function BusinessIdeasPage() {
         </p>
 
         {/* How It Works */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-3 gap-2 px-3 lg:gap-4 lg:px-0 mb-10">
           {[
             { icon: '🎯', title: '8 Quick Questions', desc: 'Tap your answer — no typing needed' },
             { icon: '🧠', title: 'AI Coach Analyzes', desc: 'Matches ideas to your exact profile' },
             { icon: '💡', title: '5 Business Ideas', desc: 'With full plan, steps & revenue data' },
           ].map((item, i) => (
-            <div key={i} className="bg-[#1A1A1E] rounded-2xl p-5 border border-gray-700/40 hover:border-purple-500/30 transition-colors">
-              <div className="text-3xl mb-3">{item.icon}</div>
-              <p className="text-white font-semibold text-sm mb-1">{item.title}</p>
-              <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
+            <div key={i} className="bg-[#1A1A1E] rounded-2xl p-3 lg:p-5 border border-gray-700/40 hover:border-purple-500/30 transition-colors flex flex-col items-center min-h-0 overflow-visible">
+              <div className="text-2xl lg:text-3xl mb-2">{item.icon}</div>
+              <p className="text-white font-semibold text-xs lg:text-sm mb-1 text-center leading-tight">{item.title}</p>
+              <p className="text-gray-500 text-[10px] lg:text-xs leading-relaxed text-center">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -819,7 +819,7 @@ export default function BusinessIdeasPage() {
   // RESULTS SCREEN
   // ─────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0F0F10] text-white pb-16">
+    <div className="min-h-screen bg-[#0F0F10] text-white pb-[80px] lg:pb-0">
 
       {/* Hero Header */}
       <div className="bg-gradient-to-b from-purple-900/20 to-transparent px-6 pt-8 pb-6 text-center mb-6">
