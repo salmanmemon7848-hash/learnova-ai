@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import InstallButton from '@/components/InstallButton'
+import InstallPrompt from '@/components/InstallPrompt'
 import MobileBottomNav from './MobileBottomNav'
 
 const navItems = [
@@ -217,6 +218,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   )
 }
