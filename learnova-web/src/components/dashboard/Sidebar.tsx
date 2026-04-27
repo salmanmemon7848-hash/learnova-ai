@@ -24,6 +24,8 @@ import {
   Navigation,
 } from 'lucide-react'
 import { useState } from 'react'
+import InstallButton from '@/components/InstallButton'
+import MobileBottomNav from './MobileBottomNav'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard', pro: false, prominent: false },
@@ -72,9 +74,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-5" style={{ borderBottom: '0.5px solid #2a2d3a' }}>
-            <Link href="/" className="text-2xl font-bold" style={{ color: '#a78bfa' }}>
-              Learnova
-            </Link>
+            <div className="flex items-center justify-between">
+              <Link href="/" className="text-2xl font-bold" style={{ color: '#a78bfa' }}>
+                Learnova
+              </Link>
+              <InstallButton />
+            </div>
             <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>AI Study Companion</p>
           </div>
 
@@ -198,8 +203,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <main className="lg:ml-[260px] min-h-screen">
-        <div className="p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
+      <main className="lg:ml-[260px] min-h-screen pb-16 lg:pb-0">
+        <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">{children}</div>
       </main>
 
       {/* Overlay for mobile */}
@@ -209,6 +214,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
     </div>
   )
 }

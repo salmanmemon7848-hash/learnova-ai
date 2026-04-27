@@ -60,25 +60,25 @@ export default function DoubtSolverPage() {
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#0F0F1A] mb-2 flex items-center gap-3">
-          <Camera className="w-8 h-8" style={{ color: '#534AB7' }} />
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#0F0F1A] mb-2 flex items-center gap-2 sm:gap-3">
+          <Camera className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#534AB7' }} />
           AI Doubt Solver
         </h1>
-        <p className="text-[#5A5A72]">
+        <p className="text-sm sm:text-base text-[#5A5A72]">
           Upload a photo of your question or type it below — get step-by-step solutions instantly
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column - Input */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Language Selector */}
-          <div className="rounded-[10px] border p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
             <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
               Select Language
             </label>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               {[
                 { id: 'en', label: 'English' },
                 { id: 'hi', label: 'हिंदी' },
@@ -87,7 +87,7 @@ export default function DoubtSolverPage() {
                 <button
                   key={lang.id}
                   onClick={() => setLanguage(lang.id as any)}
-                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     language === lang.id
                       ? 'bg-[#7c3aed] text-white'
                       : 'hover:bg-[#1e2130]'
@@ -104,7 +104,7 @@ export default function DoubtSolverPage() {
           </div>
 
           {/* Image Upload */}
-          <div className="rounded-[10px] border p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
             <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
               Upload Question Image
             </label>
@@ -112,7 +112,7 @@ export default function DoubtSolverPage() {
           </div>
 
           {/* Text Input */}
-          <div className="rounded-[10px] border p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
             <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
               Or Type Your Question
             </label>
@@ -121,7 +121,7 @@ export default function DoubtSolverPage() {
               onChange={(e) => setQuestionText(e.target.value)}
               placeholder="Type your question here..."
               rows={4}
-              className="w-full px-4 py-3 border rounded-xl focus:ring-2 resize-none transition-all"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-xl focus:ring-2 resize-none transition-all text-sm sm:text-base"
               style={{
                 backgroundColor: '#0f1117',
                 borderColor: '#2a2d3a',
@@ -133,11 +133,11 @@ export default function DoubtSolverPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <button
               onClick={handleSubmit}
               disabled={loading || (!selectedImage && !questionText.trim())}
-              className="flex-1 py-3.5 text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+              className="flex-1 py-2.5 sm:py-3.5 text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg text-sm sm:text-base"
               style={{ backgroundColor: '#534AB7' }}
             >
               {loading ? (

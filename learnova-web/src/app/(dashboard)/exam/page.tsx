@@ -71,13 +71,13 @@ export default function ExamSimulatorPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6" style={{ color: '#e2e8f0' }}>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6" style={{ color: '#e2e8f0' }}>
         Exam Simulator 📝
       </h1>
 
       {step === 1 && (
-        <div className="rounded-[10px] border p-6" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
-          <h2 className="text-xl font-semibold mb-4" style={{ color: '#e2e8f0' }}>Configure Your Practice Test</h2>
+        <div className="rounded-[10px] border p-4 sm:p-6" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4" style={{ color: '#e2e8f0' }}>Configure Your Practice Test</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1" style={{ color: '#9ca3af' }}>
@@ -88,7 +88,7 @@ export default function ExamSimulatorPage() {
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="e.g., Mathematics, Physics, Economics"
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 transition-all"
+                className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 transition-all text-sm sm:text-base"
                 style={{ 
                   backgroundColor: '#0f1117',
                   borderColor: '#2a2d3a',
@@ -107,7 +107,7 @@ export default function ExamSimulatorPage() {
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="e.g., Calculus, Thermodynamics"
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 transition-all"
+                className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 transition-all text-sm sm:text-base"
                 style={{ 
                   backgroundColor: '#0f1117',
                   borderColor: '#2a2d3a',
@@ -124,7 +124,7 @@ export default function ExamSimulatorPage() {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 transition-all"
+                className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 transition-all text-sm sm:text-base"
                 style={{ 
                   backgroundColor: '#0f1117',
                   borderColor: '#2a2d3a',
@@ -148,7 +148,7 @@ export default function ExamSimulatorPage() {
                 onChange={(e) => setQuestionCount(parseInt(e.target.value))}
                 min={5}
                 max={20}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 transition-all"
+                className="w-full px-3 sm:px-4 py-2 border rounded-lg focus:ring-2 transition-all text-sm sm:text-base"
                 style={{ 
                   backgroundColor: '#0f1117',
                   borderColor: '#2a2d3a',
@@ -161,7 +161,7 @@ export default function ExamSimulatorPage() {
             <button
               onClick={startExam}
               disabled={loading || !subject}
-              className="w-full py-3 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-white"
+              className="w-full py-2 sm:py-3 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-white text-sm sm:text-base"
               style={{ backgroundColor: '#7c3aed' }}
             >
               {loading ? 'Generating Questions...' : 'Start Exam'}
@@ -171,21 +171,21 @@ export default function ExamSimulatorPage() {
       )}
 
       {step === 2 && questions.length > 0 && (
-        <div className="rounded-[10px] border p-6" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+        <div className="rounded-[10px] border p-4 sm:p-6" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
           <div className="mb-4">
-            <span className="text-sm" style={{ color: '#9ca3af' }}>
+            <span className="text-xs sm:text-sm" style={{ color: '#9ca3af' }}>
               Question {currentQuestion + 1} of {questions.length}
             </span>
           </div>
-          <h3 className="text-lg font-semibold mb-4" style={{ color: '#e2e8f0' }}>
+          <h3 className="text-base sm:text-lg font-semibold mb-4" style={{ color: '#e2e8f0' }}>
             {questions[currentQuestion]?.question}
           </h3>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             {questions[currentQuestion]?.options?.map((option: string, index: number) => (
               <button
                 key={index}
                 onClick={() => submitAnswer(index)}
-                className="w-full text-left px-4 py-3 border rounded-lg transition-all hover:scale-[1.02]"
+                className="w-full text-left px-3 sm:px-4 py-3 sm:py-3 border rounded-lg transition-all hover:scale-[1.02] text-sm sm:text-base min-h-[48px]"
                 style={{ 
                   backgroundColor: '#1e2130',
                   borderColor: '#2a2d3a',

@@ -150,16 +150,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Morning Greeting with Streak */}
-      <div className="rounded-[10px] p-6 border" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
-        <div className="flex items-start justify-between mb-4">
+      <div className="rounded-[10px] p-4 sm:p-6 border" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-0 mb-4">
           <div>
-            <h1 className="text-2xl font-bold mb-2" style={{ color: '#e2e8f0' }}>
+            <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#e2e8f0' }}>
               {getGreeting()}, {userName}!
             </h1>
             {analytics && analytics.weeklyStats.currentStreak > 0 && (
-              <p className="text-base flex items-center gap-2" style={{ color: '#9ca3af' }}>
+              <p className="text-sm sm:text-base flex items-center gap-2" style={{ color: '#9ca3af' }}>
                 <span className="fire-animation inline-block">🔥</span>
                 Day {analytics.weeklyStats.currentStreak} streak — keep it up!
               </p>
@@ -183,10 +183,10 @@ export default function DashboardPage() {
               <Target className="w-5 h-5" style={{ color: '#a78bfa' }} />
               <div className="flex-1">
                 <p className="text-sm font-semibold mb-1" style={{ color: '#a78bfa' }}>Today's Focus</p>
-                <p className="text-base" style={{ color: '#c4b5fd' }}>
+                <p className="text-sm sm:text-base" style={{ color: '#c4b5fd' }}>
                   Complete <strong>{analytics.recommendation.topic}</strong> ({analytics.recommendation.subject})
                 </p>
-                <p className="text-sm mt-1" style={{ color: '#a78bfa' }}>
+                <p className="text-xs sm:text-sm mt-1" style={{ color: '#a78bfa' }}>
                   {analytics.recommendation.estimatedTime} min target
                 </p>
               </div>
@@ -196,7 +196,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions - 4 Big Buttons */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { icon: Camera, label: 'Solve a Doubt', desc: 'Upload photo or type', path: '/doubt-solver' },
           { icon: Target, label: 'Practice Test', desc: 'Mock exams & PYQs', path: '/exam' },
@@ -206,7 +206,7 @@ export default function DashboardPage() {
           <button
             key={idx}
             onClick={() => router.push(action.path)}
-            className="group p-5 rounded-[10px] border transition-all text-left hover:shadow-md"
+            className="group p-4 sm:p-5 rounded-[10px] border transition-all text-left hover:shadow-md"
             style={{ 
               backgroundColor: '#13151e',
               borderColor: '#2a2d3a'
@@ -214,8 +214,8 @@ export default function DashboardPage() {
             onMouseEnter={(e) => e.currentTarget.style.borderColor = '#3730a3'}
             onMouseLeave={(e) => e.currentTarget.style.borderColor = '#2a2d3a'}
           >
-            <action.icon className="w-7 h-7 mb-3" style={{ color: '#a78bfa' }} />
-            <p className="font-semibold text-base mb-1" style={{ color: '#e2e8f0' }}>{action.label}</p>
+            <action.icon className="w-6 h-6 sm:w-7 sm:h-7 mb-2 sm:mb-3" style={{ color: '#a78bfa' }} />
+            <p className="font-semibold text-sm sm:text-base mb-1" style={{ color: '#e2e8f0' }}>{action.label}</p>
             <p className="text-xs" style={{ color: '#9ca3af' }}>{action.desc}</p>
           </button>
         ))}
@@ -223,7 +223,7 @@ export default function DashboardPage() {
 
       {/* Streak Card & Progress Ring Row */}
       {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Streak Card */}
           <div className="p-5 rounded-[10px] border" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
             <div className="flex items-center justify-between mb-4">
@@ -365,7 +365,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content Grid - Academic DNA & Recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column - Recommendation */}
         <div className="lg:col-span-1">
           {analytics && (

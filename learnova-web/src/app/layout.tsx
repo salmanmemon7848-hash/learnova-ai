@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -23,6 +24,16 @@ export const metadata: Metadata = {
   creator: "Learnova AI",
   publisher: "Learnova AI",
   metadataBase: new URL("https://learnova.ai"),
+  manifest: '/manifest.json',
+  themeColor: '#534AB7',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Learnova AI',
+  },
+  icons: {
+    apple: '/icons/icon-192.png',
+  },
   openGraph: {
     title: "Learnova AI - The AI that studies with you and builds with you",
     description: "One powerful AI for students and builders. Get personalized guidance, exam prep, and startup advice.",
@@ -47,8 +58,17 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Learnova AI" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         <Providers>{children}</Providers>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

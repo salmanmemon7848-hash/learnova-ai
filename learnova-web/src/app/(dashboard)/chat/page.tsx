@@ -210,31 +210,25 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto h-[calc(100vh-4rem)] flex flex-col">
+    <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex flex-col">
       {/* Header with Controls */}
-      <div 
-        className="rounded-xl border p-4 mb-4"
-        style={{ 
-          backgroundColor: '#13151e',
-          borderBottom: '0.5px solid #2a2d3a'
-        }}
-      >
+      <div className="flex-shrink-0 rounded-xl border p-3 sm:p-4 mb-3 sm:mb-4" style={{ backgroundColor: '#13151e', borderBottom: '0.5px solid #2a2d3a' }}>
         <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold mb-1" style={{ color: '#e2e8f0' }}>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold mb-1 truncate" style={{ color: '#e2e8f0' }}>
               {getGreeting()}, {userName}
             </h1>
-            <p className="text-sm" style={{ color: '#9ca3af' }}>
+            <p className="text-xs sm:text-sm hidden sm:block" style={{ color: '#9ca3af' }}>
               Ask me anything — study questions, exam prep, or general help
             </p>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             {/* Language Selector */}
             <div className="relative">
               <button
                 onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-                className="flex items-center gap-2 px-3 py-2 rounded-md border transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors"
                 style={{
                   backgroundColor: '#1e2130',
                   borderColor: '#2a2d3a',
@@ -242,7 +236,8 @@ export default function ChatPage() {
                 }}
               >
                 <Globe className="w-4 h-4" />
-                <span className="text-sm">{currentLanguage.flag}</span>
+                <span className="text-sm hidden sm:inline">{currentLanguage.flag}</span>
+                <span className="text-sm sm:hidden">{currentLanguage.flag}</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
               
@@ -277,7 +272,7 @@ export default function ChatPage() {
             {/* Depth Toggle */}
             <button
               onClick={toggleDepth}
-              className="flex items-center gap-2 px-3 py-2 rounded-md border transition-colors hover:bg-[#1e2130]"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors hover:bg-[#1e2130]"
               style={{
                 backgroundColor: depthLevel === 'detailed' ? '#1e1b4b' : '#1e2130',
                 borderColor: depthLevel === 'detailed' ? '#3730a3' : '#2a2d3a',
@@ -289,7 +284,7 @@ export default function ChatPage() {
               ) : (
                 <Maximize2 className="w-4 h-4" />
               )}
-              <span className="text-xs font-medium">
+              <span className="text-xs font-medium hidden sm:inline">
                 {depthLevel === 'simple' ? 'Simple' : 'Detailed'}
               </span>
             </button>
@@ -297,7 +292,7 @@ export default function ChatPage() {
             {/* Tone Switcher */}
             <button
               onClick={() => setShowToneSelector(!showToneSelector)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md border transition-colors"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 rounded-md border transition-colors"
               style={{
                 backgroundColor: '#1e1b4b',
                 borderColor: '#3730a3',
@@ -305,7 +300,7 @@ export default function ChatPage() {
               }}
             >
               <span className="text-lg">{currentMode.icon}</span>
-              <span className="font-medium text-sm">
+              <span className="font-medium text-sm hidden sm:inline">
                 {currentMode.name}
               </span>
               <ChevronDown className="w-4 h-4" />
@@ -315,7 +310,7 @@ export default function ChatPage() {
 
         {/* Tone Selector Dropdown */}
         {showToneSelector && (
-          <div className="grid grid-cols-5 gap-2 pt-3" style={{ borderTop: '0.5px solid #2a2d3a' }}>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3" style={{ borderTop: '0.5px solid #2a2d3a' }}>
             {toneModes.map((toneMode) => (
               <button
                 key={toneMode.id}
@@ -343,21 +338,21 @@ export default function ChatPage() {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+      <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 mb-3 sm:mb-4">
         {messages.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-8 sm:py-12">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-[14px] mb-6" style={{ backgroundColor: '#1e1b4b' }}>
               <Sparkles className="w-10 h-10" style={{ color: '#a78bfa' }} />
             </div>
-            <h2 className="text-2xl font-semibold mb-3" style={{ color: '#e2e8f0' }}>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3" style={{ color: '#e2e8f0' }}>
               Welcome to Learnova AI
             </h2>
-            <p className="text-base max-w-md mx-auto leading-relaxed mb-8" style={{ color: '#6b7280' }}>
+            <p className="text-sm sm:text-base max-w-md mx-auto leading-relaxed mb-6 sm:mb-8 px-4" style={{ color: '#6b7280' }}>
               Ask me anything — from exam prep to startup advice. I'm here to help you succeed.
             </p>
             
             {/* Quick Start Suggestions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-w-2xl mx-auto px-4">
               {[
                 { icon: '📚', text: "Explain Newton's Laws simply", category: 'Physics' },
                 { icon: '🎯', text: 'Help me plan JEE preparation', category: 'Exam Prep' },
@@ -410,7 +405,7 @@ export default function ChatPage() {
 
             {/* Message Bubble */}
             <div
-              className={`max-w-[78%] px-5 py-3 rounded-2xl text-sm leading-7
+              className={`max-w-[85%] sm:max-w-[78%] px-3 sm:px-5 py-2 sm:py-3 rounded-2xl text-xs sm:text-sm leading-6 sm:leading-7
                 ${message.role === 'user'
                   ? 'bg-purple-600 text-white rounded-br-none'
                   : 'bg-[#1A1A1E] text-gray-100 border border-gray-700/40 rounded-bl-none'
@@ -512,14 +507,14 @@ export default function ChatPage() {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="border p-4 rounded-[12px]" style={{ backgroundColor: '#0f1117', borderColor: '#2a2d3a' }}>
+      <form onSubmit={handleSubmit} className="flex-shrink-0 border p-3 sm:p-4 rounded-[12px]" style={{ backgroundColor: '#0f1117', borderColor: '#2a2d3a' }}>
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask me anything..."
-            className="flex-1 px-4 py-3 border rounded-lg transition-all"
+            className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border rounded-lg transition-all text-base"
             style={{ 
               backgroundColor: '#0f1117',
               borderColor: '#2a2d3a',

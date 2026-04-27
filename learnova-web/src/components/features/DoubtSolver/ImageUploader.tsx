@@ -78,7 +78,7 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
+          className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
             dragActive
               ? 'border-[#534AB7] bg-[#EEEDFE]'
               : 'border-[rgba(83,74,183,0.3)] hover:border-[#534AB7] hover:bg-[#F8F8FA]'
@@ -89,32 +89,33 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
             id="file-upload"
             type="file"
             accept="image/*"
+            capture="environment"
             onChange={handleChange}
             className="hidden"
           />
           
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-[#EEEDFE] flex items-center justify-center">
-              <Upload className="w-8 h-8" style={{ color: '#534AB7' }} />
+          <div className="flex flex-col items-center gap-3 sm:gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#EEEDFE] flex items-center justify-center">
+              <Upload className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#534AB7' }} />
             </div>
             
             <div>
-              <p className="text-lg font-semibold text-[#0F0F1A] mb-1">
+              <p className="text-base sm:text-lg font-semibold text-[#0F0F1A] mb-1">
                 Upload Your Question
               </p>
-              <p className="text-sm text-[#5A5A72]">
-                Drag & drop an image or click to browse
+              <p className="text-xs sm:text-sm text-[#5A5A72]">
+                Tap to upload or take a photo
               </p>
             </div>
 
-            <div className="flex gap-3 mt-2">
+            <div className="flex gap-2 sm:gap-3 mt-2">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
                   document.getElementById('file-upload')?.click()
                 }}
-                className="px-4 py-2 bg-[#534AB7] text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                className="px-3 sm:px-4 py-2 bg-[#534AB7] text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 Browse Files
               </button>
@@ -124,14 +125,14 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                   e.stopPropagation()
                   handleCamera()
                 }}
-                className="px-4 py-2 bg-white border-2 border-[rgba(83,74,183,0.3)] text-[#534AB7] rounded-lg text-sm font-medium hover:bg-[#F8F8FA] transition-colors flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-white border-2 border-[rgba(83,74,183,0.3)] text-[#534AB7] rounded-lg text-xs sm:text-sm font-medium hover:bg-[#F8F8FA] transition-colors flex items-center gap-2"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 Camera
               </button>
             </div>
 
-            <p className="text-xs text-[#5A5A72] mt-2">
+            <p className="text-[10px] sm:text-xs text-[#5A5A72] mt-2">
               Supports: JPG, PNG, JPEG • Max size: 5MB
             </p>
           </div>
