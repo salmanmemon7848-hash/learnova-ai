@@ -37,7 +37,7 @@ export default function DailyRecommendation({
       {/* Header */}
       <div className="relative flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-white bg-opacity-20 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
             <Lightbulb className="w-6 h-6" />
           </div>
           <div>
@@ -45,7 +45,7 @@ export default function DailyRecommendation({
             <p className="text-sm text-white text-opacity-80">AI-Powered Recommendation</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 px-3 py-1 bg-white bg-opacity-20 rounded-full text-xs font-medium">
+        <div className="flex items-center gap-1 px-3 py-1 bg-white/20 rounded-full text-xs font-medium">
           <Sparkles className="w-3 h-3" />
           Personalized
         </div>
@@ -61,7 +61,7 @@ export default function DailyRecommendation({
       </div>
 
       {/* Action Plan */}
-      <div className="relative bg-white bg-opacity-10 rounded-xl p-4 mb-4">
+      <div className="relative bg-white/10 rounded-xl p-4 mb-4">
         <p className="text-sm font-semibold mb-2">📝 Suggested Action:</p>
         <p className="text-sm text-white text-opacity-90">{suggestedAction}</p>
         <div className="flex items-center gap-2 mt-3 text-xs text-white text-opacity-80">
@@ -78,7 +78,7 @@ export default function DailyRecommendation({
       {/* CTA Button */}
       <button
         onClick={onActionClick}
-        className="relative w-full py-3 bg-white text-[#534AB7] rounded-xl font-semibold hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
+        className="relative w-full py-3 bg-white/90 text-[#534AB7] rounded-xl font-semibold hover:bg-white transition-all flex items-center justify-center gap-2"
       >
         Start Practicing Now
         <ArrowRight className="w-5 h-5" />

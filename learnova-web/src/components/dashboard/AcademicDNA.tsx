@@ -31,10 +31,10 @@ export default function AcademicDNA({
 
   if (totalAttempts === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-[rgba(83,74,183,0.12)] p-6">
-        <h3 className="text-lg font-semibold text-[#0F0F1A] mb-4">Your Academic DNA</h3>
+      <div className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-card)] p-6">
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }} mb-4>Your Academic DNA</h3>
         <div className="text-center py-8">
-          <div className="w-16 h-16 rounded-full bg-[#EEEDFE] flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-full bg-[var(--accent-purple-glow)] flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8" style={{ color: '#534AB7' }} />
           </div>
           <p className="text-[#5A5A72] font-medium">No data yet</p>
@@ -77,14 +77,14 @@ export default function AcademicDNA({
       <div className="mb-4 last:mb-0">
         <button
           onClick={() => setExpandedSection(isExpanded ? null : sectionKey)}
-          className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[#F8F8FA] transition-colors"
+          className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-[var(--bg-tertiary)] transition-colors"
           style={{ borderLeft: `4px solid ${color}` }}
         >
           <div className="flex items-center gap-3">
             <div style={{ color }}>{icon}</div>
             <div className="text-left">
-              <p className="font-semibold text-[#0F0F1A]">{title}</p>
-              <p className="text-xs text-[#5A5A72]">{topics.length} topics</p>
+              <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{topics.length} topics</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -92,9 +92,9 @@ export default function AcademicDNA({
               {topics.length}
             </span>
             {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-[#5A5A72]" />
+              <ChevronUp className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
             ) : (
-              <ChevronDown className="w-5 h-5 text-[#5A5A72]" />
+              <ChevronDown className="w-5 h-5" style={{ color: 'var(--text-secondary)' }} />
             )}
           </div>
         </button>
@@ -104,11 +104,11 @@ export default function AcademicDNA({
             {topics.map((topic, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 bg-[#F8F8FA] rounded-lg"
+                className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-lg"
               >
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-[#0F0F1A]">{topic.topic}</p>
-                  <p className="text-xs text-[#5A5A72]">{topic.subject} • {topic.attempts} attempts</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{topic.topic}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{topic.subject} • {topic.attempts} attempts</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1" style={{ color: getAccuracyColor(topic.accuracy) }}>
@@ -125,25 +125,25 @@ export default function AcademicDNA({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-[rgba(83,74,183,0.12)] p-6">
+    <div className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-card)] p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-[#0F0F1A]">Your Academic DNA</h3>
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Your Academic DNA</h3>
         <div className="text-right">
           <p className="text-2xl font-bold" style={{ color: getAccuracyColor(overallAccuracy) }}>
             {overallAccuracy.toFixed(0)}%
           </p>
-          <p className="text-xs text-[#5A5A72]">Overall Accuracy</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Overall Accuracy</p>
         </div>
       </div>
 
       {/* Progress Bar */}
       <div className="mb-6">
-        <div className="flex justify-between text-xs text-[#5A5A72] mb-2">
+        <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }} mb-2>
           <span>Strong ({strongTopics.length})</span>
           <span>Average ({averageTopics.length})</span>
           <span>Weak ({weakTopics.length})</span>
         </div>
-        <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
+        <div className="flex h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
           {totalAttempts > 0 && (
             <>
               <div
@@ -198,8 +198,8 @@ export default function AcademicDNA({
       </div>
 
       {/* Legend */}
-      <div className="mt-6 pt-4 border-t border-[rgba(83,74,183,0.12)]">
-        <p className="text-xs text-[#5A5A72] text-center">
+      <div className="mt-6 pt-4" style={{ borderTop: '1px solid var(--border-card)' }}>
+        <p className="text-xs text-center" style={{ color: 'var(--text-secondary)' }}>
           💡 Focus on weak areas to improve your overall score fastest
         </p>
       </div>

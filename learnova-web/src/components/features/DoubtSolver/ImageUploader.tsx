@@ -80,8 +80,8 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
           onDrop={handleDrop}
           className={`relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center transition-all cursor-pointer ${
             dragActive
-              ? 'border-[#534AB7] bg-[#EEEDFE]'
-              : 'border-[rgba(83,74,183,0.3)] hover:border-[#534AB7] hover:bg-[#F8F8FA]'
+              ? 'border-[var(--accent-purple)] bg-[var(--accent-purple-glow)]'
+              : 'border-[var(--border-input)] hover:border-[var(--accent-purple)] hover:bg-[var(--bg-tertiary)]'
           }`}
           onClick={() => document.getElementById('file-upload')?.click()}
         >
@@ -95,15 +95,15 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
           />
           
           <div className="flex flex-col items-center gap-3 sm:gap-4">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#EEEDFE] flex items-center justify-center">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[var(--accent-purple-glow)] flex items-center justify-center">
               <Upload className="w-7 h-7 sm:w-8 sm:h-8" style={{ color: '#534AB7' }} />
             </div>
             
             <div>
-              <p className="text-base sm:text-lg font-semibold text-[#0F0F1A] mb-1">
+              <p className="text-base sm:text-lg font-semibold" style={{ color: 'var(--text-primary)' }} mb-1>
                 Upload Your Question
               </p>
-              <p className="text-xs sm:text-sm text-[#5A5A72]">
+              <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Tap to upload or take a photo
               </p>
             </div>
@@ -125,14 +125,15 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                   e.stopPropagation()
                   handleCamera()
                 }}
-                className="px-3 sm:px-4 py-2 bg-white border-2 border-[rgba(83,74,183,0.3)] text-[#534AB7] rounded-lg text-xs sm:text-sm font-medium hover:bg-[#F8F8FA] transition-colors flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 bg-[var(--bg-secondary)] border-2 border-[var(--border-input)] rounded-lg text-xs sm:text-sm font-medium hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2"
+                style={{ color: 'var(--accent-purple-light)' }}
               >
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 Camera
               </button>
             </div>
 
-            <p className="text-[10px] sm:text-xs text-[#5A5A72] mt-2">
+            <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-secondary)' }} mt-2>
               Supports: JPG, PNG, JPEG • Max size: 5MB
             </p>
           </div>
@@ -142,11 +143,11 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
           <img
             src={preview}
             alt="Uploaded question"
-            className="w-full h-auto max-h-96 object-contain bg-gray-50"
+            className="w-full h-auto max-h-96 object-contain" style={{ backgroundColor: 'var(--bg-tertiary)' }}
           />
           <button
             onClick={removeImage}
-            className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-md"
+            className="absolute top-3 right-3 w-8 h-8 bg-[var(--bg-secondary)] rounded-full flex items-center justify-center hover:bg-red-900/20 transition-colors shadow-md"
           >
             <X className="w-5 h-5 text-red-600" />
           </button>

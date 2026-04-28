@@ -58,14 +58,14 @@ export default function DoubtSolverPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="doubt-page max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#0F0F1A] mb-2 flex items-center gap-2 sm:gap-3">
-          <Camera className="w-6 h-6 sm:w-8 sm:h-8" style={{ color: '#534AB7' }} />
+        <h1 className="text-2xl sm:text-3xl">
+          <Camera className="w-6 h-6 sm:w-8 sm:h-8" />
           AI Doubt Solver
         </h1>
-        <p className="text-sm sm:text-base text-[#5A5A72]">
+        <p className="subtitle">
           Upload a photo of your question or type it below — get step-by-step solutions instantly
         </p>
       </div>
@@ -74,11 +74,11 @@ export default function DoubtSolverPage() {
         {/* Left Column - Input */}
         <div className="space-y-4 sm:space-y-6">
           {/* Language Selector */}
-          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
-            <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
+          <div className="language-card">
+            <label className="language-label">
               Select Language
             </label>
-            <div className="flex gap-2 sm:gap-3">
+            <div className="language-options">
               {[
                 { id: 'en', label: 'English' },
                 { id: 'hi', label: 'हिंदी' },
@@ -87,15 +87,7 @@ export default function DoubtSolverPage() {
                 <button
                   key={lang.id}
                   onClick={() => setLanguage(lang.id as any)}
-                  className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                    language === lang.id
-                      ? 'bg-[#7c3aed] text-white'
-                      : 'hover:bg-[#1e2130]'
-                  }`}
-                  style={{
-                    backgroundColor: language === lang.id ? '#7c3aed' : '#1e2130',
-                    color: language === lang.id ? 'white' : '#9ca3af'
-                  }}
+                  className={`lang-btn ${language === lang.id ? 'active' : ''}`}
                 >
                   {lang.label}
                 </button>
@@ -104,16 +96,16 @@ export default function DoubtSolverPage() {
           </div>
 
           {/* Image Upload */}
-          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
-            <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
+          <div className="upload-card">
+            <label className="language-label">
               Upload Question Image
             </label>
             <ImageUploader onImageSelect={setSelectedImage} />
           </div>
 
           {/* Text Input */}
-          <div className="rounded-[10px] border p-4 sm:p-5" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
-            <label className="block text-sm font-semibold mb-3" style={{ color: '#e2e8f0' }}>
+          <div className="upload-card">
+            <label className="language-label">
               Or Type Your Question
             </label>
             <textarea
@@ -121,14 +113,7 @@ export default function DoubtSolverPage() {
               onChange={(e) => setQuestionText(e.target.value)}
               placeholder="Type your question here..."
               rows={4}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-xl focus:ring-2 resize-none transition-all text-sm sm:text-base"
-              style={{
-                backgroundColor: '#0f1117',
-                borderColor: '#2a2d3a',
-                color: '#e2e8f0'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#5b21b6'}
-              onBlur={(e) => e.target.style.borderColor = '#2a2d3a'}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-xl focus:ring-2 resize-none transition-all text-sm sm:text-base settings-field"
             />
           </div>
 
@@ -137,8 +122,7 @@ export default function DoubtSolverPage() {
             <button
               onClick={handleSubmit}
               disabled={loading || (!selectedImage && !questionText.trim())}
-              className="flex-1 py-2.5 sm:py-3.5 text-white rounded-xl font-medium hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg text-sm sm:text-base"
-              style={{ backgroundColor: '#534AB7' }}
+              className="btn-secondary flex-1 py-2.5 sm:py-3.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {loading ? (
                 <>
@@ -154,10 +138,7 @@ export default function DoubtSolverPage() {
             </button>
             <button
               onClick={handleReset}
-              className="px-6 py-3.5 border-2 rounded-xl font-medium transition-colors"
-              style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a', color: '#a78bfa' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e2130'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#13151e'}
+              className="btn-outline px-6 py-3.5"
             >
               Reset
             </button>
@@ -165,23 +146,23 @@ export default function DoubtSolverPage() {
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 text-red-700 text-sm">
+            <div className="bg-red-900/20 border-2 border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
               {error}
             </div>
           )}
         </div>
 
         {/* Right Column - Solution */}
-        <div className="rounded-[10px] border p-6 min-h-[600px]" style={{ backgroundColor: '#13151e', borderColor: '#2a2d3a' }}>
+        <div className="solution-card min-h-[600px]">
           {!solution && !loading && (
             <div className="h-full flex flex-col items-center justify-center text-center py-16">
-              <div className="w-20 h-20 rounded-[14px] flex items-center justify-center mb-6" style={{ backgroundColor: '#1e1b4b' }}>
-                <BookOpen className="w-10 h-10" style={{ color: '#a78bfa' }} />
+              <div className="w-20 h-20 rounded-[14px] flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--accent-purple-glow)' }}>
+                <BookOpen className="w-10 h-10" style={{ color: 'var(--accent-purple-light)' }} />
               </div>
-              <h3 className="text-xl font-semibold mb-2" style={{ color: '#e2e8f0' }}>
+              <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
                 Your Solution Will Appear Here
               </h3>
-              <p className="text-[#5A5A72] text-sm max-w-sm">
+              <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
                 Upload or type your question and click "Solve with AI" to get a detailed step-by-step solution with exam relevance
               </p>
             </div>
@@ -189,8 +170,8 @@ export default function DoubtSolverPage() {
 
           {loading && (
             <div className="h-full flex flex-col items-center justify-center py-16">
-              <div className="w-16 h-16 border-4 border-[#534AB7] border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-[#5A5A72] font-medium">
+              <div className="w-16 h-16 border-4 rounded-full animate-spin mb-4" style={{ borderColor: 'var(--accent-purple)', borderTopColor: 'transparent' }} />
+              <p style={{ color: 'var(--text-secondary)' }} className="font-medium">
                 AI is solving your question...
               </p>
             </div>
@@ -199,22 +180,31 @@ export default function DoubtSolverPage() {
           {solution && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-[#0F0F1A] flex items-center gap-2">
-                  <Target className="w-5 h-5" style={{ color: '#534AB7' }} />
+                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Target className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
                   Solution
                 </h3>
-                <button className="px-3 py-1.5 bg-[#F8F8FA] hover:bg-[#EEEDFE] text-[#534AB7] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors">
+                <button className="px-3 py-1.5 hover:bg-opacity-80 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--accent-purple-light)', border: '1px solid var(--border-card)' }}>
                   <Save className="w-3.5 h-3.5" />
                   Save as Note
                 </button>
               </div>
 
-              <div className="prose prose-base max-w-none">
+              <div className="prose prose-base max-w-none" style={{ color: 'var(--text-primary)' }}>
                 <ReactMarkdown>{solution}</ReactMarkdown>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-[rgba(83,74,183,0.12)]">
-                <button className="w-full py-3 bg-[#EEEDFE] hover:bg-[#534AB7] hover:text-white text-[#534AB7] rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+              <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-card)' }}>
+                <button className="w-full py-3 hover:text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--accent-purple-glow)', color: 'var(--accent-purple-light)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--gradient-brand)'
+                    e.currentTarget.style.color = 'white'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--accent-purple-glow)'
+                    e.currentTarget.style.color = 'var(--accent-purple-light)'
+                  }}
+                >
                   <Lightbulb className="w-5 h-5" />
                   Practice Similar Questions
                 </button>
