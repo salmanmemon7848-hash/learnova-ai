@@ -22,11 +22,14 @@ import {
   BookOpen,
   Briefcase,
   Navigation,
+  Users,
+  FileText,
 } from 'lucide-react'
 import { useState } from 'react'
 import InstallButton from '@/components/InstallButton'
 import InstallPrompt from '@/components/InstallPrompt'
 import MobileBottomNav from './MobileBottomNav'
+import BetaBanner from '@/components/BetaBanner'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard', pro: false, prominent: false },
@@ -35,8 +38,10 @@ const navItems = [
   { icon: Target, label: 'Practice Tests', href: '/exam', pro: false, prominent: false },
   { icon: Calendar, label: 'Study Planner', href: '/planner', pro: false, prominent: false },
   { icon: TrendingUp, label: 'My Progress', href: '/progress', pro: false, prominent: false },
+  { icon: Users, label: 'Mock Interview', href: '/interview', pro: false, prominent: false },
   { icon: PenTool, label: 'AI Writer', href: '/writer', pro: true, prominent: false },
   { icon: Lightbulb, label: 'Business Validator', href: '/validate', pro: false, prominent: false },
+  { icon: FileText, label: 'Pitch Deck', href: '/pitch-deck', pro: false, prominent: false },
   { icon: Navigation, label: 'Career Guide', href: '/career', pro: false, prominent: false },
   { icon: Briefcase, label: 'Business Ideas', href: '/business-ideas', pro: false, prominent: false },
   { icon: CreditCard, label: 'Pricing', href: '/pricing', pro: false, prominent: false },
@@ -53,6 +58,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+      {/* Beta Banner */}
+      <BetaBanner />
+
       {/* Mobile sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}

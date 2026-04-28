@@ -306,11 +306,11 @@ export default function LoginPage() {
           {/* Terms */}
           <p className="mt-6 text-center text-[11px]" style={{ color: '#8888A0' }}>
             By continuing you agree to our{' '}
-            <a href="#" className="hover:underline">
+            <a href="/terms" className="hover:underline">
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="#" className="hover:underline">
+            <a href="/privacy" className="hover:underline">
               Privacy Policy
             </a>
           </p>

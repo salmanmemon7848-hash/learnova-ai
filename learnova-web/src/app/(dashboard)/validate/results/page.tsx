@@ -172,39 +172,39 @@ export default function ValidationResultsPage() {
   };
 
   if (!result) return (
-    <div className="flex items-center justify-center min-h-screen bg-[#0F0F10]">
-      <p className="text-gray-400">Loading...</p>
+    <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+      <p style={{ color: 'var(--foreground-muted)' }}>Loading...</p>
     </div>
   );
 
-  const scoreColor = (s: number) => s >= 75 ? 'text-green-400' : s >= 50 ? 'text-yellow-400' : 'text-red-400';
+  const scoreColor = (s: number) => s >= 75 ? 'var(--success)' : s >= 50 ? 'var(--warning)' : 'var(--error)';
   const barColor = (s: number) => s >= 75 ? 'bg-green-500' : s >= 50 ? 'bg-yellow-500' : 'bg-red-500';
 
   return (
-    <div ref={reportRef} className="min-h-screen bg-[#0F0F10] text-white p-6 max-w-4xl mx-auto">
+    <div ref={reportRef} className="min-h-screen p-6 max-w-4xl mx-auto" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
 
       {/* Header */}
       <div className="mb-8">
         <button onClick={() => router.push('/validate')}
-          className="text-purple-400 hover:text-purple-300 text-sm mb-4 flex items-center gap-2">
+          className="hover:opacity-80 text-sm mb-4 flex items-center gap-2" style={{ color: 'var(--accent)' }}>
           ← Validate Another Idea
         </button>
-        <h1 className="text-3xl font-bold">Business Idea Report</h1>
-        {idea && <p className="text-gray-400 mt-1">"{idea}"</p>}
+        <h1 className="text-3xl font-bold font-heading">Business Idea Report</h1>
+        {idea && <p className="mt-1" style={{ color: 'var(--foreground-muted)' }}>"{idea}"</p>}
       </div>
 
       {/* Overall Score */}
-      <div className="bg-[#1A1A1E] rounded-2xl p-8 mb-6 border border-purple-500/30 text-center">
-        <p className="text-gray-400 text-sm mb-2">Overall Score</p>
-        <div className={`text-7xl font-bold mb-3 ${scoreColor(result.overall)}`}>
-          {result.overall}<span className="text-3xl text-gray-500">/100</span>
+      <div className="rounded-2xl p-8 mb-6 text-center" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <p className="text-sm mb-2" style={{ color: 'var(--foreground-muted)' }}>Overall Score</p>
+        <div className="text-7xl font-bold mb-3" style={{ color: scoreColor(result.overall) }}>
+          {result.overall}<span className="text-3xl" style={{ color: 'var(--foreground-muted)' }}>/100</span>
         </div>
-        <p className="text-gray-300 text-lg">{result.verdict}</p>
+        <p className="text-lg" style={{ color: 'var(--foreground-secondary)' }}>{result.verdict}</p>
       </div>
 
       {/* Score Breakdown */}
-      <div className="bg-[#1A1A1E] rounded-2xl p-6 mb-6 border border-gray-700/50">
-        <h2 className="text-xl font-semibold mb-6">📊 Score Breakdown</h2>
+      <div className="rounded-2xl p-6 mb-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h2 className="text-xl font-semibold mb-6">Score Breakdown</h2>
         <div className="space-y-5">
           {[
             { label: 'Market Demand', key: 'marketDemand' },
@@ -214,12 +214,12 @@ export default function ValidationResultsPage() {
           ].map((item) => (
             <div key={item.key}>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-300 font-medium">{item.label}</span>
-                <span className={`font-bold ${scoreColor(result.scores[item.key])}`}>
+                <span className="font-medium" style={{ color: 'var(--foreground-secondary)' }}>{item.label}</span>
+                <span className="font-bold" style={{ color: scoreColor(result.scores[item.key]) }}>
                   {result.scores[item.key]}/100
                 </span>
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-3">
+              <div className="w-full rounded-full h-3" style={{ backgroundColor: 'var(--border)' }}>
                 <div className={`h-3 rounded-full transition-all duration-700 ${barColor(result.scores[item.key])}`}
                   style={{ width: `${result.scores[item.key]}%` }} />
               </div>
@@ -231,24 +231,24 @@ export default function ValidationResultsPage() {
       {/* Risks & Action Plan */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         {result.risks?.length > 0 && (
-          <div className="bg-[#1A1A1E] rounded-2xl p-6 border border-red-500/20">
-            <h2 className="text-xl font-semibold text-red-400 mb-4">⚠️ Key Risks</h2>
+          <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--error-light)' }}>
+            <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--error)' }}>Key Risks</h2>
             <ul className="space-y-3">
               {result.risks.map((risk: string, i: number) => (
-                <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                  <span className="text-red-400 font-bold mt-0.5">•</span>{risk}
+                <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  <span className="font-bold mt-0.5" style={{ color: 'var(--error)' }}>•</span>{risk}
                 </li>
               ))}
             </ul>
           </div>
         )}
         {result.actionPlan?.length > 0 && (
-          <div className="bg-[#1A1A1E] rounded-2xl p-6 border border-green-500/20">
-            <h2 className="text-xl font-semibold text-green-400 mb-4">🚀 7-Day Action Plan</h2>
+          <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--success-light)' }}>
+            <h2 className="text-xl font-semibold mb-4" style={{ color: 'var(--success)' }}>7-Day Action Plan</h2>
             <ul className="space-y-3">
               {result.actionPlan.map((action: string, i: number) => (
-                <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                  <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full flex-shrink-0">{i + 1}</span>
+                <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                  <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>{i + 1}</span>
                   {action}
                 </li>
               ))}
@@ -257,12 +257,13 @@ export default function ValidationResultsPage() {
         )}
       </div>
 
-      {/* ✅ NEW BUTTONS — Save to Progress + Download PDF */}
+      {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-4">
         <button
           onClick={async () => { await handleSaveToProgress(); await handleDownloadPDF(); }}
           disabled={saving || downloading}
-          className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 text-white py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2"
+          className="disabled:opacity-50 text-white py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-2"
+          style={{ backgroundColor: 'var(--accent)' }}
         >
           {saving || downloading ? (
             <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Processing...</>
@@ -272,7 +273,8 @@ export default function ValidationResultsPage() {
         </button>
         <button
           onClick={() => router.push('/validate')}
-          className="bg-[#1A1A1E] hover:bg-gray-800 text-gray-300 border border-gray-700/50 py-4 rounded-2xl font-bold transition-colors"
+          className="hover:opacity-80 py-4 rounded-2xl font-bold transition-colors"
+          style={{ backgroundColor: 'var(--surface)', color: 'var(--foreground-secondary)', border: '1px solid var(--border)' }}
         >
           🔄 Validate Another Idea
         </button>

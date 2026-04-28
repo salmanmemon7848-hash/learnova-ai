@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
-const inter = Inter({
-  variable: "--font-inter",
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const dmSans = DM_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500", "600", "700"],
@@ -17,15 +25,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learnova AI - The AI that studies with you and builds with you",
-  description: "One powerful AI for students who want to ace every exam and builders who want to launch great ideas. Trusted by 50,000+ users.",
-  keywords: ["AI tutor", "exam prep", "business validator", "AI writer", "student AI", "startup AI"],
-  authors: [{ name: "Learnova AI" }],
+  title: "Learnova AI - The AI built for India's students and builders",
+  description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Currently in beta, free to use.",
+  keywords: ["AI tutor", "exam prep", "business validator", "AI writer", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
+  authors: [{ name: "Salman Memon" }],
   creator: "Learnova AI",
   publisher: "Learnova AI",
   metadataBase: new URL("https://learnova.ai"),
   manifest: '/manifest.json',
-  themeColor: '#534AB7',
+  themeColor: '#4f46e5',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -35,8 +43,8 @@ export const metadata: Metadata = {
     apple: '/icons/icon-192.png',
   },
   openGraph: {
-    title: "Learnova AI - The AI that studies with you and builds with you",
-    description: "One powerful AI for students and builders. Get personalized guidance, exam prep, and startup advice.",
+    title: "Learnova AI - The AI built for India's students and builders",
+    description: "Prepare for competitive exams or validate your startup idea with AI. Built for India, currently in beta.",
     type: "website",
     locale: "en_US",
     siteName: "Learnova AI",
@@ -44,7 +52,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Learnova AI",
-    description: "The AI that studies with you and builds with you",
+    description: "The AI built for India's students and builders",
   },
 };
 
@@ -56,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plusJakartaSans.variable} ${dmSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -66,8 +74,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Learnova AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className="min-h-full flex flex-col font-sans">
-        <Providers>{children}</Providers>
+      <body className="min-h-full flex flex-col font-body">
+        <ThemeProvider>
+          <Providers>{children}</Providers>
+        </ThemeProvider>
         <ServiceWorkerRegistration />
       </body>
     </html>

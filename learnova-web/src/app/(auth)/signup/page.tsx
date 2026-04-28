@@ -255,9 +255,9 @@ export default function SignupPage() {
 
           <p className="mt-6 text-center text-[11px]" style={{ color: '#8888A0' }}>
             By continuing you agree to our{' '}
-            <a href="#" className="hover:underline">Terms of Service</a>{' '}
+            <a href="/terms" className="hover:underline">Terms of Service</a>{' '}
             and{' '}
-            <a href="#" className="hover:underline">Privacy Policy</a>
+            <a href="/privacy" className="hover:underline">Privacy Policy</a>
           </p>
 
           <p className="mt-6 text-center text-sm" style={{ color: '#5A5A72' }}>
