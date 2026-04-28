@@ -8,49 +8,91 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { subject, topic, difficulty, questionCount } = await req.json();
+    const { examType, schoolClass, subject, chapter, difficulty, questionCount } = await req.json();
     const count = questionCount || 5;
 
-    const prompt = `You are an exam question generator for Indian students (CBSE/JEE/NEET).
+    // Build context based on exam type
+    const contextLine = examType === 'school'
+      ? `${schoolClass} level student in India (CBSE/ICSE/State Board curriculum)`
+      : `student preparing for ${examType.toUpperCase()} exam in India`;
 
-Generate exactly ${count} multiple choice questions.
+    const chapterLine = chapter
+      ? `specifically from the chapter/topic: "${chapter}"`
+      : 'covering general important topics in this subject';
+
+    const difficultyMap: Record<string, string> = {
+      easy: 'simple, straightforward, suitable for beginners',
+      medium: 'moderate difficulty, requires good understanding',
+      hard: 'challenging, requires deep conceptual clarity'
+    };
+
+    const prompt = `You are an expert Indian exam question generator.
+
+Generate exactly ${count} multiple choice questions for a ${contextLine}.
 Subject: ${subject || 'General Science'}
-Topic: ${topic || 'Mixed'}
-Difficulty: ${difficulty || 'Medium'}
+Topic/Chapter: ${chapterLine}
+Difficulty: ${difficultyMap[difficulty || 'medium']}
 
-STRICT RULES:
-- Return ONLY a valid JSON array
-- No explanation before or after the JSON
-- No markdown formatting
-- Each question must have exactly 4 options
-- correctAnswer must be 0, 1, 2, or 3 (index of correct option)
+STRICT FORMAT — Return ONLY valid JSON, no extra text:
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question text here?",
+      "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+      "correct": "A",
+      "explanation": "Clear explanation of why A is correct and why others are wrong.",
+      "topic": "Sub-topic name",
+      "difficulty": "${difficulty || 'medium'}"
+    }
+  ]
+}
 
-JSON format:
-[
-  {
-    "question": "What is Newton's first law of motion?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correctAnswer": 0,
-    "explanation": "Brief explanation of why this is correct"
-  }
-]
-
-Generate exactly ${count} questions now:`;
+Rules:
+- Questions must be appropriate for ${examType === 'school' ? schoolClass : examType?.toUpperCase() || 'the exam'}
+- All options must be plausible (no obviously wrong answers)
+- Explanations must be educational and easy to understand
+- For school level: use simple language, relatable Indian examples
+- For competitive exams: use standard exam format and terminology
+- Never repeat questions
+- Return ONLY the JSON object, nothing else`;
 
     const text = await generateText(prompt);
 
     // Try multiple ways to extract JSON
     let questions = null;
 
-    // Method 1: Direct JSON array
+    // Method 1: Extract from {"questions": [...]} format
     try {
       const trimmed = text.trim();
-      if (trimmed.startsWith('[')) {
-        questions = JSON.parse(trimmed);
+      if (trimmed.includes('"questions"')) {
+        const parsed = JSON.parse(trimmed);
+        questions = parsed.questions;
       }
     } catch {}
 
-    // Method 2: Find JSON array in text
+    // Method 2: Direct JSON array (backward compatibility)
+    if (!questions) {
+      try {
+        const trimmed = text.trim();
+        if (trimmed.startsWith('[')) {
+          questions = JSON.parse(trimmed);
+        }
+      } catch {}
+    }
+
+    // Method 3: Find JSON object with questions array
+    if (!questions) {
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*"questions"[\s\S]*\[[\s\S]*\][\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          questions = parsed.questions;
+        }
+      } catch {}
+    }
+
+    // Method 4: Find JSON array in text
     if (!questions) {
       try {
         const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -58,7 +100,7 @@ Generate exactly ${count} questions now:`;
       } catch {}
     }
 
-    // Method 3: Clean and retry
+    // Method 5: Clean and retry
     if (!questions) {
       try {
         const cleaned = text
@@ -72,7 +114,7 @@ Generate exactly ${count} questions now:`;
 
     if (!questions || questions.length === 0) {
       // Retry once with simpler prompt
-      const retryPrompt = `Generate ${count} MCQ questions about ${subject} - ${topic}.
+      const retryPrompt = `Generate ${count} MCQ questions about ${subject} for ${contextLine}. ${chapter ? `Chapter: ${chapter}.` : ''}
 Return ONLY JSON array: [{"question":"...","options":["A","B","C","D"],"correctAnswer":0,"explanation":"..."}]`;
       const retryText = await generateText(retryPrompt);
       const retryMatch = retryText.match(/\[[\s\S]*\]/);
@@ -83,7 +125,18 @@ Return ONLY JSON array: [{"question":"...","options":["A","B","C","D"],"correctA
       return NextResponse.json({ error: 'Failed to generate questions. Please try again.' }, { status: 500 });
     }
 
-    return NextResponse.json({ questions });
+    // Normalize questions to match the expected format
+    const normalizedQuestions = questions.map((q: any, idx: number) => ({
+      id: q.id || idx + 1,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 
+                     q.correct ? q.correct.charCodeAt(0) - 65 : 0, // Convert "A" -> 0
+      explanation: q.explanation,
+      topic: q.topic || subject,
+    }));
+
+    return NextResponse.json({ questions: normalizedQuestions });
 
   } catch (error: any) {
     console.error('❌ Exam Generate Error:', error?.message || error);

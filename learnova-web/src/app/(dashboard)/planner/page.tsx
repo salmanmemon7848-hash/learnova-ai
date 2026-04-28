@@ -6,11 +6,32 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Calendar, Clock, Target, BookOpen } from 'lucide-react'
 
 const examSubjects: Record<string, string[]> = {
-  UPSC: ['Indian Polity', 'History', 'Geography', 'Economics', 'Science & Tech', 'Current Affairs', 'Ethics'],
-  JEE: ['Physics', 'Chemistry', 'Mathematics', 'Mechanics', 'Thermodynamics', 'Electromagnetism'],
-  NEET: ['Physics', 'Chemistry', 'Biology', 'Zoology', 'Botany', 'Organic Chemistry'],
-  CAT: ['Verbal Ability', 'Reading Comprehension', 'Quantitative Aptitude', 'Logical Reasoning', 'Data Interpretation'],
+  school: ['Mathematics','Science','Social Studies','English','Hindi',
+           'History','Geography','Civics','Biology','Chemistry','Physics',
+           'Computer Science','Economics','Accountancy','Business Studies'],
+  jee_main: ['Physics','Chemistry','Mathematics'],
+  jee_advanced: ['Physics','Chemistry','Mathematics'],
+  neet: ['Physics','Chemistry','Biology','Botany','Zoology'],
+  upsc: ['History','Geography','Polity','Economics','Science & Tech',
+         'Environment','Current Affairs','Ethics','Essay'],
+  cat: ['Verbal Ability','Reading Comprehension','Data Interpretation',
+        'Logical Reasoning','Quantitative Aptitude'],
+  class10_board: ['Mathematics','Science','Social Science','English','Hindi'],
+  class12_board: ['Physics','Chemistry','Mathematics','Biology',
+                  'English','Accountancy','Economics','Business Studies'],
 }
+
+const plannerExams = [
+  { value: 'school', label: '🏫 School (Class 6–12)' },
+  { value: 'jee_main', label: '⚛️ JEE Main' },
+  { value: 'jee_advanced', label: '⚛️ JEE Advanced' },
+  { value: 'neet', label: '🧬 NEET' },
+  { value: 'upsc', label: '🏛️ UPSC' },
+  { value: 'cat', label: '📊 CAT' },
+  { value: 'class10_board', label: '📋 Class 10 Board' },
+  { value: 'class12_board', label: '📋 Class 12 Board' },
+  { value: 'other', label: '📚 Other' },
+]
 
 export default function PlannerPage() {
   const { user } = useAuth()
@@ -20,10 +41,13 @@ export default function PlannerPage() {
   
   const [formData, setFormData] = useState({
     targetExam: '',
+    schoolClass: '',
     examDate: '',
     studyHours: '6',
     weakSubjects: [] as string[],
     strongSubjects: [] as string[],
+    weakInput: '',
+    strongInput: '',
   })
 
   const handleSubjectToggle = (type: 'weakSubjects' | 'strongSubjects', subject: string) => {
@@ -34,6 +58,36 @@ export default function PlannerPage() {
         : [...current, subject]
       return { ...prev, [type]: updated }
     })
+  }
+
+  // Add subject function (works for both weak and strong)
+  const addSubject = (
+    type: 'weakSubjects' | 'strongSubjects',
+    input: string
+  ) => {
+    const trimmed = input.trim()
+    if (trimmed && !formData[type].includes(trimmed)) {
+      setFormData(prev => ({
+        ...prev,
+        [type]: [...prev[type], trimmed],
+        [type === 'weakSubjects' ? 'weakInput' : 'strongInput']: ''
+      }))
+    }
+  }
+
+  // Remove subject function
+  const removeSubject = (
+    type: 'weakSubjects' | 'strongSubjects',
+    subject: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      [type]: prev[type].filter(s => s !== subject)
+    }))
+  }
+
+  const getSubjectSuggestions = (exam: string) => {
+    return examSubjects[exam] || []
   }
 
   const handleGeneratePlan = async () => {
@@ -62,7 +116,7 @@ export default function PlannerPage() {
     }
   }
 
-  const availableSubjects = examSubjects[formData.targetExam] || []
+  const availableSubjects = getSubjectSuggestions(formData.targetExam)
 
   return (
     <div className="max-w-4xl mx-auto" style={{ color: 'var(--foreground)' }}>
@@ -107,13 +161,32 @@ export default function PlannerPage() {
                 style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
                 <option value="">Select your exam...</option>
-                <option value="UPSC">UPSC</option>
-                <option value="JEE">JEE</option>
-                <option value="NEET">NEET</option>
-                <option value="CAT">CAT</option>
-                <option value="Other">Other</option>
+                {plannerExams.map(e => (
+                  <option key={e.value} value={e.value}>{e.label}</option>
+                ))}
               </select>
             </div>
+
+            {/* Show class selector when School is selected */}
+            {formData.targetExam === 'school' && (
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
+                  Your Class *
+                </label>
+                <select
+                  value={formData.schoolClass}
+                  onChange={(e) => setFormData({...formData, schoolClass: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
+                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                >
+                  <option value="">Select your class...</option>
+                  {['Class 6','Class 7','Class 8','Class 9',
+                    'Class 10','Class 11','Class 12'].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
@@ -158,43 +231,166 @@ export default function PlannerPage() {
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-2">Step 2: Your Weak Subjects</h2>
-            <p className="text-sm mb-4" style={{ color: 'var(--foreground-muted)' }}>
-              Select subjects you need more practice with (they'll get more study time)
+          <div className="planner-step">
+            <h2>Step 2: Your Subjects</h2>
+            <p className="step-subtitle">
+              Tell us where you struggle and where you're strong — we'll build your plan around it.
             </p>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {availableSubjects.map(subject => (
-                <button
-                  key={subject}
-                  onClick={() => handleSubjectToggle('weakSubjects', subject)}
-                  className="p-3 border rounded-lg text-sm transition-all"
-                  style={{
-                    backgroundColor: formData.weakSubjects.includes(subject) ? 'var(--error-light)' : 'var(--background)',
-                    borderColor: formData.weakSubjects.includes(subject) ? 'var(--error)' : 'var(--border)',
-                    color: formData.weakSubjects.includes(subject) ? 'var(--error)' : 'var(--foreground)'
+
+            {/* === WEAK SUBJECTS === */}
+            <div className="subject-section">
+              <label className="form-label">
+                😓 Your Weak Subjects
+                <span className="label-hint"> — needs more practice</span>
+              </label>
+
+              {/* Quick-select chips from suggestions */}
+              {availableSubjects.length > 0 && (
+                <div className="subject-chips-row">
+                  {availableSubjects
+                    .filter(s => !formData.weakSubjects.includes(s))
+                    .map(s => (
+                      <button
+                        key={s}
+                        className="subject-chip"
+                        onClick={() => addSubject('weakSubjects', s)}
+                      >
+                        + {s}
+                      </button>
+                    ))}
+                </div>
+              )}
+
+              {/* Manual text input */}
+              <div className="subject-manual-input">
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Type a subject and press Enter or +"
+                  value={formData.weakInput}
+                  onChange={(e) => setFormData({...formData, weakInput: e.target.value})}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addSubject('weakSubjects', formData.weakInput)
+                    }
                   }}
+                />
+                <button
+                  className="subject-add-btn"
+                  onClick={() => addSubject('weakSubjects', formData.weakInput)}
                 >
-                  {subject}
+                  +
                 </button>
-              ))}
+              </div>
+
+              {/* Added weak subjects as tags */}
+              {formData.weakSubjects.length > 0 && (
+                <div className="selected-subjects">
+                  {formData.weakSubjects.map(s => (
+                    <span key={s} className="subject-tag subject-tag-weak">
+                      {s}
+                      <button
+                        className="tag-remove"
+                        onClick={() => removeSubject('weakSubjects', s)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {formData.weakSubjects.length === 0 && (
+                <p className="field-hint">
+                  These subjects will get more study time in your plan
+                </p>
+              )}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* === STRONG SUBJECTS === */}
+            <div className="subject-section">
+              <label className="form-label">
+                💪 Your Strong Subjects
+                <span className="label-hint"> — just needs revision</span>
+              </label>
+
+              {/* Quick-select chips */}
+              {availableSubjects.length > 0 && (
+                <div className="subject-chips-row">
+                  {availableSubjects
+                    .filter(s => !formData.strongSubjects.includes(s) && !formData.weakSubjects.includes(s))
+                    .map(s => (
+                      <button
+                        key={s}
+                        className="subject-chip subject-chip-strong"
+                        onClick={() => addSubject('strongSubjects', s)}
+                      >
+                        + {s}
+                      </button>
+                    ))}
+                </div>
+              )}
+
+              {/* Manual text input */}
+              <div className="subject-manual-input">
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Type a subject and press Enter or +"
+                  value={formData.strongInput}
+                  onChange={(e) => setFormData({...formData, strongInput: e.target.value})}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addSubject('strongSubjects', formData.strongInput)
+                    }
+                  }}
+                />
+                <button
+                  className="subject-add-btn subject-add-btn-strong"
+                  onClick={() => addSubject('strongSubjects', formData.strongInput)}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Added strong subjects as tags */}
+              {formData.strongSubjects.length > 0 && (
+                <div className="selected-subjects">
+                  {formData.strongSubjects.map(s => (
+                    <span key={s} className="subject-tag subject-tag-strong">
+                      {s}
+                      <button
+                        className="tag-remove"
+                        onClick={() => removeSubject('strongSubjects', s)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {formData.strongSubjects.length === 0 && (
+                <p className="field-hint">
+                  These subjects will get lighter revision sessions
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex-1 py-3 border rounded-lg font-semibold hover:opacity-80 transition-all"
-                style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                className="btn-secondary flex-1"
               >
                 Back
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex-1 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-all"
-                style={{ backgroundColor: 'var(--accent)' }}
+                className="btn-primary flex-1"
               >
-                Next Step
+                Next Step →
               </button>
             </div>
           </div>

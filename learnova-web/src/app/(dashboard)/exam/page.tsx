@@ -17,7 +17,9 @@ export default function ExamSimulatorPage() {
   const { user } = useAuth()
   const [step, setStep] = useState(1) // 1: setup, 2: exam, 3: results
   const [examType, setExamType] = useState('')
+  const [schoolClass, setSchoolClass] = useState('')
   const [subject, setSubject] = useState('')
+  const [chapter, setChapter] = useState('')
   const [difficulty, setDifficulty] = useState('medium')
   const [questionCount, setQuestionCount] = useState(10)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -27,6 +29,22 @@ export default function ExamSimulatorPage() {
   const [showExplanation, setShowExplanation] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [examStartTime, setExamStartTime] = useState<Date | null>(null)
+
+  // Exam types with School added
+  const examTypes = [
+    { value: 'school', label: '🏫 School (Class 6–12)' },
+    { value: 'jee', label: '⚛️ JEE Main & Advanced' },
+    { value: 'neet', label: '🧬 NEET' },
+    { value: 'upsc', label: '🏛️ UPSC' },
+    { value: 'cat', label: '📊 CAT' },
+    { value: 'other', label: '📚 Other' },
+  ]
+
+  // School class options
+  const schoolClasses = [
+    'Class 6', 'Class 7', 'Class 8',
+    'Class 9', 'Class 10', 'Class 11', 'Class 12'
+  ]
 
   // Timer logic
   useEffect(() => {
@@ -56,7 +74,9 @@ export default function ExamSimulatorPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           examType,
+          schoolClass,
           subject,
+          chapter,
           difficulty,
           questionCount,
         }),
@@ -136,87 +156,115 @@ export default function ExamSimulatorPage() {
       </h1>
 
       {step === 1 && (
-        <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <h2 className="text-xl font-semibold mb-6">Configure Your Practice Test</h2>
+        <div className="exam-config-card">
+          <h2>Configure Your Practice Test</h2>
           
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Exam Type
-              </label>
+            {/* Exam Type */}
+            <div className="form-field">
+              <label className="form-label">Exam Type</label>
               <select
+                className="form-select"
                 value={examType}
                 onChange={(e) => setExamType(e.target.value)}
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
                 <option value="">Select exam type...</option>
-                <option value="UPSC">UPSC</option>
-                <option value="JEE">JEE</option>
-                <option value="NEET">NEET</option>
-                <option value="CAT">CAT</option>
+                {examTypes.map(e => (
+                  <option key={e.value} value={e.value}>{e.label}</option>
+                ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Subject
-              </label>
+            {/* School Class — only show if School selected */}
+            {examType === 'school' && (
+              <div className="form-field">
+                <label className="form-label">Class / Grade</label>
+                <select
+                  className="form-select"
+                  value={schoolClass}
+                  onChange={(e) => setSchoolClass(e.target.value)}
+                >
+                  <option value="">Select your class...</option>
+                  {schoolClasses.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Subject — show for all exam types */}
+            <div className="form-field">
+              <label className="form-label">Subject</label>
               <input
                 type="text"
+                className="form-input"
+                placeholder={
+                  examType === 'school'
+                    ? 'e.g., Mathematics, Science, History...'
+                    : 'e.g., Physics, Indian Polity, Mathematics...'
+                }
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g., Physics, Indian Polity, Mathematics"
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Difficulty
+            {/* Chapter — NEW field, show for all exam types */}
+            <div className="form-field">
+              <label className="form-label">
+                Chapter <span className="label-optional">(optional)</span>
               </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={
+                  examType === 'school'
+                    ? 'e.g., Fractions, Light & Shadow, French Revolution...'
+                    : 'e.g., Thermodynamics, Mughal Empire, Limits...'
+                }
+                value={chapter}
+                onChange={(e) => setChapter(e.target.value)}
+              />
+              <p className="field-hint">
+                Add a chapter for more focused questions
+              </p>
+            </div>
+
+            {/* Difficulty */}
+            <div className="form-field">
+              <label className="form-label">Difficulty</label>
               <select
+                className="form-select"
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
                 <option value="easy">Easy (90s per question)</option>
                 <option value="medium">Medium (120s per question)</option>
-                <option value="hard">Hard (150s per question)</option>
+                <option value="hard">Hard (180s per question)</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Number of Questions
-              </label>
-              <div className="flex gap-3">
-                {[5, 10, 20].map(count => (
+            {/* Number of Questions */}
+            <div className="form-field">
+              <label className="form-label">Number of Questions</label>
+              <div className="count-options">
+                {[5, 10, 20].map(n => (
                   <button
-                    key={count}
-                    onClick={() => setQuestionCount(count)}
-                    className="flex-1 py-3 border rounded-lg transition-all"
-                    style={{ 
-                      backgroundColor: questionCount === count ? 'var(--accent)' : 'var(--background)',
-                      borderColor: questionCount === count ? 'var(--accent)' : 'var(--border)',
-                      color: questionCount === count ? '#ffffff' : 'var(--foreground)'
-                    }}
+                    key={n}
+                    className={`count-btn ${questionCount === n ? 'selected' : ''}`}
+                    onClick={() => setQuestionCount(n)}
                   >
-                    {count}
+                    {n}
                   </button>
                 ))}
               </div>
             </div>
 
             <button
+              className="btn-primary"
               onClick={startExam}
-              disabled={loading || !examType || !subject}
-              className="w-full py-3 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-white"
-              style={{ backgroundColor: 'var(--highlight)' }}
+              disabled={loading || !examType || !subject || (examType === 'school' && !schoolClass)}
             >
-              {loading ? 'Generating Questions...' : 'Start Exam'}
+              {loading ? 'Generating Questions...' : 'Start Exam →'}
             </button>
           </div>
         </div>

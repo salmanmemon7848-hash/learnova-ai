@@ -9,21 +9,60 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, interviewType, role, language, question, answer } = body;
+    const { action, interviewType, schoolClass, role, language, question, answer, questionNumber, totalQuestions } = body;
 
     if (action === 'generate_questions') {
-      // Generate interview questions
-      const systemPrompt = `You are an expert interviewer conducting a mock interview.
+      // Build context map for different interview types
+      const contextMap: Record<string, string> = {
+        school_general: `school teacher/principal interviewing a ${schoolClass || 'Class 9-12'} student for school selection or scholarship`,
+        school_science: `interviewer assessing a ${schoolClass || 'Class 11-12'} Science stream student's subject knowledge and career goals`,
+        school_commerce: `interviewer assessing a ${schoolClass || 'Class 11-12'} Commerce stream student's aptitude and goals`,
+        college_admission: 'college admission officer interviewing a student applying for undergraduate admission in India',
+        iit_interview: 'IIT/NIT counsellor assessing a JEE qualifier student',
+        medical_college: 'medical college interviewer assessing a NEET qualifier student',
+        software_engineer: 'senior software engineer conducting a technical + behavioral interview at an Indian tech company',
+        marketing: 'marketing manager conducting an interview at an Indian company',
+        sales: 'sales manager conducting an interview at an Indian company',
+        operations: 'operations manager conducting an interview at an Indian company',
+        finance: 'finance manager conducting an interview at an Indian bank or financial institution',
+        hr: 'HR manager conducting a behavioral and cultural fit interview',
+        startup_founder: 'experienced startup mentor grilling a young Indian founder about their startup idea',
+        investor_pitch: 'angel investor asking tough questions about a startup pitch',
+        upsc_interview: 'UPSC board member conducting the personality test (interview) round',
+        ssc_interview: 'SSC panel member conducting a government job interview',
+        bank_interview: 'bank HR manager conducting a Bank PO interview',
+      }
 
-Interview Type: ${interviewType}
-${role ? `Target Role/Institution: ${role}` : ''}
-Language: ${language}
+      const langInstruction = {
+        english: 'Ask questions in clear professional English.',
+        hindi: 'प्रश्न हिंदी में पूछें। (Ask questions in Hindi)',
+        hinglish: 'Ask questions in natural Hinglish (mix of Hindi and English like Indians speak).',
+      }
+
+      // Generate interview questions
+      const systemPrompt = `You are acting as: ${contextMap[interviewType] || 'an interviewer'}
+
+${langInstruction[language as keyof typeof langInstruction] || langInstruction.english}
 
 Generate exactly 8 interview questions that are:
-- Relevant to the interview type and role
+- Appropriate for: ${contextMap[interviewType] || 'a general interview'}
 - Progressive in difficulty (start easy, get harder)
 - A mix of technical, behavioral, and situational questions
 - Realistic and commonly asked in real interviews
+
+For school/college interviews:
+- Focus on academics, career goals, strengths, challenges
+- Use age-appropriate language, encouraging tone
+
+For job interviews:
+- Mix of technical and behavioral questions
+- Include situational and problem-solving questions
+
+For startup/investor interviews:
+- Focus on business model, market, competition, traction
+
+For UPSC/government interviews:
+- Current affairs, ethics, personal background, opinions on social issues
 
 Return ONLY a JSON array of strings, like this:
 ["Question 1?", "Question 2?", "Question 3?", ...]
@@ -51,10 +90,26 @@ Do not include any other text or explanations.`;
     }
 
     if (action === 'evaluate_answer') {
-      // Evaluate the user's answer
-      const systemPrompt = `You are evaluating a mock interview answer. Provide honest, constructive feedback.
+      // Build context for evaluation
+      const contextMap: Record<string, string> = {
+        school_general: `school teacher evaluating a ${schoolClass || 'Class 9-12'} student's answer`,
+        school_science: `interviewer evaluating a Science stream student's answer`,
+        school_commerce: `interviewer evaluating a Commerce stream student's answer`,
+        college_admission: 'college admission officer evaluating the answer',
+        software_engineer: 'senior software engineer evaluating the technical answer',
+        upsc_interview: 'UPSC board member evaluating the answer',
+      }
 
-Language: ${language}
+      const langInstruction = {
+        english: 'Respond in clear professional English.',
+        hindi: 'प्रतिक्रिया हिंदी में दें। (Respond in Hindi)',
+        hinglish: 'Respond in natural Hinglish (mix of Hindi and English).',
+      }
+
+      // Evaluate the user's answer
+      const systemPrompt = `You are ${contextMap[interviewType] || 'an interviewer evaluating an answer'}.
+
+${langInstruction[language as keyof typeof langInstruction] || langInstruction.english}
 
 Question: ${question}
 User's Answer: ${answer}
@@ -62,8 +117,9 @@ User's Answer: ${answer}
 Evaluate the answer and return ONLY a JSON object with this exact structure:
 {
   "score": 7,
-  "feedback": "What was good about the answer (2-3 sentences)",
-  "improvement": "What could be improved + sample better answer (2-3 sentences)"
+  "feedback": "What was good about the answer (2 points, 2-3 sentences)",
+  "improvement": "What could be improved (2 points, 2-3 sentences)",
+  "modelAnswer": "A model answer (2-3 sentences)"
 }
 
 Score criteria:
@@ -71,6 +127,16 @@ Score criteria:
 - 4-6: Average, covers basics but lacks depth
 - 7-8: Good, well-structured with relevant details
 - 9-10: Excellent, comprehensive and insightful
+
+For school students:
+- Use encouraging tone, age-appropriate feedback
+- Focus on clarity of thought and confidence
+
+For job interviews:
+- Focus on technical accuracy, communication, problem-solving approach
+
+For UPSC/government:
+- Focus on analytical thinking, ethics, current affairs knowledge
 
 Be honest but encouraging. Provide specific, actionable feedback.`;
 

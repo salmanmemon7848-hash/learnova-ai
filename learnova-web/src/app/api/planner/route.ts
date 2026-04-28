@@ -9,26 +9,70 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { goal, deadline, dailyHours, subjects, planType, duration } = body;
+    const { targetExam, schoolClass, examDate, studyHours, weakSubjects, strongSubjects } = body;
 
-    // Support both simple format (from UI) and detailed format
-    const goalText = goal || `${planType || 'Study'} plan: ${duration || '7'} days`;
-    const deadlineText = deadline || `${duration || '7'} days`;
-    const dailyHoursText = dailyHours || 'Not specified';
-    const subjectsText = subjects || 'Not specified';
+    // Calculate days left
+    const daysLeft = Math.ceil(
+      (new Date(examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    )
+    const planDays = Math.min(daysLeft, 60)
 
-    const prompt = `Create a study/action plan for Indian student.
-Goal: ${goalText}, Deadline: ${deadlineText}, Daily Hours: ${dailyHoursText}, Subjects: ${subjectsText}
+    // Build exam context
+    const examContext = targetExam === 'school'
+      ? `${schoolClass || 'Class'} student preparing for school exams (CBSE/ICSE/State Board)`
+      : `student preparing for ${targetExam.toUpperCase().replace('_', ' ')}`
+
+    // Build the enhanced prompt
+    const prompt = `
+You are an expert Indian academic study planner.
+
+Create a personalized ${planDays}-day study plan for a ${examContext}.
+- Exam date: ${examDate} (${daysLeft} days away)
+- Daily study time available: ${studyHours || 6} hours
+- Weak subjects (need MORE time): ${weakSubjects?.join(', ') || 'None specified'}
+- Strong subjects (need LESS time): ${strongSubjects?.join(', ') || 'None specified'}
+
+PLANNING RULES:
+1. Weak subjects get 60% of daily study time
+2. Strong subjects get 20% of daily time (revision only)
+3. Unspecified/other subjects share the remaining 20%
+4. Sundays are rest + light revision only (max 2 hours)
+5. Last 7 days before exam = full revision, no new topics
+6. Space repetition: revisit each weak topic every 5-7 days
+
 Return ONLY valid JSON:
-{"totalDays":30,"dailyPlan":[{"day":1,"date":"Day 1","tasks":["task1","task2"],"hours":3,"focus":"topic"}],"weeklyGoals":["goal1"],"tips":["tip1"]}`;
+{
+  "planTitle": "${planDays}-Day Study Plan",
+  "totalDays": ${planDays},
+  "dailyHours": ${studyHours || 6},
+  "summary": "Brief 2-sentence overview of the strategy",
+  "weeklySchedule": {
+    "Monday": [{"subject": "Physics", "topic": "Thermodynamics", "hours": 2, "type": "new"}],
+    "Tuesday": [...],
+    "Wednesday": [...],
+    "Thursday": [...],
+    "Friday": [...],
+    "Saturday": [...],
+    "Sunday": [{"subject": "All", "topic": "Weekly Revision", "hours": 1.5, "type": "revision"}]
+  },
+  "subjectAllocation": [
+    {"subject": "Physics", "weeklyHours": 8, "priority": "high", "reason": "Listed as weak subject"}
+  ],
+  "tips": [
+    "Specific actionable tip 1 for this student",
+    "Specific actionable tip 2",
+    "Specific actionable tip 3"
+  ]
+}
+`
 
-    const text = await generateText(prompt);
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Invalid response');
+    const text = await generateText(prompt)
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('Invalid response')
 
-    return NextResponse.json(JSON.parse(jsonMatch[0]));
+    return NextResponse.json(JSON.parse(jsonMatch[0]))
   } catch (error: any) {
-    console.error('❌ Planner Error:', error?.message || error);
-    return NextResponse.json({ error: 'Failed to generate plan.' }, { status: 500 });
+    console.error('❌ Planner Error:', error?.message || error)
+    return NextResponse.json({ error: 'Failed to generate plan.' }, { status: 500 })
   }
 }

@@ -8,6 +8,7 @@ export default function InterviewPage() {
   const { user } = useAuth()
   const [step, setStep] = useState<'setup' | 'interview' | 'results'>('setup')
   const [interviewType, setInterviewType] = useState('')
+  const [schoolClass, setSchoolClass] = useState('')
   const [role, setRole] = useState('')
   const [language, setLanguage] = useState('english')
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -17,6 +18,46 @@ export default function InterviewPage() {
   const [loading, setLoading] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
 
+  const interviewTypes = [
+    {
+      group: 'School & College',
+      options: [
+        { value: 'school_general', label: '🏫 School Interview (Class 9–12)' },
+        { value: 'school_science', label: '🔬 Science Stream Interview' },
+        { value: 'school_commerce', label: '💼 Commerce Stream Interview' },
+        { value: 'college_admission', label: '🎓 College Admission Interview' },
+        { value: 'iit_interview', label: '⚛️ IIT/NIT Counselling' },
+        { value: 'medical_college', label: '🏥 Medical College Interview' },
+      ]
+    },
+    {
+      group: 'Job Interviews',
+      options: [
+        { value: 'software_engineer', label: '💻 Software Engineer' },
+        { value: 'marketing', label: '📣 Marketing' },
+        { value: 'sales', label: '🤝 Sales' },
+        { value: 'operations', label: '⚙️ Operations' },
+        { value: 'finance', label: '💰 Finance/Banking' },
+        { value: 'hr', label: '👥 HR / People Ops' },
+      ]
+    },
+    {
+      group: 'Startup & Business',
+      options: [
+        { value: 'startup_founder', label: '🚀 Startup Founder Pitch' },
+        { value: 'investor_pitch', label: '💡 Investor Q&A Practice' },
+      ]
+    },
+    {
+      group: 'Government / Competitive',
+      options: [
+        { value: 'upsc_interview', label: '🏛️ UPSC Personality Test' },
+        { value: 'ssc_interview', label: '📋 SSC / Government Job' },
+        { value: 'bank_interview', label: '🏦 Bank PO Interview' },
+      ]
+    }
+  ]
+
   const startInterview = async () => {
     setLoading(true)
     try {
@@ -25,6 +66,7 @@ export default function InterviewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           interviewType,
+          schoolClass,
           role,
           language,
           action: 'generate_questions',
@@ -101,89 +143,68 @@ export default function InterviewPage() {
           </p>
         </div>
 
-        <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <h2 className="text-xl font-semibold mb-6">Setup Your Interview</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Interview Type
-              </label>
-              <select
-                value={interviewType}
-                onChange={(e) => setInterviewType(e.target.value)}
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-              >
-                <option value="">Select type...</option>
-                <option value="job">Job Interview</option>
-                <option value="college">College Interview</option>
-                <option value="startup">Startup Founder Pitch Practice</option>
-              </select>
-            </div>
+        <div className="interview-config-card">
+          <h2>Setup Your Interview</h2>
 
-            {interviewType === 'job' && (
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                  Target Role
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                >
-                  <option value="">Select role...</option>
-                  <option value="Software Engineer">Software Engineer</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Operations">Operations</option>
-                </select>
-              </div>
-            )}
-
-            {interviewType === 'college' && (
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                  Target Institution
-                </label>
-                <input
-                  type="text"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  placeholder="e.g., IIT Delhi, IIM Bangalore"
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
-                Language
-              </label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
-                style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-              >
-                <option value="english">English</option>
-                <option value="hindi">Hindi</option>
-                <option value="hinglish">Hinglish</option>
-              </select>
-            </div>
-
-            <button
-              onClick={startInterview}
-              disabled={loading || !interviewType}
-              className="w-full py-3 rounded-lg hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-white flex items-center justify-center gap-2"
-              style={{ backgroundColor: 'var(--highlight)' }}
+          {/* Interview Type — Grouped Dropdown */}
+          <div className="form-field">
+            <label className="form-label">Interview Type</label>
+            <select
+              className="form-select"
+              value={interviewType}
+              onChange={(e) => setInterviewType(e.target.value)}
             >
-              <Sparkles className="w-5 h-5" />
-              {loading ? 'Preparing Interview...' : 'Start Interview'}
-            </button>
+              <option value="">Select type...</option>
+              {interviewTypes.map(group => (
+                <optgroup key={group.group} label={group.group}>
+                  {group.options.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
+
+          {/* School class — show only for school interview types */}
+          {interviewType.startsWith('school_') && (
+            <div className="form-field">
+              <label className="form-label">Your Class</label>
+              <select
+                className="form-select"
+                value={schoolClass}
+                onChange={(e) => setSchoolClass(e.target.value)}
+              >
+                <option value="">Select your class...</option>
+                {['Class 9','Class 10','Class 11','Class 12'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Language */}
+          <div className="form-field">
+            <label className="form-label">Language</label>
+            <select
+              className="form-select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              <option value="english">English</option>
+              <option value="hindi">हिंदी (Hindi)</option>
+              <option value="hinglish">Hinglish</option>
+            </select>
+          </div>
+
+          <button
+            className="btn-primary"
+            onClick={startInterview}
+            disabled={!interviewType}
+          >
+            ✨ Start Interview
+          </button>
         </div>
       </div>
     )
