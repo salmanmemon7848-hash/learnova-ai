@@ -89,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
               <InstallButton />
             </div>
-            <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>AI Study Companion</p>
+            <p className="text-xs mt-1" style={{ color: '#a78bfa' }}>AI Study Companion</p>
           </div>
 
           {/* Navigation */}
@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all"
                     style={{
                       backgroundColor: isActive ? '#1e1b4b' : 'transparent',
-                      color: isActive ? '#a78bfa' : '#9ca3af',
+                      color: isActive ? '#a78bfa' : '#c4b5fd',
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onMouseLeave={(e) => {
                       if (!isActive) {
                         e.currentTarget.style.backgroundColor = 'transparent'
-                        e.currentTarget.style.color = '#9ca3af'
+                        e.currentTarget.style.color = '#c4b5fd'
                       }
                     }}
                   >
@@ -138,7 +138,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all"
                   style={{
                     backgroundColor: isActive ? '#1e1b4b' : 'transparent',
-                    color: isActive ? '#a78bfa' : '#9ca3af',
+                    color: isActive ? '#a78bfa' : '#c4b5fd',
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
@@ -149,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.backgroundColor = 'transparent'
-                      e.currentTarget.style.color = '#9ca3af'
+                      e.currentTarget.style.color = '#c4b5fd'
                     }
                   }}
                 >
@@ -184,7 +184,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-sm font-semibold truncate" style={{ color: '#e2e8f0' }}>
                   {userName}
                 </p>
-                <p className="text-xs truncate" style={{ color: '#9ca3af' }}>
+                <p className="text-xs truncate" style={{ color: '#a78bfa' }}>
                   {user?.email}
                 </p>
               </div>
@@ -193,7 +193,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               onClick={() => signOut()}
               className="flex items-center gap-2 text-sm font-medium w-full px-3 py-2 rounded-lg transition-all"
               style={{ 
-                color: '#6b7280',
+                color: '#9ca3af',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#1e1010'
@@ -201,7 +201,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#6b7280'
+                e.currentTarget.style.color = '#9ca3af'
               }}
             >
               <LogOut className="w-4 h-4" />

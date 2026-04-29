@@ -1,57 +1,96 @@
 @import "tailwindcss";
 
-/* ==========================================
-   LEARNOVA AI - DARK THEME DESIGN SYSTEM
-   ========================================== */
+/* ===== LEARNOVA AI DESIGN TOKENS ===== */
 :root {
-  /* === DARK THEME COLORS === */
-  --bg-primary: #0a0a0f;        /* Main page background - deep black */
-  --bg-secondary: #12121a;      /* Card backgrounds */
-  --bg-tertiary: #1a1a28;       /* Input fields, hover states */
-  --bg-elevated: #1e1e2e;       /* Elevated cards, modals */
+  --bg-app:       #080412;
+  --bg-surface:   #0F0A1E;
+  --bg-card:      #160D2E;
+  --bg-elevated:  #1E1040;
 
-  /* === ACCENT COLORS === */
-  --accent-purple: #7c3aed;     /* Primary brand - purple */
-  --accent-purple-light: #8b5cf6;
-  --accent-purple-glow: rgba(124, 58, 237, 0.15);
-  --accent-orange: #f97316;     /* CTA buttons only */
-  --accent-orange-glow: rgba(249, 115, 22, 0.15);
-  --accent-blue: #3b82f6;       /* Info/links */
+  --purple-primary:      #7C3AED;
+  --purple-hover:        #6D28D9;
+  --purple-accent:       #4F46E5;
+  --purple-light:        #A78BFA;
+  --purple-muted:        #C4B5FD;
+  --purple-faint:        #1E1B4B;
+  --purple-border:       #2D1B69;
+  --purple-border-active:#4338CA;
 
-  /* === TEXT COLORS === */
-  --text-primary: #f1f0ff;      /* Main text - off white */
-  --text-secondary: #9990bb;    /* Muted text */
-  --text-muted: #5a5475;        /* Very muted */
-  --text-on-accent: #ffffff;
+  --gradient-primary: linear-gradient(135deg, #7C3AED, #4F46E5);
+  --gradient-hero:    linear-gradient(135deg, #6D28D9, #7C3AED, #C026D3);
+  --gradient-card:    linear-gradient(135deg, #160D2E, #1E1040);
 
-  /* === BORDERS === */
-  --border-subtle: rgba(124, 58, 237, 0.15);
-  --border-card: rgba(255, 255, 255, 0.06);
-  --border-input: rgba(255, 255, 255, 0.1);
-  --border-focus: rgba(124, 58, 237, 0.6);
+  --text-primary:   #F5F3FF;
+  --text-secondary: #C4B5FD;
+  --text-muted:     #6B7280;
+  --text-hint:      #4B5563;
 
-  /* === GRADIENTS === */
-  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-  --gradient-orange: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  --gradient-card: linear-gradient(145deg, #1a1a28 0%, #12121a 100%);
-  --gradient-hero: radial-gradient(ellipse at top, rgba(124,58,237,0.15) 0%, transparent 60%);
+  --green-text: #4ADE80; --green-bg: #052E16; --green-border: #166534;
+  --red-text:   #F87171; --red-bg:   #450A0A; --red-border:   #7F1D1D;
+  --amber-text: #FB923C; --amber-bg: #451A03; --amber-border: #92400E;
 
-  /* === SHADOWS === */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.6);
-  --shadow-purple: 0 4px 20px rgba(124, 58, 237, 0.3);
-  --shadow-orange: 0 4px 20px rgba(249, 115, 22, 0.3);
+  --shadow-card:       0 0 30px #7C3AED18;
+  --shadow-card-hover: 0 0 40px #7C3AED35;
+  --shadow-btn:        0 4px 20px #7C3AED40;
+  --shadow-btn-hover:  0 8px 32px #7C3AED50;
+  --shadow-focus:      0 0 0 3px #7C3AED20;
+  --shadow-glow-sm:    0 0 20px #7C3AED25;
 
-  /* === BORDER RADIUS === */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-sm:   8px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   16px;
+  --radius-2xl:  20px;
   --radius-full: 9999px;
+}
 
-  /* === SPACING === */
-  --page-padding: 16px;
-  --section-gap: 24px;
+/* ===== REUSABLE CLASSES ===== */
+.btn-primary {
+  background: var(--gradient-primary);
+  color: #fff; border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px; font-size: 14px; font-weight: 500;
+  cursor: pointer; box-shadow: var(--shadow-btn);
+  transition: all 0.2s ease;
+}
+.btn-primary:hover { filter: brightness(1.1); box-shadow: var(--shadow-btn-hover); transform: translateY(-1px); }
+
+.btn-ghost {
+  background: transparent; color: var(--purple-light);
+  border: 1px solid var(--purple-border-active);
+  border-radius: var(--radius-md);
+  padding: 10px 20px; font-size: 14px; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-ghost:hover { background: var(--purple-faint); box-shadow: var(--shadow-glow-sm); }
+
+.card {
+  background: var(--gradient-card);
+  border: 1px solid var(--purple-border);
+  border-radius: var(--radius-xl); padding: 24px;
+  box-shadow: var(--shadow-card); transition: all 0.2s ease;
+}
+.card:hover { border-color: var(--purple-primary); box-shadow: var(--shadow-card-hover); transform: translateY(-2px); }
+
+.input-field {
+  background: var(--bg-surface); border: 1px solid var(--purple-border);
+  border-radius: var(--radius-md); color: var(--text-primary);
+  padding: 10px 14px; font-size: 14px; width: 100%; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-field:focus { border-color: var(--purple-primary); box-shadow: var(--shadow-focus); }
+
+.badge {
+  display: inline-flex; align-items: center;
+  background: var(--purple-faint); color: var(--purple-light);
+  border: 1px solid var(--purple-border-active);
+  border-radius: var(--radius-full); padding: 3px 12px;
+  font-size: 12px; font-weight: 500;
+}
+
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 
 /* === FORCE DARK ON ALL ELEMENTS === */
@@ -60,7 +99,7 @@
 }
 
 html, body {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-app) !important;
   color: var(--text-primary) !important;
   font-family: var(--font-body), 'Plus Jakarta Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -70,7 +109,7 @@ html, body {
 
 /* Force dark on all pages - no white flash */
 #__next, main, [data-nextjs-scroll-focus-boundary] {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-app) !important;
   min-height: 100vh;
 }
 
@@ -80,26 +119,57 @@ html, body {
 :root,
 [data-theme="dark"] {
   /* Map old variable names to new design system */
-  --primary: var(--bg-primary);
-  --primary-light: var(--bg-secondary);
-  --accent: var(--accent-purple);
-  --accent-light: var(--accent-purple-light);
-  --accent-dark: #6d28d9;
-  --highlight: var(--accent-orange);
+  --bg-primary: var(--bg-app);
+  --bg-secondary: var(--bg-card);
+  --bg-tertiary: var(--bg-surface);
+  
+  --accent-purple: var(--purple-primary);
+  --accent-purple-light: var(--purple-light);
+  --accent-purple-glow: rgba(124, 58, 237, 0.15);
+  --accent-orange: #f97316;
+  --accent-orange-glow: rgba(249, 115, 22, 0.15);
+  --accent-blue: #3b82f6;
+  
+  --text-primary: var(--text-primary);
+  --text-secondary: var(--text-secondary);
+  --text-muted: var(--text-muted);
+  --text-on-accent: #ffffff;
+  
+  --border-subtle: var(--purple-border);
+  --border-card: var(--purple-border);
+  --border-input: var(--purple-border);
+  --border-focus: var(--purple-primary);
+  
+  --gradient-brand: var(--gradient-primary);
+  --gradient-orange: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --gradient-card: var(--gradient-card);
+  --gradient-hero: var(--gradient-hero);
+  
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-card-hover);
+  --shadow-purple: var(--shadow-btn);
+  --shadow-orange: 0 4px 20px rgba(249, 115, 22, 0.3);
+  
+  --primary: var(--bg-app);
+  --primary-light: var(--bg-card);
+  --accent: var(--purple-primary);
+  --accent-light: var(--purple-light);
+  --accent-dark: var(--purple-hover);
+  --highlight: #f97316;
   --highlight-hover: #ea580c;
   
-  --background: var(--bg-primary);
-  --surface: var(--bg-secondary);
-  --surface-hover: var(--bg-tertiary);
-  --active-bg: var(--accent-purple-glow);
+  --background: var(--bg-app);
+  --surface: var(--bg-card);
+  --surface-hover: var(--bg-surface);
+  --active-bg: rgba(124, 58, 237, 0.15);
   
   --foreground: var(--text-primary);
   --foreground-secondary: var(--text-secondary);
   --foreground-muted: var(--text-muted);
-  --foreground-hint: var(--text-muted);
+  --foreground-hint: var(--text-hint);
   
-  --border: var(--border-card);
-  --border-light: var(--border-subtle);
+  --border: var(--purple-border);
+  --border-light: var(--purple-border);
   
   --success: #10B981;
   --success-light: #064E3B;
@@ -109,11 +179,14 @@ html, body {
   --error-light: #7F1D1D;
   --error-hover: #1e1010;
   
-  --pro-badge-bg: var(--accent-purple);
+  --pro-badge-bg: var(--purple-primary);
   --pro-badge-text: #ede9fe;
   
-  --gradient-primary: var(--gradient-brand);
+  --gradient-primary: var(--gradient-primary);
   --gradient-success: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  
+  --page-padding: 16px;
+  --section-gap: 24px;
 }
 
 @theme inline {
@@ -191,15 +264,54 @@ p, span, div, input, textarea, button {
   color: var(--foreground-secondary) !important;
 }
 
-/* Input styling */
-input, textarea {
-  color: var(--foreground) !important;
+/* ==========================================
+   GLOBAL INPUT FIX - WHITE TEXT EVERYWHERE
+   ========================================== */
+input,
+textarea,
+select {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  caret-color: #ffffff !important;
   font-size: 1rem !important;
 }
 
-input::placeholder, textarea::placeholder {
-  color: var(--foreground-muted) !important;
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35) !important;
   opacity: 1 !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: rgba(139, 92, 246, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15) !important;
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+select option {
+  background-color: #1a1040 !important;
+  color: #ffffff !important;
+}
+
+/* Fix autofill background turning white */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #1a1040 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Also fix any div contenteditable used as input */
+[contenteditable="true"] {
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
 }
 
 /* Typography */
@@ -245,9 +357,20 @@ h1, h2, h3, h4, h5, h6 {
   animation: progress-fill 1.5s ease-out;
 }
 
-/* Smooth Scroll */
+/* Smooth Scroll - optimized for performance */
 html {
   scroll-behavior: smooth;
+  /* Hardware acceleration for smoother scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Performance optimizations for scrollable containers */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  /* GPU acceleration for smoother scrolling */
+  transform: translateZ(0);
+  will-change: scroll-position;
 }
 
 /* Selection Color */
@@ -324,6 +447,27 @@ html, body {
 /* ==========================================
    LEARNOVA AI - COMPONENT STYLES
    ========================================== */
+
+/* Performance: Reduce animation duration for faster UX */
+* {
+  /* Optimize transitions - use transform and opacity for GPU acceleration */
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* GPU acceleration for animated elements */
+.animate-fade-in,
+.card-hover,
+.btn-primary,
+.btn-ghost {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Optimize rendering performance */
+.chat-messages,
+.markdown-content {
+  contain: layout style paint;
+}
 
 /* === Greeting Card === */
 .greeting-card {
@@ -1451,6 +1595,64 @@ html, body {
 
 .tag-remove:hover {
   opacity: 1;
+}
+
+/* ==========================================
+   GLOBAL TEXT COLOR FIX - FORCE LIGHT TEXT ON DARK BACKGROUNDS
+   ========================================== */
+
+/* Force white text on all common text elements */
+h1, h2, h3, h4, h5, h6, p, span, label, a, button, div {
+  color: inherit;
+}
+
+/* Override any browser defaults or third-party styles */
+body * {
+  color: var(--text-primary, #F5F3FF);
+}
+
+/* Specific fix for markdown content */
+.markdown-content,
+.markdown-content * {
+  color: var(--text-primary, #F5F3FF) !important;
+}
+
+.markdown-content a {
+  color: var(--purple-light, #A78BFA) !important;
+}
+
+.markdown-content code {
+  color: var(--purple-light, #A78BFA) !important;
+  background: var(--bg-surface, #0F0A1E) !important;
+}
+
+/* Fix for pre blocks in markdown */
+.markdown-content pre {
+  background: var(--bg-surface, #0F0A1E) !important;
+  border: 1px solid var(--purple-border, #2D1B69) !important;
+}
+
+/* Ensure all text elements inherit properly */
+textarea, select, option {
+  color: var(--text-primary, #F5F3FF) !important;
+}
+
+/* Force light colors for common UI elements */
+.card *,
+.section-card *,
+.settings-section *,
+.planner-step *,
+.interview-config-card * {
+  color: var(--text-primary, #F5F3FF);
+}
+
+/* Preserve accent colors */
+.gradient-text,
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ==========================================

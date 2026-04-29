@@ -19,37 +19,32 @@ export default function LoginPage() {
 
   // Check if user needs onboarding after login
   useEffect(() => {
-    const checkOnboarding = async () => {
-      if (user && !authLoading) {
-        try {
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('userType, toneMode, language')
-            .eq('id', user.id)
-            .single()
+    if (authLoading) return // wait for auth to initialize
+    if (!user) return       // no user, stay on login page
 
-          // If user has default values or no data, show onboarding
-          if (
-            !userData ||
-            (userData.userType === 'student' &&
-              userData.toneMode === 'balanced' &&
-              userData.language === 'en')
-          ) {
-            setShowOnboarding(true)
-          } else {
-            // User has completed onboarding, redirect to chat
-            router.push('/chat')
-          }
-        } catch (err) {
-          console.error('Error checking onboarding:', err)
-          // On error, still redirect to chat to avoid blocking user
-          router.push('/chat')
-        }
+    // User is already logged in — route them away from login
+    const routeUser = async () => {
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('userType, toneMode, language')
+          .eq('id', user.id)
+          .single()
+
+        const isNewUser =
+          !userData ||
+          (userData.userType === 'student' &&
+            userData.toneMode === 'balanced' &&
+            userData.language === 'en')
+
+        router.replace(isNewUser ? '/persona' : '/chat')
+      } catch {
+        router.replace('/persona')
       }
     }
 
-    checkOnboarding()
-  }, [user, authLoading, router])
+    routeUser()
+  }, [user, authLoading]) // IMPORTANT: minimal deps — do NOT add router or supabase here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,8 +70,9 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Show onboarding modal for new users
-        setShowOnboarding(true)
+        // Don't show onboarding here - the useEffect will handle the redirect
+        // based on checking the user profile
+        console.log('Login successful, useEffect will handle redirect...')
       }
     } catch (err: any) {
       setError('Something went wrong. Please try again.')

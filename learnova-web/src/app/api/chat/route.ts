@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { message, messages, mode, toneMode, language, depthLevel, conversationId } = body;
+    const { message, messages, mode, toneMode, language, depthLevel, conversationId, persona } = body;
     
     // Support both single message and messages array format
     let messagesArray: { role: string; content: string }[] = [];
@@ -69,7 +69,18 @@ export async function POST(req: NextRequest) {
       language || userPrefs?.language || 'english'
     );
 
+    // Add persona-specific system prompt
     let systemPrompt = basePrompt;
+    
+    if (persona === 'student') {
+      systemPrompt = `You are Learnova, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient.
+
+${basePrompt}`;
+    } else if (persona === 'founder') {
+      systemPrompt = `You are Learnova, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context.
+
+${basePrompt}`;
+    }
 
     // Add web search context if available
     if (usedWebSearch && webSearchResults) {

@@ -1,92 +1,90 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { Clock, CheckCircle, XCircle, TrendingUp, RotateCcw } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Zap, ChevronLeft, ArrowLeft } from 'lucide-react'
+import { getExamWhatsAppLink } from '@/lib/utils/streak'
 
 interface Question {
-  id: number
-  question: string
-  options: string[]
-  correctAnswer: number
+  number: number
+  text: string
+  options: { label: string; text: string }[]
+  correctAnswer: string
   explanation: string
-  topic: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  chapter?: string
+}
+
+interface ExamScore {
+  date: string
+  subject: string
+  exam: string
+  score: number
+  total: number
 }
 
 export default function ExamSimulatorPage() {
-  const { user } = useAuth()
-  const [step, setStep] = useState(1) // 1: setup, 2: exam, 3: results
-  const [examType, setExamType] = useState('')
-  const [schoolClass, setSchoolClass] = useState('')
-  const [subject, setSubject] = useState('')
+  const router = useRouter()
+  const [step, setStep] = useState<'setup' | 'exam' | 'results'>('setup')
+  
+  // Setup state
+  const [examType, setExamType] = useState('JEE Main')
+  const [subject, setSubject] = useState('Physics')
   const [chapter, setChapter] = useState('')
-  const [difficulty, setDifficulty] = useState('medium')
   const [questionCount, setQuestionCount] = useState(10)
+  
+  // Exam state
   const [questions, setQuestions] = useState<Question[]>([])
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState<{questionIndex: number, answer: number, correct: boolean}[]>([])
+  const [userAnswers, setUserAnswers] = useState<{[key: number]: string}>({})
+  const [questionStatus, setQuestionStatus] = useState<{[key: number]: 'right' | 'wrong' | 'unanswered'}>({})
   const [loading, setLoading] = useState(false)
-  const [showExplanation, setShowExplanation] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(0)
-  const [examStartTime, setExamStartTime] = useState<Date | null>(null)
+  const [startTime, setStartTime] = useState<Date | null>(null)
+  const [language, setLanguage] = useState<'english' | 'hindi'>('english')
+  
+  const sliderRef = useRef<HTMLInputElement>(null)
 
-  // Exam types with School added
-  const examTypes = [
-    { value: 'school', label: '🏫 School (Class 6–12)' },
-    { value: 'jee', label: '⚛️ JEE Main & Advanced' },
-    { value: 'neet', label: '🧬 NEET' },
-    { value: 'upsc', label: '🏛️ UPSC' },
-    { value: 'cat', label: '📊 CAT' },
-    { value: 'other', label: '📚 Other' },
-  ]
-
-  // School class options
-  const schoolClasses = [
-    'Class 6', 'Class 7', 'Class 8',
-    'Class 9', 'Class 10', 'Class 11', 'Class 12'
-  ]
-
-  // Timer logic
+  // Load language preference
   useEffect(() => {
-    if (step === 2 && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
-      return () => clearTimeout(timer)
-    } else if (step === 2 && timeLeft === 0 && questions.length > 0) {
-      // Auto-submit when time runs out
-      calculateResults()
+    const savedLanguage = localStorage.getItem('learnova_language')
+    if (savedLanguage === 'hindi' || savedLanguage === 'english') {
+      setLanguage(savedLanguage)
     }
-  }, [timeLeft, step])
+  }, [])
 
-  const getTimePerQuestion = () => {
-    switch(difficulty) {
-      case 'easy': return 90
-      case 'medium': return 120
-      case 'hard': return 150
-      default: return 120
-    }
+  const examTypes = ['JEE Main', 'JEE Advanced', 'NEET UG', 'CBSE Class 10', 'CBSE Class 12', 'Custom']
+  
+  const subjects: {[key: string]: string[]} = {
+    'JEE Main': ['Physics', 'Chemistry', 'Mathematics'],
+    'JEE Advanced': ['Physics', 'Chemistry', 'Mathematics'],
+    'NEET UG': ['Physics', 'Chemistry', 'Biology'],
+    'CBSE Class 10': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'CBSE Class 12': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
+    'Custom': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   }
 
-  const startExam = async () => {
+  const handleStartExam = async () => {
     setLoading(true)
+    setStartTime(new Date())
+    
     try {
-      const response = await fetch('/api/exam/generate', {
+      const response = await fetch('/api/exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           examType,
-          schoolClass,
           subject,
-          chapter,
-          difficulty,
+          chapter: chapter || undefined,
           questionCount,
+          language,
         }),
       })
 
       const data = await response.json()
-      setQuestions(data.questions || [])
-      setTimeLeft(getTimePerQuestion() * (data.questions?.length || questionCount))
-      setExamStartTime(new Date())
-      setStep(2)
+      
+      if (data.questions && data.questions.length > 0) {
+        setQuestions(data.questions)
+        setStep('exam')
+      }
     } catch (error) {
       console.error('Failed to generate exam:', error)
     } finally {
@@ -94,315 +92,570 @@ export default function ExamSimulatorPage() {
     }
   }
 
-  const submitAnswer = (answerIndex: number) => {
-    const currentQ = questions[currentQuestion]
-    const isCorrect = answerIndex === currentQ.correctAnswer
-    
-    setAnswers(prev => [...prev, {
-      questionIndex: currentQuestion,
-      answer: answerIndex,
-      correct: isCorrect
-    }])
-    
-    setShowExplanation(true)
+  const handleSelectAnswer = (questionNumber: number, answer: string) => {
+    setUserAnswers(prev => ({
+      ...prev,
+      [questionNumber]: answer,
+    }))
   }
 
-  const nextQuestion = () => {
-    setShowExplanation(false)
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-      setTimeLeft(getTimePerQuestion())
-    } else {
-      calculateResults()
-    }
-  }
-
-  const calculateResults = () => {
-    const endTime = new Date()
-    const timeTaken = examStartTime ? Math.floor((endTime.getTime() - examStartTime.getTime()) / 1000) : 0
-    
-    // Save to localStorage
-    const sessions = JSON.parse(localStorage.getItem('learnova_exam_sessions') || '[]')
-    sessions.push({
-      examType,
-      subject,
-      difficulty,
-      score: answers.filter(a => a.correct).length,
-      total: questions.length,
-      timeTaken,
-      date: new Date().toISOString(),
+  const handleFinishExam = () => {
+    // Calculate initial status
+    const status: {[key: number]: 'right' | 'wrong' | 'unanswered'} = {}
+    questions.forEach(q => {
+      const userAnswer = userAnswers[q.number]
+      if (!userAnswer) {
+        status[q.number] = 'unanswered'
+      } else if (userAnswer === q.correctAnswer) {
+        status[q.number] = 'right'
+      } else {
+        status[q.number] = 'wrong'
+      }
     })
-    localStorage.setItem('learnova_exam_sessions', JSON.stringify(sessions.slice(-10))) // Keep last 10
     
-    setStep(3)
+    setQuestionStatus(status)
+    setStep('results')
+    
+    // Save score to localStorage
+    const correctCount = Object.values(status).filter(s => s === 'right').length
+    const scoreData: ExamScore = {
+      date: new Date().toISOString(),
+      subject,
+      exam: examType,
+      score: correctCount,
+      total: questions.length,
+    }
+    
+    const scores = JSON.parse(localStorage.getItem('learnova_exam_scores') || '[]')
+    scores.push(scoreData)
+    localStorage.setItem('learnova_exam_scores', JSON.stringify(scores.slice(-20)))
   }
 
-  const resetExam = () => {
-    setStep(1)
-    setCurrentQuestion(0)
-    setAnswers([])
-    setShowExplanation(false)
+  const handleUpdateQuestionStatus = (questionNumber: number, status: 'right' | 'wrong' | 'unanswered') => {
+    setQuestionStatus(prev => ({
+      ...prev,
+      [questionNumber]: status,
+    }))
+  }
+
+  const handleSeeRevisionPlan = async () => {
+    const wrongQuestions = questions.filter(q => questionStatus[q.number] === 'wrong')
+    const wrongTopics = wrongQuestions.map(q => q.chapter || q.text.slice(0, 50)).join(', ')
+    
+    const correctCount = Object.values(questionStatus).filter(s => s === 'right').length
+    
+    const prompt = `I got ${correctCount}/${questions.length} correct. Wrong topics: ${wrongTopics}. Give me a 3-day revision plan.`
+    
+    router.push(`/chat?prompt=${encodeURIComponent(prompt)}`)
+  }
+
+  const handleTryAnother = () => {
+    setStep('setup')
     setQuestions([])
+    setUserAnswers({})
+    setQuestionStatus({})
+    setStartTime(null)
   }
 
-  const score = answers.filter(a => a.correct).length
-  const percentage = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0
-  const timeTaken = examStartTime ? Math.floor((new Date().getTime() - examStartTime.getTime()) / 1000) : 0
+  const getScore = () => {
+    return Object.values(questionStatus).filter(s => s === 'right').length
+  }
 
-  return (
-    <div className="max-w-4xl mx-auto" style={{ color: 'var(--foreground)' }}>
-      <h1 className="text-3xl font-bold mb-6 font-heading">
-        Exam Simulator
-      </h1>
+  const getWrongCount = () => {
+    return Object.values(questionStatus).filter(s => s === 'wrong').length
+  }
 
-      {step === 1 && (
-        <div className="exam-config-card">
-          <h2>Configure Your Practice Test</h2>
-          
-          <div className="space-y-4">
+  const getUnansweredCount = () => {
+    return Object.values(questionStatus).filter(s => s === 'unanswered').length
+  }
+
+  const getTimeTaken = () => {
+    if (!startTime) return '0:00'
+    const seconds = Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // ===== SETUP STEP =====
+  if (step === 'setup') {
+    return (
+      <div className="min-h-screen px-5 py-8" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+        {/* Back Link */}
+        <button
+          onClick={() => router.push('/chat')}
+          className="text-[13px] transition-colors hover:underline"
+          style={{ color: '#A78BFA' }}
+        >
+          ← Back to Chat
+        </button>
+
+        {/* Page Title */}
+        <h1 className="text-[28px] font-semibold mt-4" style={{ color: '#F5F3FF' }}>
+          Exam Simulator
+        </h1>
+        <p className="text-[14px] mt-1" style={{ color: '#C4B5FD' }}>
+          Practice with JEE, NEET, and CBSE style questions
+        </p>
+
+        {/* Setup Card */}
+        <div
+          className="rounded-[16px] p-7 mt-6"
+          style={{
+            background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+            border: '1px solid #2D1B69',
+            boxShadow: '0 0 40px #7C3AED18',
+          }}
+        >
+          <h2 className="text-[17px] font-semibold mb-6" style={{ color: '#F5F3FF' }}>
+            Configure your test
+          </h2>
+
+          {/* 2-Column Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Exam Type */}
-            <div className="form-field">
-              <label className="form-label">Exam Type</label>
+            <div>
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#C4B5FD' }}>
+                Exam Type
+              </label>
               <select
-                className="form-select"
                 value={examType}
                 onChange={(e) => setExamType(e.target.value)}
+                className="w-full rounded-[10px] px-3.5 py-2.5 text-[14px] appearance-none cursor-pointer transition-all"
+                style={{
+                  background: '#0F0A1E',
+                  border: '1px solid #2D1B69',
+                  color: '#F5F3FF',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A78BFA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#7C3AED'
+                  e.target.style.boxShadow = '0 0 0 3px #7C3AED20'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2D1B69'
+                  e.target.style.boxShadow = 'none'
+                }}
               >
-                <option value="">Select exam type...</option>
-                {examTypes.map(e => (
-                  <option key={e.value} value={e.value}>{e.label}</option>
+                {examTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
 
-            {/* School Class — only show if School selected */}
-            {examType === 'school' && (
-              <div className="form-field">
-                <label className="form-label">Class / Grade</label>
-                <select
-                  className="form-select"
-                  value={schoolClass}
-                  onChange={(e) => setSchoolClass(e.target.value)}
-                >
-                  <option value="">Select your class...</option>
-                  {schoolClasses.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Subject — show for all exam types */}
-            <div className="form-field">
-              <label className="form-label">Subject</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder={
-                  examType === 'school'
-                    ? 'e.g., Mathematics, Science, History...'
-                    : 'e.g., Physics, Indian Polity, Mathematics...'
-                }
+            {/* Subject */}
+            <div>
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#C4B5FD' }}>
+                Subject
+              </label>
+              <select
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-              />
+                className="w-full rounded-[10px] px-3.5 py-2.5 text-[14px] appearance-none cursor-pointer transition-all"
+                style={{
+                  background: '#0F0A1E',
+                  border: '1px solid #2D1B69',
+                  color: '#F5F3FF',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A78BFA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#7C3AED'
+                  e.target.style.boxShadow = '0 0 0 3px #7C3AED20'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2D1B69'
+                  e.target.style.boxShadow = 'none'
+                }}
+              >
+                {(subjects[examType] || subjects['Custom']).map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Chapter — NEW field, show for all exam types */}
-            <div className="form-field">
-              <label className="form-label">
-                Chapter <span className="label-optional">(optional)</span>
+            {/* Chapter/Topic */}
+            <div className="md:col-span-2">
+              <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#C4B5FD' }}>
+                Chapter / Topic <span style={{ color: '#9CA3AF' }}>(optional)</span>
               </label>
               <input
                 type="text"
-                className="form-input"
-                placeholder={
-                  examType === 'school'
-                    ? 'e.g., Fractions, Light & Shadow, French Revolution...'
-                    : 'e.g., Thermodynamics, Mughal Empire, Limits...'
-                }
                 value={chapter}
                 onChange={(e) => setChapter(e.target.value)}
+                placeholder="e.g. Kinematics, Organic Chemistry, Limits"
+                className="w-full rounded-[10px] px-3.5 py-2.5 text-[14px] transition-all"
+                style={{
+                  background: '#0F0A1E',
+                  border: '1px solid #2D1B69',
+                  color: '#F5F3FF',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#7C3AED'
+                  e.target.style.boxShadow = '0 0 0 3px #7C3AED20'
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2D1B69'
+                  e.target.style.boxShadow = 'none'
+                }}
               />
-              <p className="field-hint">
-                Add a chapter for more focused questions
-              </p>
             </div>
 
-            {/* Difficulty */}
-            <div className="form-field">
-              <label className="form-label">Difficulty</label>
-              <select
-                className="form-select"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-              >
-                <option value="easy">Easy (90s per question)</option>
-                <option value="medium">Medium (120s per question)</option>
-                <option value="hard">Hard (180s per question)</option>
-              </select>
-            </div>
-
-            {/* Number of Questions */}
-            <div className="form-field">
-              <label className="form-label">Number of Questions</label>
-              <div className="count-options">
-                {[5, 10, 20].map(n => (
-                  <button
-                    key={n}
-                    className={`count-btn ${questionCount === n ? 'selected' : ''}`}
-                    onClick={() => setQuestionCount(n)}
-                  >
-                    {n}
-                  </button>
-                ))}
+            {/* Number of Questions Slider */}
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[12px] font-medium" style={{ color: '#C4B5FD' }}>
+                  Number of Questions
+                </label>
+                <span className="text-[14px] font-semibold" style={{ color: '#A78BFA' }}>
+                  {questionCount}
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min="5"
+                  max="20"
+                  step="5"
+                  value={questionCount}
+                  onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                  className="w-full h-1 rounded-full appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(90deg, #7C3AED ${((questionCount - 5) / 15) * 100}%, #2D1B69 ${((questionCount - 5) / 15) * 100}%)`,
+                  }}
+                />
               </div>
             </div>
+          </div>
 
-            <button
-              className="btn-primary"
-              onClick={startExam}
-              disabled={loading || !examType || !subject || (examType === 'school' && !schoolClass)}
+          {/* Start Button */}
+          <button
+            onClick={handleStartExam}
+            disabled={loading}
+            className="w-full mt-6 flex items-center justify-center gap-2 text-white text-[16px] font-semibold rounded-[12px] transition-all disabled:opacity-50"
+            style={{
+              background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+              height: '52px',
+              boxShadow: '0 8px 32px #7C3AED40',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.filter = 'brightness(1.1)'
+              e.currentTarget.style.boxShadow = '0 12px 40px #7C3AED50'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.filter = 'brightness(1)'
+              e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED40'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            <Zap size={18} />
+            {loading ? 'Generating Questions...' : 'Start Test'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ===== EXAM STEP =====
+  if (step === 'exam') {
+    return (
+      <div className="min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+        {/* Back Link */}
+        <button
+          onClick={() => setStep('setup')}
+          className="text-[13px] transition-colors hover:underline"
+          style={{ color: '#A78BFA' }}
+        >
+          ← Back to Setup
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center justify-between mt-4 mb-6">
+          <h1 className="text-[24px] font-semibold" style={{ color: '#F5F3FF' }}>
+            {subject} - {examType}
+          </h1>
+          <button
+            onClick={handleFinishExam}
+            className="text-[14px] font-medium px-4 py-2 rounded-lg transition-all hover:brightness-110"
+            style={{
+              background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+              color: 'white',
+            }}
+          >
+            Finish Test
+          </button>
+        </div>
+
+        {/* Questions */}
+        <div className="flex flex-col gap-4">
+          {questions.map((question, idx) => (
+            <div
+              key={question.number}
+              className="rounded-[14px] p-6"
+              style={{
+                background: '#160D2E',
+                border: '1px solid #2D1B69',
+              }}
             >
-              {loading ? 'Generating Questions...' : 'Start Exam →'}
-            </button>
+              {/* Top Row */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
+                  Q{idx + 1} of {questions.length}
+                </span>
+                <span
+                  className="text-[11px] px-2.5 py-0.5 rounded-[20px]"
+                  style={{
+                    background: question.difficulty === 'Easy' ? '#052E16' : question.difficulty === 'Medium' ? '#451A03' : '#450A0A',
+                    color: question.difficulty === 'Easy' ? '#4ADE80' : question.difficulty === 'Medium' ? '#FB923C' : '#F87171',
+                    border: `1px solid ${question.difficulty === 'Easy' ? '#166534' : question.difficulty === 'Medium' ? '#92400E' : '#7F1D1D'}`,
+                  }}
+                >
+                  {question.difficulty}
+                </span>
+              </div>
+
+              {/* Question Text */}
+              <p className="text-[16px] leading-relaxed mb-4" style={{ color: '#F5F3FF' }}>
+                {question.text}
+              </p>
+
+              {/* Options */}
+              <div className="flex flex-col gap-2">
+                {question.options.map((option) => {
+                  const isSelected = userAnswers[question.number] === option.label
+                  return (
+                    <button
+                      key={option.label}
+                      onClick={() => handleSelectAnswer(question.number, option.label)}
+                      className="w-full flex items-center gap-3 rounded-[10px] px-4 py-3 text-left transition-all"
+                      style={{
+                        background: isSelected ? 'linear-gradient(135deg, #7C3AED15, #4F46E510)' : '#0F0A1E',
+                        border: `1px solid ${isSelected ? '#7C3AED' : '#2D1B69'}`,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#7C3AED'
+                          e.currentTarget.style.background = '#160D2E'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.borderColor = '#2D1B69'
+                          e.currentTarget.style.background = '#0F0A1E'
+                        }
+                      }}
+                    >
+                      <span className="font-semibold min-w-[24px]" style={{ color: '#A78BFA' }}>
+                        {option.label}
+                      </span>
+                      <span className="text-[14px]" style={{ color: isSelected ? '#F5F3FF' : '#C4B5FD' }}>
+                        {option.text}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Finish Button */}
+        <button
+          onClick={handleFinishExam}
+          className="w-full mt-8 text-[16px] font-semibold text-white rounded-[12px] py-4 transition-all hover:brightness-110"
+          style={{
+            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+            boxShadow: '0 8px 32px #7C3AED40',
+          }}
+        >
+          Submit Test & See Results
+        </button>
+      </div>
+    )
+  }
+
+  // ===== RESULTS STEP =====
+  const score = getScore()
+  const wrong = getWrongCount()
+  const unanswered = getUnansweredCount()
+  const timeTaken = getTimeTaken()
+
+  return (
+    <div className="min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+      {/* Back Link */}
+      <button
+        onClick={() => router.push('/chat')}
+        className="text-[13px] transition-colors hover:underline"
+        style={{ color: '#A78BFA' }}
+      >
+        ← Back to Chat
+      </button>
+
+      <h1 className="text-[28px] font-semibold mt-4" style={{ color: '#F5F3FF' }}>
+        Test Results
+      </h1>
+
+      {/* Summary Card */}
+      <div
+        className="rounded-[16px] p-7 mt-6 text-center"
+        style={{
+          background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+          border: '1px solid #2D1B69',
+        }}
+      >
+        {/* Score */}
+        <div
+          className="text-[52px] font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #A78BFA, #7C3AED)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
+          {score} / {questions.length}
+        </div>
+        <p className="text-[14px] mt-1" style={{ color: '#C4B5FD' }}>
+          Questions Correct
+        </p>
+
+        {/* Stat Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
+          <div
+            className="text-[13px] px-4 py-2 rounded-[20px]"
+            style={{
+              background: '#0F0A1E',
+              border: '1px solid #2D1B69',
+              color: '#4ADE80',
+            }}
+          >
+            ✓ Correct · {score}
+          </div>
+          <div
+            className="text-[13px] px-4 py-2 rounded-[20px]"
+            style={{
+              background: '#0F0A1E',
+              border: '1px solid #2D1B69',
+              color: '#F87171',
+            }}
+          >
+            ✗ Wrong · {wrong}
+          </div>
+          <div
+            className="text-[13px] px-4 py-2 rounded-[20px]"
+            style={{
+              background: '#0F0A1E',
+              border: '1px solid #2D1B69',
+              color: '#A78BFA',
+            }}
+          >
+            ⏱ Time · {timeTaken}
           </div>
         </div>
-      )}
+      </div>
 
-      {step === 2 && questions.length > 0 && (
-        <div>
-          {/* Progress and Timer */}
-          <div className="flex justify-between items-center mb-6">
-            <span className="text-sm font-medium" style={{ color: 'var(--foreground-secondary)' }}>
-              Question {currentQuestion + 1} of {questions.length}
+      {/* WhatsApp Share Button */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={() => {
+            const link = getExamWhatsAppLink(score, questions.length, subject)
+            window.open(link, '_blank')
+          }}
+          className="px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer transition-all duration-150"
+          style={{
+            background: '#075E54',
+            color: 'white',
+            border: 'none',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#128C7E'}
+          onMouseLeave={(e) => e.currentTarget.style.background = '#075E54'}
+        >
+          Share Score on WhatsApp
+        </button>
+      </div>
+
+      {/* Question-by-Question List */}
+      <div className="mt-5">
+        <h3 className="text-[16px] font-semibold mb-3" style={{ color: '#F5F3FF' }}>
+          Question Breakdown
+        </h3>
+        {questions.map((q, idx) => (
+          <div
+            key={q.number}
+            className="flex items-center justify-between rounded-lg px-3.5 py-2.5 mb-1.5"
+            style={{ background: '#0F0A1E' }}
+          >
+            <span className="text-[13px] truncate flex-1 mr-3" style={{ color: '#C4B5FD' }}>
+              Q{idx + 1} — {q.text.slice(0, 50)}{q.text.length > 50 ? '...' : ''}
             </span>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-              <Clock className="w-4 h-4" style={{ color: timeLeft < 30 ? 'var(--error)' : 'var(--accent)' }} />
-              <span className="text-sm font-mono font-semibold" style={{ color: timeLeft < 30 ? 'var(--error)' : 'var(--foreground)' }}>
-                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-              </span>
-            </div>
-          </div>
-
-          {/* Question */}
-          <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h3 className="text-lg font-semibold mb-6">
-              {questions[currentQuestion]?.question}
-            </h3>
-
-            <div className="space-y-3">
-              {questions[currentQuestion]?.options.map((option: string, index: number) => {
-                const isSelected = answers[answers.length - 1]?.questionIndex === currentQuestion && 
-                                  answers[answers.length - 1]?.answer === index
-                const isCorrect = index === questions[currentQuestion].correctAnswer
-                const showResult = showExplanation
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => !showExplanation && submitAnswer(index)}
-                    disabled={showExplanation}
-                    className="w-full text-left px-4 py-3 border rounded-lg transition-all min-h-[48px]"
-                    style={{
-                      backgroundColor: showResult 
-                        ? isCorrect ? 'var(--success-light)' : isSelected ? 'var(--error-light)' : 'var(--background)'
-                        : 'var(--background)',
-                      borderColor: showResult
-                        ? isCorrect ? 'var(--success)' : isSelected ? 'var(--error)' : 'var(--border)'
-                        : 'var(--border)',
-                      color: 'var(--foreground)'
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{option}</span>
-                      {showResult && isCorrect && <CheckCircle className="w-5 h-5" style={{ color: 'var(--success)' }} />}
-                      {showResult && isSelected && !isCorrect && <XCircle className="w-5 h-5" style={{ color: 'var(--error)' }} />}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Explanation */}
-          {showExplanation && (
-            <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: 'var(--active-bg)', border: '1px solid var(--accent)' }}>
-              <h4 className="font-semibold mb-2" style={{ color: 'var(--accent)' }}>
-                Explanation:
-              </h4>
-              <p className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
-                {questions[currentQuestion]?.explanation || 'Explanation will be provided by AI.'}
-              </p>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
-                onClick={nextQuestion}
-                className="mt-4 w-full py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-all"
-                style={{ backgroundColor: 'var(--accent)' }}
+                onClick={() => handleUpdateQuestionStatus(q.number, 'right')}
+                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
+                style={{
+                  background: questionStatus[q.number] === 'right' ? '#052E16' : 'transparent',
+                  color: '#4ADE80',
+                  border: `1px solid ${questionStatus[q.number] === 'right' ? '#166534' : '#2D1B69'}`,
+                }}
               >
-                {currentQuestion < questions.length - 1 ? 'Next Question' : 'View Results'}
+                RIGHT
+              </button>
+              <button
+                onClick={() => handleUpdateQuestionStatus(q.number, 'wrong')}
+                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
+                style={{
+                  background: questionStatus[q.number] === 'wrong' ? '#450A0A' : 'transparent',
+                  color: '#F87171',
+                  border: `1px solid ${questionStatus[q.number] === 'wrong' ? '#7F1D1D' : '#2D1B69'}`,
+                }}
+              >
+                WRONG
+              </button>
+              <button
+                onClick={() => handleUpdateQuestionStatus(q.number, 'unanswered')}
+                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
+                style={{
+                  background: questionStatus[q.number] === 'unanswered' ? '#1E1B4B' : 'transparent',
+                  color: '#A78BFA',
+                  border: `1px solid ${questionStatus[q.number] === 'unanswered' ? '#4338CA' : '#2D1B69'}`,
+                }}
+              >
+                ?
               </button>
             </div>
-          )}
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="rounded-xl p-6" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <h2 className="text-2xl font-bold mb-6">Exam Results</h2>
-          
-          <div className="text-center mb-8">
-            <div className="text-6xl font-bold mb-2" style={{ color: 'var(--accent)' }}>
-              {percentage}%
-            </div>
-            <p className="text-lg" style={{ color: 'var(--foreground-secondary)' }}>
-              {score} out of {questions.length} correct
-            </p>
           </div>
+        ))}
+      </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
-              <p className="text-xs mb-1" style={{ color: 'var(--foreground-muted)' }}>Time Taken</p>
-              <p className="text-lg font-semibold">{Math.floor(timeTaken / 60)}m {timeTaken % 60}s</p>
-            </div>
-            <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
-              <p className="text-xs mb-1" style={{ color: 'var(--foreground-muted)' }}>Difficulty</p>
-              <p className="text-lg font-semibold capitalize">{difficulty}</p>
-            </div>
-          </div>
-
-          {percentage >= 80 ? (
-            <p className="text-center mb-6 text-lg">🔥 Outstanding! You nailed it!</p>
-          ) : percentage >= 60 ? (
-            <p className="text-center mb-6 text-lg">👍 Good effort! Keep it up!</p>
-          ) : percentage >= 40 ? (
-            <p className="text-center mb-6 text-lg">📚 Not bad! A bit more practice needed.</p>
-          ) : (
-            <p className="text-center mb-6 text-lg">💪 Keep practicing, you will get there!</p>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={resetExam}
-              className="flex-1 py-3 rounded-lg hover:opacity-90 transition-all font-semibold text-white flex items-center justify-center gap-2"
-              style={{ backgroundColor: 'var(--highlight)' }}
-            >
-              <RotateCcw className="w-4 h-4" />
-              Try Again
-            </button>
-            <button
-              onClick={() => {
-                setDifficulty(difficulty === 'hard' ? 'hard' : 'hard')
-                resetExam()
-              }}
-              className="flex-1 py-3 border rounded-lg hover:opacity-80 transition-all flex items-center justify-center gap-2"
-              style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Try Harder
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+        <button
+          onClick={handleSeeRevisionPlan}
+          className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:brightness-110"
+          style={{
+            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+            color: 'white',
+            boxShadow: '0 4px 20px #7C3AED40',
+          }}
+        >
+          See weak areas & revision plan →
+        </button>
+        <button
+          onClick={handleTryAnother}
+          className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:bg-[#1E1B4B]"
+          style={{
+            border: '1px solid #4338CA',
+            color: '#A78BFA',
+          }}
+        >
+          Try another test
+        </button>
+      </div>
     </div>
   )
 }

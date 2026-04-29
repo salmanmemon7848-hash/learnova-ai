@@ -106,14 +106,11 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
         }),
       })
 
-      setCompleted(true)
-      
-      // Auto-redirect after showing completion
-      setTimeout(() => {
-        onClose()
-        router.push('/chat')
-        router.refresh()
-      }, 2000)
+      console.log('Preferences saved, redirecting to chat immediately...')
+      // Immediately redirect without showing completion screen
+      onClose()
+      router.push('/chat')
+      router.refresh()
     } catch (error) {
       console.error('Failed to save preferences:', error)
     } finally {
@@ -176,10 +173,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6 animate-bounce">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              <h2 className="text-3xl font-bold text-white mb-3">
                 You're all set! 🎉
               </h2>
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-300 text-lg">
                 Redirecting you to your personalized dashboard...
               </p>
             </div>
@@ -190,10 +187,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#EEEDFE] mb-4">
                   <Sparkles className="w-8 h-8" style={{ color: '#534AB7' }} />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl font-bold text-white mb-2">
                   Welcome to Learnova! 👋
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-300">
                   Let's personalize your experience. What best describes you?
                 </p>
               </div>
@@ -208,7 +205,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                   }`}
                 >
                   <div className="text-4xl mb-3">📚</div>
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">Student</h3>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Student</h3>
                   <p className="text-gray-600">I want to learn better and faster</p>
                 </button>
 
@@ -221,7 +218,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                   }`}
                 >
                   <div className="text-4xl mb-3">🚀</div>
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">Business Builder</h3>
+                  <h3 className="text-xl font-semibold mb-2 text-white">Business Builder</h3>
                   <p className="text-gray-600">I want to turn ideas into real businesses</p>
                 </button>
               </div>
@@ -230,10 +227,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
             /* Step 2: Tone Mode */
             <div>
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl font-bold text-white mb-2">
                   How should I explain things? 🎨
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-300">
                   Choose your preferred communication style
                 </p>
               </div>
@@ -260,7 +257,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                         >
                           {tone.name}
                         </h3>
-                        <p className="text-sm text-gray-600">{tone.description}</p>
+                        <p className="text-sm text-gray-300">{tone.description}</p>
                       </div>
                     </div>
                   </button>
@@ -271,10 +268,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
             /* Step 3: Language */
             <div>
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl font-bold text-white mb-2">
                   What's your preferred language? 🌍
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-gray-300">
                   I'll respond in your chosen language
                 </p>
               </div>
@@ -291,7 +288,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                     }`}
                   >
                     <span className="text-3xl">{lang.flag}</span>
-                    <span className="text-lg font-semibold text-gray-900">
+                    <span className="text-lg font-semibold text-white">
                       {lang.name}
                     </span>
                   </button>

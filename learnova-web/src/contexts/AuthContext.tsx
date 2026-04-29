@@ -53,6 +53,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
   }
 
+  // Show loading spinner while auth is being checked
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        backgroundColor: '#080412',
+        color: '#ffffff',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid rgba(124, 58, 237, 0.3)',
+          borderTop: '4px solid #7C3AED',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <p style={{ fontSize: '14px', color: '#C4B5FD' }}>Loading Learnova...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

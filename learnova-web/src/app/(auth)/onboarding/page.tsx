@@ -1,79 +1,115 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
 
 export default function OnboardingPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = useMemo(() => createClient(), [])
   const [step, setStep] = useState(1)
-  const [userType, setUserType] = useState<'student' | 'business'>('student')
-  const [toneMode, setToneMode] = useState('balanced')
-  const [language, setLanguage] = useState('en')
+  const [persona, setPersona] = useState<'student' | 'founder'>('student')
+  const [language, setLanguage] = useState<'english' | 'hindi'>('english')
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
-    if (!user?.id) return
+    if (!user?.id) {
+      console.error('No user found')
+      return
+    }
+
+    setLoading(true)
 
     try {
-      await fetch('/api/user/preferences', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userType,
-          toneMode,
-          language,
-        }),
-      })
+      // Save persona to localStorage
+      localStorage.setItem('learnova_persona', persona)
+      
+      // Save language preference
+      const langKey = language === 'hindi' ? 'hindi' : 'english'
+      localStorage.setItem('learnova_language', langKey)
 
+      console.log('Onboarding complete:', { persona, language })
+      
+      // Small delay to ensure localStorage is saved
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Redirect to chat
       router.push('/chat')
-      router.refresh()
     } catch (error) {
       console.error('Failed to save preferences:', error)
+      alert('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: '#080412' }}
+    >
+      <div
+        className="max-w-2xl w-full rounded-2xl p-8"
+        style={{
+          background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+          border: '1px solid #2D1B69',
+          boxShadow: '0 0 40px #7C3AED18',
+        }}
+      >
         {step === 1 && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Learnova! 🌟</h1>
-            <p className="text-gray-600 mb-8">Let's personalize your experience. What best describes you?</p>
+            <h1
+              className="text-3xl font-bold mb-4"
+              style={{ color: '#F5F3FF' }}
+            >
+              Welcome to Learnova! 🌟
+            </h1>
+            <p
+              className="text-base mb-8"
+              style={{ color: '#C4B5FD' }}
+            >
+              Let's personalize your experience. What best describes you?
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               <button
-                onClick={() => setUserType('student')}
-                className={`p-6 border-2 rounded-xl text-left transition-all ${
-                  userType === 'student'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                onClick={() => setPersona('student')}
+                className="p-6 border-2 rounded-xl text-left transition-all"
+                style={{
+                  background: persona === 'student' ? '#1E1B4B' : '#0F0A1E',
+                  borderColor: persona === 'student' ? '#7C3AED' : '#2D1B69',
+                  color: '#F5F3FF',
+                }}
               >
                 <div className="text-4xl mb-3">📚</div>
                 <h3 className="text-xl font-semibold mb-2">Student</h3>
-                <p className="text-gray-600">I want to learn better and faster</p>
+                <p style={{ color: '#C4B5FD' }}>I want to learn better and faster</p>
               </button>
 
               <button
-                onClick={() => setUserType('business')}
-                className={`p-6 border-2 rounded-xl text-left transition-all ${
-                  userType === 'business'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                onClick={() => setPersona('founder')}
+                className="p-6 border-2 rounded-xl text-left transition-all"
+                style={{
+                  background: persona === 'founder' ? '#1E1B4B' : '#0F0A1E',
+                  borderColor: persona === 'founder' ? '#7C3AED' : '#2D1B69',
+                  color: '#F5F3FF',
+                }}
               >
                 <div className="text-4xl mb-3">🚀</div>
-                <h3 className="text-xl font-semibold mb-2">Business Builder</h3>
-                <p className="text-gray-600">I want to turn ideas into real businesses</p>
+                <h3 className="text-xl font-semibold mb-2">Founder</h3>
+                <p style={{ color: '#C4B5FD' }}>I want to turn ideas into real businesses</p>
               </button>
             </div>
 
             <button
               onClick={() => setStep(2)}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full py-3 rounded-lg transition-all font-medium"
+              style={{
+                background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                color: 'white',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED50'}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
             >
               Continue
             </button>
@@ -82,40 +118,71 @@ export default function OnboardingPage() {
 
         {step === 2 && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">How should I explain things?</h1>
-            <p className="text-gray-600 mb-8">Choose your preferred communication style</p>
+            <h1
+              className="text-3xl font-bold mb-4"
+              style={{ color: '#F5F3FF' }}
+            >
+              Choose your persona
+            </h1>
+            <p
+              className="text-base mb-8"
+              style={{ color: '#C4B5FD' }}
+            >
+              This will personalize your AI experience
+            </p>
 
             <div className="space-y-3 mb-8">
-              {[
-                { id: 'simple', title: 'Simple Mode', desc: 'Like talking to a curious 16-year-old. No jargon.' },
-                { id: 'balanced', title: 'Balanced Mode', desc: 'Clear and friendly with some technical terms.' },
-                { id: 'expert', title: 'Expert Mode', desc: 'Peer-level conversation. Deep and technical.' },
-              ].map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => setToneMode(mode.id)}
-                  className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                    toneMode === mode.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <h3 className="font-semibold mb-1">{mode.title}</h3>
-                  <p className="text-sm text-gray-600">{mode.desc}</p>
-                </button>
-              ))}
+              <div
+                className="p-4 border-2 rounded-xl"
+                style={{
+                  background: persona === 'student' ? '#1E1B4B' : '#0F0A1E',
+                  borderColor: persona === 'student' ? '#7C3AED' : '#2D1B69',
+                  color: '#F5F3FF',
+                }}
+              >
+                <h3 className="font-semibold mb-1">📚 Student Persona</h3>
+                <p className="text-sm" style={{ color: '#C4B5FD' }}>
+                  Get help with exams, study plans, and learning concepts
+                </p>
+              </div>
+              <div
+                className="p-4 border-2 rounded-xl"
+                style={{
+                  background: persona === 'founder' ? '#1E1B4B' : '#0F0A1E',
+                  borderColor: persona === 'founder' ? '#7C3AED' : '#2D1B69',
+                  color: '#F5F3FF',
+                }}
+              >
+                <h3 className="font-semibold mb-1">🚀 Founder Persona</h3>
+                <p className="text-sm" style={{ color: '#C4B5FD' }}>
+                  Validate ideas, create business plans, and get startup advice
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(1)}
-                className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-lg transition-all font-medium"
+                style={{
+                  background: '#0F0A1E',
+                  border: '1px solid #2D1B69',
+                  color: '#C4B5FD',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#160D2E'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#0F0A1E'}
               >
                 Back
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 py-3 rounded-lg transition-all font-medium"
+                style={{
+                  background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED50'}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
               >
                 Continue
               </button>
@@ -125,23 +192,33 @@ export default function OnboardingPage() {
 
         {step === 3 && (
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">What's your preferred language?</h1>
-            <p className="text-gray-600 mb-8">I'll respond in your chosen language</p>
+            <h1
+              className="text-3xl font-bold mb-4"
+              style={{ color: '#F5F3FF' }}
+            >
+              What's your preferred language? 🌍
+            </h1>
+            <p
+              className="text-base mb-8"
+              style={{ color: '#C4B5FD' }}
+            >
+              I'll respond in your chosen language
+            </p>
 
             <div className="space-y-3 mb-8">
               {[
-                { id: 'en', name: 'English', flag: '🇺🇸' },
-                { id: 'hi', name: 'Hindi', flag: '🇮🇳' },
-                { id: 'hinglish', name: 'Hinglish', flag: '🇮🇳' },
+                { id: 'english' as const, name: 'English', flag: '🇺🇸' },
+                { id: 'hindi' as const, name: 'Hindi', flag: '🇮🇳' },
               ].map((lang) => (
                 <button
                   key={lang.id}
                   onClick={() => setLanguage(lang.id)}
-                  className={`w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-3 ${
-                    language === lang.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className="w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-3"
+                  style={{
+                    background: language === lang.id ? '#1E1B4B' : '#0F0A1E',
+                    borderColor: language === lang.id ? '#7C3AED' : '#2D1B69',
+                    color: '#F5F3FF',
+                  }}
                 >
                   <span className="text-2xl">{lang.flag}</span>
                   <span className="font-semibold">{lang.name}</span>
@@ -152,15 +229,31 @@ export default function OnboardingPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 rounded-lg transition-all font-medium"
+                style={{
+                  background: '#0F0A1E',
+                  border: '1px solid #2D1B69',
+                  color: '#C4B5FD',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#160D2E'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#0F0A1E'}
               >
                 Back
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={loading}
+                className="flex-1 py-3 rounded-lg transition-all font-medium disabled:opacity-50"
+                style={{
+                  background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                  color: 'white',
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED50'
+                }}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
               >
-                Get Started 🚀
+                {loading ? 'Getting Started...' : 'Get Started 🚀'}
               </button>
             </div>
           </div>

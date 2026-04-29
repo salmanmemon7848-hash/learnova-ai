@@ -11,14 +11,30 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
   messages.push({ role: 'user', content: prompt });
 
-  const response = await groqClient.chat.completions.create({
-    model: DEFAULT_MODEL,
-    messages,
-    max_tokens: 2048,
-    temperature: 0.7,
-  });
+  try {
+    // Add 30 second timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
-  return response.choices[0]?.message?.content || '';
+    const response = await groqClient.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages,
+      max_tokens: 2048,
+      temperature: 0.7,
+    });
+
+    clearTimeout(timeout);
+    return response.choices[0]?.message?.content || '';
+  } catch (error: any) {
+    console.error('Groq API error (generateText):', error?.message || error);
+    
+    // Return user-friendly error message
+    if (error?.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    
+    throw new Error('AI is temporarily unavailable. Please try again in a moment.');
+  }
 }
 
 export async function chatWithHistory(
@@ -32,12 +48,28 @@ export async function chatWithHistory(
     content: m.content,
   })));
 
-  const response = await groqClient.chat.completions.create({
-    model: DEFAULT_MODEL,
-    messages: formatted,
-    max_tokens: 2048,
-    temperature: 0.7,
-  });
+  try {
+    // Add 30 second timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
-  return response.choices[0]?.message?.content || '';
+    const response = await groqClient.chat.completions.create({
+      model: DEFAULT_MODEL,
+      messages: formatted,
+      max_tokens: 2048,
+      temperature: 0.7,
+    });
+
+    clearTimeout(timeout);
+    return response.choices[0]?.message?.content || '';
+  } catch (error: any) {
+    console.error('Groq API error (chatWithHistory):', error?.message || error);
+    
+    // Return user-friendly error message
+    if (error?.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    
+    throw new Error('AI is temporarily unavailable. Please try again in a moment.');
+  }
 }

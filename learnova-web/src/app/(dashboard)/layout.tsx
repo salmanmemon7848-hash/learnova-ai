@@ -10,5 +10,9 @@ export default async function Dashboard({ children }: { children: React.ReactNod
     redirect('/login')
   }
 
-  return <DashboardLayout>{children}</DashboardLayout>
+  return (
+    <DashboardLayout>
+      {children}
+    </DashboardLayout>
+  )
 }

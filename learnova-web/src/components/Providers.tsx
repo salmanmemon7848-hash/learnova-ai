@@ -1,7 +1,24 @@
 'use client'
 
+import { useEffect } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>
+  // Clear stale caches automatically to prevent blank screen issues
+  useEffect(() => {
+    if ('caches' in window) {
+      caches.keys().then((cacheNames) => {
+        cacheNames.forEach((cacheName) => {
+          caches.delete(cacheName);
+        });
+      });
+    }
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <AuthProvider>{children}</AuthProvider>
+    </ErrorBoundary>
+  )
 }

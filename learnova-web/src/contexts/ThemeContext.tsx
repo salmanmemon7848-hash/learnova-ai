@@ -39,11 +39,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(newTheme)
   }
 
-  // Prevent flash of wrong theme
-  if (!mounted) {
-    return null
-  }
-
+  // Don't block rendering - always render children
+  // Theme will be applied once mounted via useEffect
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}

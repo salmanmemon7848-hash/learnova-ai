@@ -100,7 +100,7 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
             </div>
             
             <div>
-              <p className="text-base sm:text-lg font-semibold" style={{ color: 'var(--text-primary)' }} mb-1>
+              <p className="text-base sm:text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                 Upload Your Question
               </p>
               <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -133,7 +133,7 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
               </button>
             </div>
 
-            <p className="text-[10px] sm:text-xs" style={{ color: 'var(--text-secondary)' }} mt-2>
+            <p className="text-[10px] sm:text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
               Supports: JPG, PNG, JPEG • Max size: 5MB
             </p>
           </div>

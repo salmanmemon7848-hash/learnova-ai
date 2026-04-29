@@ -28,7 +28,7 @@ export default function MobileBottomNav() {
             className="flex flex-col items-center justify-center gap-1 flex-1 h-full py-1"
           >
             <Icon className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-50'}`} />
-            <span className={`text-[10px] ${isActive ? 'text-[#534AB7] font-medium' : 'text-gray-500'}`}>
+            <span className={`text-[10px] ${isActive ? 'text-[#534AB7] font-medium' : 'text-gray-400'}`}>
               {item.label}
             </span>
           </Link>

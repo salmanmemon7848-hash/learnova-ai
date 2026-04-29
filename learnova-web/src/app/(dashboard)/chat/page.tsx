@@ -1,130 +1,332 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePersonaStore } from '@/lib/stores/personaStore'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
-  Send,
+  Plus,
+  Globe,
+  BookOpen,
+  Lightbulb,
+  Calendar,
   Copy,
   Check,
-  Sparkles,
-  Bookmark,
-  RefreshCw,
-  ThumbsUp,
-  ThumbsDown,
-  ChevronDown,
-  Globe,
-  Minimize2,
-  Maximize2,
-  Flame,
-  Zap,
-  BookOpen,
+  Send,
+  Menu,
+  X,
+  Settings,
+  Home,
+  HelpCircle,
+  BarChart3,
+  Mic,
+  PenTool,
+  TrendingUp,
+  FileText,
+  Navigation,
+  CreditCard,
 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+import { usePathname } from 'next/navigation'
+import { updateStreak, loadStreak, getMilestoneMessage, getStreakWhatsAppLink, StreakData } from '@/lib/utils/streak'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   id: string
-  feedback?: 'helpful' | 'not-helpful' | null
 }
 
-interface ToneMode {
+// Memoized message component to prevent unnecessary re-renders
+const MessageBubble = React.memo(({ message, onCopy, isCopied }: { 
+  message: Message; 
+  onCopy: (text: string, id: string) => void;
+  isCopied: boolean;
+}) => {
+  return (
+    <div
+      key={message.id}
+      className={`max-w-[85%] ${message.role === 'user' ? 'self-end' : 'self-start'}`}
+    >
+      {message.role === 'user' ? (
+        <div
+          className="text-white text-[14px] leading-relaxed"
+          style={{
+            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+            borderRadius: '16px 16px 4px 16px',
+            padding: '12px 16px',
+            boxShadow: '0 4px 16px #7C3AED30',
+          }}
+        >
+          {message.content}
+        </div>
+      ) : (
+        <div
+          className="text-[14px] leading-relaxed"
+          style={{
+            background: '#160D2E',
+            border: '1px solid #2D1B69',
+            borderLeft: '2px solid #7C3AED',
+            borderRadius: '4px 16px 16px 16px',
+            padding: '14px 16px',
+            boxShadow: '0 0 20px #7C3AED10',
+          }}
+        >
+          {/* AI Header */}
+          <div className="flex items-center justify-between mb-2">
+            <span
+              className="text-[11px] px-2 py-0.5 rounded-[20px]"
+              style={{
+                background: '#1E1B4B',
+                color: '#A78BFA',
+                border: '1px solid #4338CA',
+              }}
+            >
+              Learnova
+            </span>
+            <button
+              onClick={() => onCopy(message.content, message.id)}
+              className="transition-colors hover:text-[#A78BFA]"
+              style={{ color: isCopied ? '#A78BFA' : '#9CA3AF' }}
+            >
+              {isCopied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          </div>
+
+          {/* Markdown Content */}
+          <div className="markdown-content">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ children }) => <h1 className="text-[#F5F3FF] font-semibold text-xl mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-[#F5F3FF] font-semibold text-lg mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-[#F5F3FF] font-semibold text-base mb-2">{children}</h3>,
+                p: ({ children }) => <p className="text-[#F5F3FF] leading-relaxed mb-2">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc pl-5 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-5 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="text-[#C4B5FD] pl-1">{children}</li>,
+                strong: ({ children }) => <strong className="text-[#F5F3FF] font-semibold">{children}</strong>,
+                code: ({ children, className }: any) => {
+                  const isInline = !className
+                  return isInline ? (
+                    <code
+                      className="text-[12px] px-1.5 py-0.5 rounded"
+                      style={{
+                        background: '#0F0A1E',
+                        color: '#A78BFA',
+                        border: '1px solid #2D1B69',
+                      }}
+                    >
+                      {children}
+                    </code>
+                  ) : (
+                    <pre
+                      className="text-[13px] p-3.5 rounded-lg overflow-x-auto mb-2"
+                      style={{
+                        background: '#0F0A1E',
+                        border: '1px solid #2D1B69',
+                      }}
+                    >
+                      <code>{children}</code>
+                    </pre>
+                  )
+                },
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+MessageBubble.displayName = 'MessageBubble';
+
+interface Conversation {
   id: string
-  name: string
-  icon: string
-  description: string
-  color: string
+  title: string
+  messages: Message[]
+  createdAt: number
 }
 
-const toneModes: ToneMode[] = [
-  {
-    id: 'simple-bhai',
-    name: 'Simple Bhai',
-    icon: '🤝',
-    description: 'Casual Hinglish, desi analogies like a dost',
-    color: '#1D9E75',
-  },
-  {
-    id: 'class',
-    name: 'Class',
-    icon: '👨‍🏫',
-    description: 'Teacher-style, NCERT-mapped explanations',
-    color: '#534AB7',
-  },
-  {
-    id: 'expert',
-    name: 'Expert',
-    icon: '🎓',
-    description: 'JEE/NEET/UPSC level technical depth',
-    color: '#3C3489',
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    icon: '💼',
-    description: 'Indian market startup advisor',
-    color: '#BA7517',
-  },
-  {
-    id: 'revision',
-    name: 'Revision',
-    icon: '⚡',
-    description: 'Rapid-fire, memory tricks, exam tips',
-    color: '#E74C3C',
-  },
-]
-
-const languages = [
-  { id: 'en', name: 'English', flag: '🇬🇧' },
-  { id: 'hi', name: 'हिंदी', flag: '🇮🇳' },
-  { id: 'hinglish', name: 'Hinglish', flag: '🗣️' },
-]
-
-export default function ChatPage() {
+function ChatContent() {
   const { user } = useAuth()
+  const { persona } = usePersonaStore()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState('class')
-  const [language, setLanguage] = useState('en')
-  const [conversationId, setConversationId] = useState<string | null>(null)
-  const [showToneSelector, setShowToneSelector] = useState(false)
-  const [showLanguageSelector, setShowLanguageSelector] = useState(false)
-  const [depthLevel, setDepthLevel] = useState<'simple' | 'detailed'>('detailed')
-  const [savingNote, setSavingNote] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [currentConvId, setCurrentConvId] = useState<string | null>(null)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [language, setLanguage] = useState<'english' | 'hindi'>('english')
+  const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, longestStreak: 0, lastActiveDate: '', milestonesShown: [] })
+  const [milestone, setMilestone] = useState<number | null>(null)
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const currentMode = toneModes.find((m) => m.id === mode) || toneModes[1]
-  const currentLanguage = languages.find((l) => l.id === language) || languages[0]
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('learnova_language')
+    if (savedLanguage === 'hindi' || savedLanguage === 'english') {
+      setLanguage(savedLanguage)
+    }
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const savedStreak = loadStreak()
+    setStreak(savedStreak)
+
+    const savedConvs = localStorage.getItem('learnova_conversations')
+    if (savedConvs) {
+      setConversations(JSON.parse(savedConvs))
+    }
   }, [])
 
+  // Redirect to persona selection if not set
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, scrollToBottom])
+    if (!persona) {
+      router.push('/persona')
+    }
+  }, [persona, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || loading) return
+  // Auto-send prompt from URL query param
+  useEffect(() => {
+    const prompt = searchParams.get('prompt')
+    if (prompt && messages.length === 0 && persona) {
+      setTimeout(() => {
+        handleSendMessage(prompt)
+      }, 500)
+    }
+  }, [searchParams, persona, messages.length])
 
-    const userMessage = input.trim()
+  // Save conversations to localStorage
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem('learnova_conversations', JSON.stringify(conversations))
+    }
+  }, [conversations])
+
+  // Auto-scroll to bottom - optimized to prevent excessive scrolling
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      // Use instant scroll for loading state, smooth for new messages
+      const behavior = loading ? 'instant' : 'smooth';
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  }, [messages, loading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px'
+    }
+  }, [input])
+
+  const getSystemPrompt = () => {
+    let prompt = ''
+    
+    if (persona === 'student') {
+      prompt = "You are Learnova, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient."
+    } else if (persona === 'founder') {
+      prompt = "You are Learnova, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context."
+    }
+
+    if (language === 'hindi') {
+      prompt += "\n\nIMPORTANT: Always respond in Hindi (Devanagari script). Use simple, conversational Hindi that a Class 10-12 student from a small Indian city can understand. Hinglish is acceptable for technical terms. For example: 'Momentum' ka matlab hai 'किसी वस्तु की गति और द्रव्यमान का गुणनफल'."
+    }
+
+    return prompt
+  }
+
+  const getQuickPrompts = () => {
+    if (language === 'hindi') {
+      // Hindi mode prompts
+      if (persona === 'student') {
+        return [
+          "JEE के लिए Newton's Laws समझाओ",
+          "मेरे exams के लिए study plan बनाओ",
+          "Physics के 10 MCQ दो",
+          "NEET Biology के important topics बताओ",
+        ]
+      } else if (persona === 'founder') {
+        return [
+          "मेरा business idea validate करो",
+          "India में पहले 100 customers कैसे पाएं?",
+          "Startup kaise register kare India mein?",
+          "Mera pitch deck banane mein help karo",
+        ]
+      }
+    } else {
+      // English mode prompts
+      if (persona === 'student') {
+        return [
+          "Explain Newton's Laws for JEE",
+          "Solve this maths problem step by step",
+          "Make a study plan for my exams",
+          "What will come in my next test?",
+        ]
+      } else if (persona === 'founder') {
+        return [
+          "Validate my business idea",
+          "How do I get my first 100 customers in India?",
+          "Help me write a pitch for investors",
+          "Create a business plan outline",
+        ]
+      }
+    }
+    return []
+  }
+
+  const handleSendMessage = async (text?: string) => {
+    const messageText = text || input.trim()
+    if (!messageText || loading) return
+
+    const userMessage: Message = {
+      role: 'user',
+      content: messageText,
+      id: Date.now().toString(),
+    }
+
+    const newMessages = [...messages, userMessage]
+    setMessages(newMessages)
     setInput('')
-    const messageId = Date.now().toString()
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage, id: messageId }])
     setLoading(true)
+
+    // Create or update conversation
+    let convId = currentConvId
+    if (!convId) {
+      convId = Date.now().toString()
+      setCurrentConvId(convId)
+      const newConv: Conversation = {
+        id: convId,
+        title: messageText.slice(0, 50) + (messageText.length > 50 ? '...' : ''),
+        messages: newMessages,
+        createdAt: Date.now(),
+      }
+      setConversations(prev => [newConv, ...prev])
+    } else {
+      setConversations(prev =>
+        prev.map(c => c.id === convId ? { ...c, messages: newMessages } : c)
+      )
+    }
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage,
-          mode,
+          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          persona,
           language,
-          depthLevel,
-          conversationId,
+          systemPrompt: getSystemPrompt(),
         }),
       })
 
@@ -133,399 +335,480 @@ export default function ChatPage() {
         throw new Error(error.error || 'Failed to send message')
       }
 
-      // Parse JSON response and extract only the message
       const data = await response.json()
-      const assistantId = (Date.now() + 1).toString()
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.message,
+        id: (Date.now() + 1).toString(),
+      }
+
+      const updatedMessages = [...newMessages, assistantMessage]
+      setMessages(updatedMessages)
+
+      // Update conversation
+      setConversations(prev =>
+        prev.map(c => c.id === convId ? { ...c, messages: updatedMessages } : c)
+      )
+
+      // Update streak
+      const { streak: newStreak, newMilestone } = updateStreak()
+      setStreak(newStreak)
       
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: data.message, id: assistantId }
-      ])
+      if (newMilestone) {
+        setMilestone(newMilestone)
+      }
     } catch (error: any) {
-      const errorId = (Date.now() + 1).toString()
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Error: ${error.message}`, id: errorId },
-      ])
+      console.error('Chat error:', error)
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `Sorry, I encountered an error: ${error.message}`,
+        id: (Date.now() + 1).toString(),
+      }
+      setMessages(prev => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
   }
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
+  const handleNewChat = () => {
+    setMessages([])
+    setCurrentConvId(null)
+    setInput('')
   }
 
-  const handleSaveNote = async (content: string, id: string) => {
-    setSavingNote(id)
-    try {
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: `Chat Note - ${new Date().toLocaleDateString()}`,
-          content,
-          sourceType: 'chat',
-          sourceId: conversationId,
-          tags: [mode, language],
-        }),
-      })
-
-      if (response.ok) {
-        console.log('Note saved successfully')
-      }
-    } catch (error) {
-      console.error('Failed to save note:', error)
-    } finally {
-      setSavingNote(null)
-    }
+  const handleLoadConversation = (conv: Conversation) => {
+    setMessages(conv.messages)
+    setCurrentConvId(conv.id)
+    setShowMobileSidebar(false)
   }
 
-  const handleFeedback = (messageId: string, feedback: 'helpful' | 'not-helpful') => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId ? { ...msg, feedback } : msg
-      )
-    )
+  const handleCopyMessage = async (text: string, id: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
-  const handleExplainDifferently = (message: Message) => {
-    const prevUserMessage = messages[messages.indexOf(message) - 1]
-    if (prevUserMessage && prevUserMessage.role === 'user') {
-      setInput(`Explain this differently: ${prevUserMessage.content}`)
-    }
+  const toggleLanguage = () => {
+    const newLang = language === 'english' ? 'hindi' : 'english'
+    setLanguage(newLang)
+    localStorage.setItem('learnova_language', newLang)
   }
 
-  const toggleDepth = () => {
-    setDepthLevel(depthLevel === 'simple' ? 'detailed' : 'simple')
-  }
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
+  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
 
-  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'
+  const quickPrompts = getQuickPrompts()
 
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
-  }
+  const tools = [
+    { icon: Globe, label: 'Chat', path: '/chat' },
+    { icon: BookOpen, label: 'Exam Simulator', path: '/exam' },
+    { icon: Lightbulb, label: 'Business Validator', path: '/validate' },
+    { icon: Calendar, label: 'Study Planner', path: '/planner' },
+  ]
+
+  const navigateItems = [
+    { icon: Home, label: 'Home', path: '/dashboard' },
+    { icon: HelpCircle, label: 'Doubt Solver', path: '/doubt-solver' },
+    { icon: BarChart3, label: 'My Progress', path: '/progress' },
+    { icon: Mic, label: 'Mock Interview', path: '/interview' },
+    { icon: PenTool, label: 'AI Writer', path: '/writer', pro: true },
+    { icon: TrendingUp, label: 'Business Ideas', path: '/business-ideas' },
+    { icon: FileText, label: 'Pitch Deck', path: '/pitch-deck' },
+    { icon: Navigation, label: 'Career Guide', path: '/career' },
+  ]
+
+  const accountItems = [
+    { icon: CreditCard, label: 'Pricing', path: '/pricing' },
+    { icon: Settings, label: 'Settings', path: '/settings' },
+  ]
 
   return (
-    <div className="chat-page max-w-5xl mx-auto h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)]">
-      {/* Header with Controls */}
-      <div className="chat-topbar flex-shrink-0 mb-3 sm:mb-4 rounded-xl">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-lg lg:text-xl font-semibold truncate max-w-[160px] sm:max-w-none">
-              {getGreeting()}, {userName} 👋
+    <div className="flex h-screen overflow-hidden" style={{ background: '#080412' }}>
+      {/* Main Chat Area */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Chat Header */}
+        <header
+          className="flex items-center justify-between flex-shrink-0"
+          style={{
+            height: '56px',
+            borderBottom: '1px solid #2D1B69',
+            padding: '0 20px',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              className="lg:hidden"
+              onClick={() => setShowMobileSidebar(true)}
+            >
+              <Menu size={20} color="#A78BFA" />
+            </button>
+            <h2 className="text-[15px] font-medium" style={{ color: '#F5F3FF' }}>
+              {messages.length === 0 ? 'New Conversation' : 'Chat'}
             </h2>
-            <p className="text-xs sm:text-sm hidden sm:block" style={{ color: 'var(--text-secondary)' }}>
-              Ask me anything — study questions, exam prep, or general help
-            </p>
-          </div>
-          
-          {/* Controls — shrink on mobile, never overflow */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Language Selector */}
-            <div className="relative">
-              <button
-                onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-                className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
+            {/* Hindi Mode Badge */}
+            {language === 'hindi' && (
+              <span
+                className="text-[11px] px-2 py-0.5 rounded-[20px]"
                 style={{
-                  backgroundColor: 'var(--bg-tertiary)',
-                  borderColor: 'var(--border-input)',
-                  color: 'var(--text-secondary)'
+                  background: '#1E1B4B',
+                  color: '#A78BFA',
+                  border: '1px solid #4338CA',
                 }}
               >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{currentLanguage.flag}</span>
-                <ChevronDown className="w-3.5 h-3.5" />
-              </button>
+                हिंदी
+              </span>
+            )}
+          </div>
+
+          {/* Streak Badge - Student Persona Only */}
+          {persona === 'student' && streak.currentStreak > 0 && (
+            <div
+              className="relative group inline-flex items-center gap-1.5 rounded-[20px] px-3 py-1 cursor-pointer"
+              style={{
+                background: '#1E1B4B',
+                border: '1px solid #92400E',
+              }}
+            >
+              {/* CSS Flame Icon */}
+              <div
+                style={{
+                  width: '12px',
+                  height: '16px',
+                  clipPath: 'polygon(50% 0%, 80% 30%, 100% 60%, 70% 100%, 30% 100%, 0% 60%, 20% 30%)',
+                  background: streak.currentStreak >= 30
+                    ? 'linear-gradient(180deg, #A78BFA, #7C3AED)'
+                    : streak.currentStreak >= 7
+                    ? 'linear-gradient(180deg, #F59E0B, #EF4444)'
+                    : '#F59E0B',
+                }}
+              />
+              {/* Streak Text */}
+              <span
+                className="text-[12px] font-semibold"
+                style={{
+                  color: streak.currentStreak >= 30
+                    ? '#A78BFA'
+                    : streak.currentStreak >= 7
+                    ? '#FB923C'
+                    : '#F59E0B',
+                }}
+              >
+                {streak.currentStreak} day streak
+              </span>
               
-              {showLanguageSelector && (
-                <div className="absolute right-0 top-full mt-2 rounded-lg border p-2 z-20 min-w-[150px]" style={{ 
-                  backgroundColor: 'var(--bg-secondary)',
-                  borderColor: 'var(--border-card)'
-                }}>
-                  {languages.map((lang) => (
+              {/* Tooltip */}
+              <div
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50"
+                style={{
+                  background: '#0F0A1E',
+                  color: '#C4B5FD',
+                  border: '1px solid #2D1B69',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                }}
+              >
+                Longest streak: {streak.longestStreak} days
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Messages Area */}
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{
+            background: '#080412',
+            backgroundImage: 'radial-gradient(ellipse 700px 300px at 50% 0%, #7C3AED0D, transparent)',
+            padding: '24px 20px',
+          }}
+        >
+          <div className="max-w-[720px] mx-auto flex flex-col gap-4">
+            {messages.length === 0 && !loading && (
+              <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <h3
+                  className="text-[22px] font-semibold text-center mb-8"
+                  style={{
+                    background: 'linear-gradient(135deg, #A78BFA, #7C3AED)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  Hello, what would you like to learn today?
+                </h3>
+
+                {/* Quick Prompts */}
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {quickPrompts.map((prompt, idx) => (
                     <button
-                      key={lang.id}
-                      onClick={() => {
-                        setLanguage(lang.id)
-                        setShowLanguageSelector(false)
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                        language === lang.id ? '' : 'hover:bg-[#1e2130]'
-                      }`}
+                      key={idx}
+                      onClick={() => handleSendMessage(prompt)}
+                      className="text-[13px] px-3.5 py-1.5 rounded-[20px] cursor-pointer transition-all"
                       style={{
-                        backgroundColor: language === lang.id ? '#1e1b4b' : 'transparent',
-                        color: language === lang.id ? '#a78bfa' : '#9ca3af'
+                        background: '#160D2E',
+                        border: '1px solid #2D1B69',
+                        color: '#C4B5FD',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#7C3AED'
+                        e.currentTarget.style.color = '#F5F3FF'
+                        e.currentTarget.style.background = '#1E1040'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#2D1B69'
+                        e.currentTarget.style.color = '#C4B5FD'
+                        e.currentTarget.style.background = '#160D2E'
                       }}
                     >
-                      <span>{lang.flag}</span>
-                      <span>{lang.name}</span>
+                      {prompt}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Depth Toggle */}
-            <button
-              onClick={toggleDepth}
-              className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
-              style={{
-                backgroundColor: depthLevel === 'detailed' ? 'var(--accent-purple-glow)' : 'var(--bg-tertiary)',
-                borderColor: depthLevel === 'detailed' ? 'var(--border-focus)' : 'var(--border-input)',
-                color: depthLevel === 'detailed' ? 'var(--accent-purple-light)' : 'var(--text-secondary)'
-              }}
-            >
-              {depthLevel === 'simple' ? (
-                <Minimize2 className="w-3.5 h-3.5" />
-              ) : (
-                <Maximize2 className="w-3.5 h-3.5" />
-              )}
-            </button>
-          
-            {/* Tone Switcher */}
-            <button
-              onClick={() => setShowToneSelector(!showToneSelector)}
-              className="flex items-center gap-1 px-2 py-2 rounded-lg border transition-colors text-xs"
-              style={{
-                backgroundColor: 'var(--accent-purple-glow)',
-                borderColor: 'var(--border-focus)',
-                color: 'var(--accent-purple-light)'
-              }}
-            >
-              <span className="text-base">{currentMode.icon}</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+            {messages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                onCopy={handleCopyMessage}
+                isCopied={copiedId === message.id}
+              />
+            ))}
 
-        {/* Tone Selector Dropdown */}
-        {showToneSelector && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3" style={{ borderTop: '1px solid var(--border-card)' }}>
-            {toneModes.map((toneMode) => (
-              <button
-                key={toneMode.id}
-                onClick={() => {
-                  setMode(toneMode.id)
-                  setShowToneSelector(false)
-                }}
-                className="flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all hover:bg-[#1e2130]"
+            {/* Loading Indicator */}
+            {loading && (
+              <div
+                className="self-start max-w-[85%]"
                 style={{
-                  borderColor: mode === toneMode.id ? toneMode.color : 'var(--border-input)',
-                  backgroundColor: mode === toneMode.id ? `${toneMode.color}20` : 'var(--bg-secondary)',
+                  background: '#160D2E',
+                  border: '1px solid #2D1B69',
+                  borderLeft: '2px solid #7C3AED',
+                  borderRadius: '4px 16px 16px 16px',
+                  padding: '14px 16px',
+                  boxShadow: '0 0 20px #7C3AED10',
                 }}
               >
-                <span className="text-xl">{toneMode.icon}</span>
-                <span className="font-semibold text-xs" style={{ color: toneMode.color }}>
-                  {toneMode.name}
-                </span>
-                <p className="text-[10px] text-[#9ca3af] text-center leading-tight">
-                  {toneMode.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Messages Container */}
-      <div className="chat-messages flex-1 overflow-y-auto space-y-3 sm:space-y-4 mb-3 sm:mb-4 px-3 pt-3 pb-[80px] lg:pb-4">
-        {messages.length === 0 && (
-          <div className="text-center py-8 sm:py-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-[14px] mb-6" style={{ backgroundColor: 'var(--accent-purple-glow)' }}>
-              <Sparkles className="w-10 h-10" style={{ color: 'var(--accent-purple-light)' }} />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
-              Welcome to Learnova AI
-            </h2>
-            <p className="text-sm sm:text-base max-w-md mx-auto leading-relaxed mb-6 sm:mb-8 px-4" style={{ color: 'var(--text-secondary)' }}>
-              Ask me anything — from exam prep to startup advice. I'm here to help you succeed.
-            </p>
-            
-            {/* Quick Start Suggestions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-w-2xl mx-auto px-4">
-              {[
-                { icon: '📚', text: "Explain Newton's Laws simply", category: 'Physics' },
-                { icon: '🎯', text: 'Help me plan JEE preparation', category: 'Exam Prep' },
-                { icon: '💡', text: 'Validate my startup idea', category: 'Business' },
-                { icon: '✍️', text: 'Write a formal letter for board exam', category: 'Writing' },
-              ].map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setInput(suggestion.text)}
-                  className="suggestion-card"
-                >
-                  <span className="sugg-emoji">{suggestion.icon}</span>
-                  <div className="flex-1">
-                    <p className="sugg-text">
-                      {suggestion.text}
-                    </p>
-                    <span className="sugg-tag">
-                      {suggestion.category}
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        background: '#7C3AED',
+                        animation: 'pulse 1.4s ease-in-out 0s infinite',
+                      }}
+                    />
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        background: '#7C3AED',
+                        animation: 'pulse 1.4s ease-in-out 0.2s infinite',
+                      }}
+                    />
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{
+                        background: '#7C3AED',
+                        animation: 'pulse 1.4s ease-in-out 0.4s infinite',
+                      }}
+                    />
                   </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.map((message, idx) => (
-          <div
-            key={`msg-${message.id}-${idx}`}
-            className={`flex gap-3 mb-6 ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-          >
-            {/* AI Avatar */}
-            {message.role === 'assistant' && (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">
-                AI
+                  <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
+                    Learnova is thinking...
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Message Bubble */}
-            <div
-              className={`max-w-[85%] sm:max-w-[78%] px-3 sm:px-5 py-2 sm:py-3 rounded-2xl text-xs sm:text-sm leading-6 sm:leading-7
-                ${message.role === 'user'
-                  ? 'bg-purple-600 text-white rounded-br-none'
-                  : 'bg-[var(--bg-secondary)] text-gray-100 border border-gray-700/40 rounded-bl-none'
-                }`}
-            >
-              {message.role === 'assistant' ? (
-                <ReactMarkdown
-                  components={{
-                    p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                    strong: ({children}) => <strong className="font-semibold text-white">{children}</strong>,
-                    ul: ({children}) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
-                    ol: ({children}) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
-                    li: ({children}) => <li className="text-gray-300">{children}</li>,
-                    code: ({children}) => <code className="bg-gray-800 px-2 py-0.5 rounded text-purple-300 text-xs">{children}</code>,
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input Area */}
+        <div
+          className="flex-shrink-0 border-t"
+          style={{
+            borderTop: '1px solid #2D1B69',
+            padding: '16px 20px',
+            background: '#080412',
+          }}
+        >
+          <div className="max-w-[720px] mx-auto">
+            {/* Milestone Toast Banner */}
+            {milestone && (
+              <div
+                className="flex items-center gap-3 rounded-[10px] mb-2.5"
+                style={{
+                  background: 'linear-gradient(135deg, #1E1040, #160D2E)',
+                  border: '1px solid #4338CA',
+                  padding: '12px 16px',
+                }}
+              >
+                {/* Flame Icon */}
+                <div
+                  style={{
+                    width: '16px',
+                    height: '20px',
+                    clipPath: 'polygon(50% 0%, 80% 30%, 100% 60%, 70% 100%, 30% 100%, 0% 60%, 20% 30%)',
+                    background: milestone >= 30
+                      ? 'linear-gradient(180deg, #A78BFA, #7C3AED)'
+                      : milestone >= 7
+                      ? 'linear-gradient(180deg, #F59E0B, #EF4444)'
+                      : '#F59E0B',
+                    flexShrink: 0,
                   }}
+                />
+                
+                {/* Milestone Text */}
+                <span className="flex-1 text-[13px] font-medium" style={{ color: '#F5F3FF' }}>
+                  {getMilestoneMessage(milestone)}
+                </span>
+                
+                {/* WhatsApp Share Button */}
+                <button
+                  onClick={() => {
+                    const link = getStreakWhatsAppLink(milestone)
+                    window.open(link, '_blank')
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all duration-150"
+                  style={{
+                    background: '#075E54',
+                    color: 'white',
+                    border: 'none',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#128C7E'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#075E54'}
                 >
-                  {message.content}
-                </ReactMarkdown>
-              ) : (
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              )}
-              
-              {message.role === 'assistant' && (
-                <div className="mt-3 pt-2 flex items-center gap-2 flex-wrap" style={{ borderTop: '1px solid var(--border-card)' }}>
-                  <button
-                    onClick={() => copyToClipboard(message.content, message.id)}
-                    className="text-xs flex items-center gap-1 px-2 py-1 rounded hover:bg-[#1e2130] transition-colors"
-                    style={{ color: '#9ca3af' }}
-                  >
-                    <Copy className="w-3.5 h-3.5" /> Copy
-                  </button>
-                  <button
-                    onClick={() => handleSaveNote(message.content, message.id)}
-                    disabled={savingNote === message.id}
-                    className="text-xs flex items-center gap-1 px-2 py-1 rounded hover:bg-[#1e2130] transition-colors disabled:opacity-50" style={{ color: '#a78bfa' }}
-                  >
-                    <Bookmark className="w-3.5 h-3.5" /> {savingNote === message.id ? 'Saving...' : 'Save Note'}
-                  </button>
-                  <button
-                    onClick={() => handleExplainDifferently(message)}
-                    className="text-xs flex items-center gap-1 px-2 py-1 rounded hover:bg-[#1e2130] transition-colors"
-                    style={{ color: '#9ca3af' }}
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Explain Differently
-                  </button>
-                  <div className="flex items-center gap-1 ml-auto">
-                    <button
-                      onClick={() => handleFeedback(message.id, 'helpful')}
-                      className={`p-1.5 rounded transition-colors ${
-                        message.feedback === 'helpful'
-                          ? 'bg-green-500 text-white'
-                          : 'hover:bg-[#1e2130] text-[#9ca3af]'
-                      }`}
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleFeedback(message.id, 'not-helpful')}
-                      className={`p-1.5 rounded transition-colors ${
-                        message.feedback === 'not-helpful'
-                          ? 'bg-red-500 text-white'
-                          : 'hover:bg-[#1e2130] text-[#9ca3af]'
-                      }`}
-                    >
-                      <ThumbsDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* User Avatar */}
-            {message.role === 'user' && (
-              <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-1">
-                U
+                  Share on WhatsApp
+                </button>
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => setMilestone(null)}
+                  className="p-1 cursor-pointer transition-colors"
+                  style={{ color: '#9CA3AF' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#A78BFA'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#9CA3AF'}
+                >
+                  <X size={16} />
+                </button>
               </div>
             )}
-          </div>
-        ))}
-
-        {loading && (
-          <div className="flex justify-start">
-            <div className="border rounded-xl px-5 py-3" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-card)' }}>
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-purple-light)', animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-purple-light)', animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-purple-light)', animationDelay: '300ms' }} />
-                </div>
-                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  Thinking...
-                </span>
+            {/* Prompt Chips (only when empty) */}
+            {messages.length === 0 && quickPrompts.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2.5">
+                {quickPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSendMessage(prompt)}
+                    className="text-[13px] px-3.5 py-1.5 rounded-[20px] cursor-pointer transition-all"
+                    style={{
+                      background: '#160D2E',
+                      border: '1px solid #2D1B69',
+                      color: '#C4B5FD',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#7C3AED'
+                      e.currentTarget.style.color = '#F5F3FF'
+                      e.currentTarget.style.background = '#1E1040'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#2D1B69'
+                      e.currentTarget.style.color = '#C4B5FD'
+                      e.currentTarget.style.background = '#160D2E'
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
               </div>
+            )}
+
+            {/* Input Container */}
+            <div
+              className="flex items-end gap-2.5 rounded-[14px] p-3 transition-all"
+              style={{
+                background: '#160D2E',
+                border: '1px solid #2D1B69',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#7C3AED'
+                e.currentTarget.style.boxShadow = '0 0 0 3px #7C3AED20'
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#2D1B69'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
+                placeholder={language === 'hindi' ? 'Learnova से कुछ भी पूछें...' : 'Ask Learnova anything...'}
+                className="flex-1 text-[14px] leading-relaxed bg-transparent border-none outline-none resize-none"
+                style={{
+                  color: '#F5F3FF',
+                  minHeight: '24px',
+                  maxHeight: '120px',
+                }}
+                rows={1}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={!input.trim() || loading}
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-50"
+                style={{
+                  background: input.trim() && !loading ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#2D1B69',
+                  boxShadow: input.trim() && !loading ? '0 4px 12px #7C3AED40' : 'none',
+                }}
+              >
+                <Send size={16} color="white" />
+              </button>
             </div>
+
+            {/* Share on WhatsApp */}
+            {messages.length > 0 && (
+              <button
+                className="text-[12px] mt-2 ml-auto block transition-colors hover:text-[#25D366]"
+                style={{ color: '#9CA3AF', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#9CA3AF'}
+              >
+                Share this conversation →
+              </button>
+            )}
           </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex-shrink-0 border p-3 sm:p-4 rounded-[12px]" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-card)' }}>
-        {/* Input row — must stay within screen width */}
-        <div className="chat-input-row flex gap-2 w-full">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything..."
-            className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-3 text-base"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="chat-send-btn flex-shrink-0 w-11 h-11 sm:w-auto sm:px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium text-sm"
-          >
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Send</span>
-          </button>
         </div>
-        
-        {/* Mode pills row — scrollable, never wraps or overflows */}
-        <div className="chat-context-pills flex items-center gap-2 mt-2 overflow-x-auto scrollbar-hide pb-0.5">
-          <span className="context-pill flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border">
-            {currentMode.icon} {currentMode.name}
-          </span>
-          <span className="flex-shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>•</span>
-          <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-            {currentLanguage.flag} {currentLanguage.name}
-          </span>
-          <span className="flex-shrink-0 text-xs" style={{ color: 'var(--text-muted)' }}>•</span>
-          <span className="context-pill flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border">
-            {depthLevel === 'simple' ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
-            {depthLevel === 'simple' ? 'Simple' : 'Detailed'}
-          </span>
-        </div>
-      </form>
+
+        {/* Pulse Animation */}
+        <style>{`
+          @keyframes pulse {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+          }
+        `}</style>
+      </main>
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080412' }}>
+        <div className="text-center">
+          <div className="text-4xl mb-4">💬</div>
+          <p style={{ color: '#C4B5FD' }}>Loading chat...</p>
+        </div>
+      </div>
+    }>
+      <ChatContent />
+    </Suspense>
   )
 }
