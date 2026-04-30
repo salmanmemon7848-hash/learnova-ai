@@ -37,28 +37,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (data.user) {
-      // Check if this user has completed onboarding
-      const { data: userData, error: profileError } = await supabase
-        .from('users')
-        .select('userType, toneMode, language')
-        .eq('id', data.user.id)
-        .single()
-
-      // New user = no profile, or profile error, or all default values
-      const isNewUser =
-        !userData ||
-        profileError ||
-        (userData.userType === 'student' &&
-          userData.toneMode === 'balanced' &&
-          userData.language === 'en')
-
-      if (isNewUser) {
-        // New user → persona selection
-        return NextResponse.redirect(`${origin}/persona`)
-      } else {
-        // Returning user → chat
-        return NextResponse.redirect(`${origin}/chat`)
-      }
+      // Always redirect to chat — skip onboarding
+      return NextResponse.redirect(`${origin}/chat`)
     }
   }
 

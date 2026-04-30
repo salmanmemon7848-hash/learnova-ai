@@ -29,7 +29,6 @@ import { useState } from 'react'
 import InstallButton from '@/components/InstallButton'
 import InstallPrompt from '@/components/InstallPrompt'
 import MobileBottomNav from './MobileBottomNav'
-import BetaBanner from '@/components/BetaBanner'
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Home', href: '/dashboard', pro: false, prominent: false },
@@ -58,9 +57,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
-      {/* Beta Banner */}
-      <BetaBanner />
-
       {/* Mobile sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}

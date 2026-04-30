@@ -4,19 +4,15 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import OnboardingModal from '@/components/ui/OnboardingModal'
-import { useAuth } from '@/contexts/AuthContext'
 
 export default function SignupPage() {
   const router = useRouter()
-  const { user } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
-  const [showOnboarding, setShowOnboarding] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   const validateForm = () => {
@@ -77,21 +73,24 @@ export default function SignupPage() {
         // Check if email confirmation is required
         if (data.user.identities && data.user.identities.length === 0) {
           setError('An account with this email already exists. Please login instead.')
+          setLoading(false)
         } else {
-          // Show onboarding for new users
-          setShowOnboarding(true)
+          // Redirect directly to chat — skip onboarding
+          router.replace('/chat')
         }
+      } else {
+        setError('Sign up failed. Please try again.')
+        setLoading(false)
       }
     } catch (err: any) {
       setError('Something went wrong. Please try again.')
       console.error('Unexpected error:', err)
-    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="auth-page min-h-screen flex">
       {/* Left Panel - Brand */}
       <div
         className="hidden lg:flex lg:w-2/5 flex-col justify-center items-center p-12 relative"
@@ -268,9 +267,6 @@ export default function SignupPage() {
           </p>
         </div>
       </div>
-
-      {/* Onboarding Modal */}
-      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
     </div>
   )
 }

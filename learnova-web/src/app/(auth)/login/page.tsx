@@ -22,62 +22,53 @@ export default function LoginPage() {
     if (authLoading) return // wait for auth to initialize
     if (!user) return       // no user, stay on login page
 
-    // User is already logged in — route them away from login
-    const routeUser = async () => {
-      try {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('userType, toneMode, language')
-          .eq('id', user.id)
-          .single()
-
-        const isNewUser =
-          !userData ||
-          (userData.userType === 'student' &&
-            userData.toneMode === 'balanced' &&
-            userData.language === 'en')
-
-        router.replace(isNewUser ? '/persona' : '/chat')
-      } catch {
-        router.replace('/persona')
-      }
-    }
-
-    routeUser()
+    // User is already logged in — always send them to /chat
+    router.replace('/chat')
   }, [user, authLoading]) // IMPORTANT: minimal deps — do NOT add router or supabase here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter your email and password.')
+      return
+    }
+
     setLoading(true)
 
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       })
 
       if (signInError) {
-        if (signInError.message.includes('Invalid login credentials')) {
-          setError('Invalid email or password. Please check your credentials and try again.')
+        if (
+          signInError.message.includes('Invalid login credentials') ||
+          signInError.message.includes('invalid_credentials')
+        ) {
+          setError('Invalid credentials, please try again.')
         } else if (signInError.message.includes('Email not confirmed')) {
           setError('Please verify your email address before logging in.')
         } else {
-          setError(signInError.message)
+          setError(signInError.message || 'Sign in failed. Please try again.')
         }
         console.error('Login error:', signInError)
+        setLoading(false)
         return
       }
 
-      if (data.user) {
-        // Don't show onboarding here - the useEffect will handle the redirect
-        // based on checking the user profile
-        console.log('Login successful, useEffect will handle redirect...')
+      if (data?.user) {
+        // Redirect directly to chat — no onboarding
+        router.replace('/chat')
+      } else {
+        setError('Sign in failed. Please try again.')
+        setLoading(false)
       }
     } catch (err: any) {
       setError('Something went wrong. Please try again.')
       console.error('Unexpected error:', err)
-    } finally {
       setLoading(false)
     }
   }
@@ -106,7 +97,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="auth-page min-h-screen flex">
       {/* Left Panel - Brand */}
       <div
         className="hidden lg:flex lg:w-2/5 flex-col justify-center items-center p-12 relative"

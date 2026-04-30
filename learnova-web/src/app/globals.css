@@ -265,11 +265,21 @@ p, span, div, input, textarea, button {
 }
 
 /* ==========================================
-   GLOBAL INPUT FIX - WHITE TEXT EVERYWHERE
+   GLOBAL INPUT FIX - WHITE TEXT ON DARK BACKGROUNDS
+   Scoped to dark-theme containers only, so auth pages
+   (white background) use their own inline color styles.
    ========================================== */
-input,
-textarea,
-select {
+
+/* Dark-theme inputs: white text inside dark dashboard/app areas */
+.dark-input input,
+.dark-input textarea,
+.dark-input select,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+main:not(.auth-page) input,
+main:not(.auth-page) textarea,
+main:not(.auth-page) select {
   color: #ffffff !important;
   background-color: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(139, 92, 246, 0.3) !important;
@@ -277,15 +287,15 @@ select {
   font-size: 1rem !important;
 }
 
-input::placeholder,
-textarea::placeholder {
+main:not(.auth-page) input::placeholder,
+main:not(.auth-page) textarea::placeholder {
   color: rgba(255, 255, 255, 0.35) !important;
   opacity: 1 !important;
 }
 
-input:focus,
-textarea:focus,
-select:focus {
+main:not(.auth-page) input:focus,
+main:not(.auth-page) textarea:focus,
+main:not(.auth-page) select:focus {
   outline: none !important;
   border-color: rgba(139, 92, 246, 0.7) !important;
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15) !important;
@@ -298,13 +308,34 @@ select option {
   color: #ffffff !important;
 }
 
-/* Fix autofill background turning white */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-textarea:-webkit-autofill {
+/* Fix autofill for dark pages */
+main:not(.auth-page) input:-webkit-autofill,
+main:not(.auth-page) input:-webkit-autofill:hover,
+main:not(.auth-page) input:-webkit-autofill:focus,
+main:not(.auth-page) textarea:-webkit-autofill {
   -webkit-text-fill-color: #ffffff !important;
   -webkit-box-shadow: 0 0 0px 1000px #1a1040 inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Auth pages (white bg): force black typed text, gray placeholder */
+.auth-page input,
+.auth-page textarea {
+  color: #000000 !important;
+  caret-color: #000000 !important;
+}
+
+.auth-page input::placeholder,
+.auth-page textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.auth-page input:-webkit-autofill,
+.auth-page input:-webkit-autofill:hover,
+.auth-page input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #000000 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #FAFAFA inset !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
