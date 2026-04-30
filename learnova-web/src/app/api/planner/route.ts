@@ -1,6 +1,7 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const userId = session.user.id;
     const body = await req.json();
     const { targetExam, schoolClass, examDate, studyHours, weakSubjects, strongSubjects } = body;
 
@@ -82,7 +84,27 @@ Return ONLY valid JSON:
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Invalid response')
 
-    return NextResponse.json(JSON.parse(jsonMatch[0]))
+    const planData = JSON.parse(jsonMatch[0])
+
+    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
+    const planTitle = `Study Plan: ${examName} — ${planDays} days`;
+    try {
+      await supabase.from('saved_files').insert({
+        user_id: userId,
+        file_type: 'study_plan',
+        title: planTitle,
+        content: JSON.stringify(planData),
+      });
+
+      await logActivity(supabase, userId, 'planner', planTitle, {
+        exam: targetExam,
+        days: planDays,
+      });
+    } catch (saveErr) {
+      console.warn('[Planner] Failed to save to Supabase:', saveErr);
+    }
+
+    return NextResponse.json(planData)
   } catch (error: any) {
     console.error('❌ Planner Error:', error?.message || error)
     return NextResponse.json({ error: 'Failed to generate plan.' }, { status: 500 })

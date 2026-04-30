@@ -1,6 +1,7 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const userId = session.user.id;
     const { question, questionText, subject, imageUrl } = await req.json();
     // Support both field names: frontend sends `questionText`, normalise to `question`
     const userQuestion = (question || questionText || '').trim();
@@ -48,6 +50,27 @@ Rules:
       : userQuestion;
 
     const solution = await generateText(prompt, finalSystemPrompt);
+
+    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
+    try {
+      await supabase.from('doubt_history').insert({
+        user_id: userId,
+        subject: userSubject || null,
+        question: userQuestion,
+        answer: solution,
+      });
+
+      await logActivity(
+        supabase,
+        userId,
+        'doubt',
+        `Asked: ${userQuestion.slice(0, 60)}${userQuestion.length > 60 ? '...' : ''}`,
+        { subject: userSubject }
+      );
+    } catch (saveErr) {
+      console.warn('[Doubt Solver] Failed to save to Supabase:', saveErr);
+    }
+
     return NextResponse.json({ solution });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error?.message || error);

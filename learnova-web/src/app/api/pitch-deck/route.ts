@@ -1,6 +1,7 @@
 import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const userId = session.user.id;
     const body = await req.json();
     const { answers } = body;
 
@@ -70,19 +72,19 @@ Do not include any other text or explanations.`;
     );
 
     // Parse the response
+    let slides: any[] = [];
     try {
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        const slides = JSON.parse(jsonMatch[0]);
-        return NextResponse.json({ slides });
+        slides = JSON.parse(jsonMatch[0]);
       }
     } catch (e) {
       console.error('JSON parse error:', e);
     }
 
-    // Fallback slides if parsing fails
-    return NextResponse.json({
-      slides: [
+    if (slides.length === 0) {
+      // Fallback slides if parsing fails
+      slides = [
         { title: answers.what || 'Your Startup', content: 'Pitch Deck\nInvestor Presentation' },
         { title: 'Problem', content: answers.problem || 'The problem you are solving' },
         { title: 'Solution', content: answers.what || 'Your innovative solution' },
@@ -93,8 +95,25 @@ Do not include any other text or explanations.`;
         { title: 'Team', content: answers.team || 'Founding team' },
         { title: 'Ask', content: 'Seeking: ' + (answers.raise || 'Funding') + '\n\nUse: ' + (answers.funds || 'Fund allocation') },
         { title: 'Thank You', content: 'Contact us to learn more' },
-      ]
-    });
+      ];
+    }
+
+    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
+    const deckTitle = `Pitch Deck: ${answers.what || 'My Startup'}`;
+    try {
+      await supabase.from('saved_files').insert({
+        user_id: userId,
+        file_type: 'pitch_deck',
+        title: deckTitle,
+        content: JSON.stringify(slides),
+      });
+
+      await logActivity(supabase, userId, 'pitch_deck', deckTitle, {});
+    } catch (saveErr) {
+      console.warn('[Pitch Deck] Failed to save to Supabase:', saveErr);
+    }
+
+    return NextResponse.json({ slides });
   } catch (error: any) {
     console.error('❌ Pitch Deck Error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to generate pitch deck. Please try again.' }, { status: 500 });

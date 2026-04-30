@@ -171,7 +171,27 @@ export default function ExamSimulatorPage() {
     const scores = JSON.parse(localStorage.getItem('learnova_exam_scores') || '[]')
     scores.push(scoreData)
     localStorage.setItem('learnova_exam_scores', JSON.stringify(scores.slice(-20)))
+
+    // Save to Supabase (non-blocking fire-and-forget)
+    const scorePercentage = Math.round((correctCount / questions.length) * 100)
+    const timeTakenSeconds = startTime
+      ? Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
+      : 0
+
+    fetch('/api/exam/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        examType,
+        subject,
+        score: scorePercentage,
+        totalQuestions: questions.length,
+        correctAnswers: correctCount,
+        timeTakenSeconds,
+      }),
+    }).catch(() => {/* non-critical */})
   }
+
 
   const handleUpdateQuestionStatus = (questionNumber: number, status: 'right' | 'wrong' | 'unanswered') => {
     setQuestionStatus(prev => ({

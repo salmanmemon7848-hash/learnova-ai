@@ -1,6 +1,7 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const userId = session.user.id;
     const { contentType, topic, tone, details } = await req.json();
 
     const baseSystemPrompt = `You are a professional content writer for an Indian audience.
@@ -25,6 +27,22 @@ Always write the full content directly — no preamble, no meta-commentary.`;
 Details: ${details || 'None'}. Write full content directly, no preamble.`;
 
     const content = await generateText(prompt, finalSystemPrompt);
+
+    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
+    const documentTitle = `${contentType.charAt(0).toUpperCase() + contentType.slice(1)}: ${topic.slice(0, 50)}`;
+    try {
+      await supabase.from('saved_files').insert({
+        user_id: userId,
+        file_type: 'ai_writer',
+        title: documentTitle,
+        content,
+      });
+
+      await logActivity(supabase, userId, 'writer', documentTitle, { content_type: contentType, tone });
+    } catch (saveErr) {
+      console.warn('[Writer] Failed to save to Supabase:', saveErr);
+    }
+
     return NextResponse.json({ content });
   } catch (error: any) {
     console.error('❌ Writer Error:', error?.message || error);
