@@ -1,5 +1,6 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { askAIWithSearch } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -8,13 +9,45 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { question, subject } = await req.json();
+    const { question, questionText, subject, imageUrl } = await req.json();
+    // Support both field names: frontend sends `questionText`, normalise to `question`
+    const userQuestion = (question || questionText || '').trim();
+    const userSubject = (subject || '').trim();
 
-    const prompt = `Solve this ${subject || 'general'} doubt for an Indian student.
-Question: ${question}
-Give: subject/topic identification, step-by-step solution, key concepts, NCERT reference, exam relevance (CBSE/JEE/NEET), common mistakes to avoid.`;
+    const baseSystemPrompt = `You are a concise and helpful AI tutor for Indian students preparing for CBSE, JEE, and NEET exams.
 
-    const solution = await generateText(prompt);
+When a student asks a question, answer in this exact format and nothing else:
+
+**Answer:** [1-2 sentence direct answer]
+
+**Why:** [2-3 sentences explaining the concept simply]
+
+**Remember:** [1 key point to remember for exams]
+
+Rules:
+- Never write more than 8 lines total
+- Never add sections like "NCERT Reference", "Common Mistakes", "Exam Relevance", "Step by Step" unless the student specifically asks
+- If the question is a calculation, show only the steps needed, no commentary
+- Use simple English that a Class 10-12 student understands
+- If the topic comes in as undefined or empty, ask the student: "Please type your question clearly and I will help you."
+- Never repeat the question back to the student`;
+
+    // Enrich system prompt with live web context for this question
+    const { finalSystemPrompt } = await askAIWithSearch({
+      userMessage: `${userSubject ? userSubject + ' ' : ''}${userQuestion}`,
+      systemPrompt: baseSystemPrompt,
+      needsSearch: true,
+    });
+
+    if (!userQuestion) {
+      return NextResponse.json({ solution: 'Please type your question clearly and I will help you.' });
+    }
+
+    const prompt = userSubject
+      ? `[Subject: ${userSubject}] ${userQuestion}`
+      : userQuestion;
+
+    const solution = await generateText(prompt, finalSystemPrompt);
     return NextResponse.json({ solution });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error?.message || error);

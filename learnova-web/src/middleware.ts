@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
+    pathname === '/about' ||
     pathname === '/privacy' ||
     pathname === '/terms' ||
     pathname === '/beta-disclaimer' ||

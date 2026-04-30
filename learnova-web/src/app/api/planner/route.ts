@@ -1,5 +1,6 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { askAIWithSearch } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -21,6 +22,17 @@ export async function POST(req: NextRequest) {
     const examContext = targetExam === 'school'
       ? `${schoolClass || 'Class'} student preparing for school exams (CBSE/ICSE/State Board)`
       : `student preparing for ${targetExam.toUpperCase().replace('_', ' ')}`
+
+    // Enrich with live exam syllabus/strategy data
+    const examName = targetExam === 'school'
+      ? `${schoolClass || ''} CBSE school exam`
+      : targetExam.toUpperCase().replace('_', ' ')
+    const searchQuery = `${examName} syllabus study plan strategy ${weakSubjects?.join(' ') || ''} 2025`.trim()
+    const { finalSystemPrompt } = await askAIWithSearch({
+      userMessage: searchQuery,
+      systemPrompt: `You are an expert Indian academic study planner who creates personalised, structured study schedules based on real exam syllabi and strategies.`,
+      needsSearch: true,
+    })
 
     // Build the enhanced prompt
     const prompt = `
@@ -66,7 +78,7 @@ Return ONLY valid JSON:
 }
 `
 
-    const text = await generateText(prompt)
+    const text = await generateText(prompt, finalSystemPrompt)
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('Invalid response')
 

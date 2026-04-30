@@ -1,5 +1,6 @@
 import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { askAIWithSearch } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -55,9 +56,17 @@ Do not include any other text or explanations.`;
 - Raise: ${answers.raise || 'Not provided'}
 - Funds: ${answers.funds || 'Not provided'}`;
 
+    // Enrich system prompt with live market/competition data for this startup
+    const searchQuery = `${answers.what || 'startup'} India market competition investors pitch 2025`.trim()
+    const { finalSystemPrompt: enrichedSystemPrompt } = await askAIWithSearch({
+      userMessage: searchQuery,
+      systemPrompt,
+      needsSearch: true,
+    })
+
     const response = await chatWithHistory(
       [{ role: 'user', content: userMessage }],
-      systemPrompt
+      enrichedSystemPrompt
     );
 
     // Parse the response

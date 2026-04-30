@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk'
+import { askAIWithSearch } from '@/lib/aiWithSearch'
 import { NextRequest, NextResponse } from 'next/server'
 
 const groq = new Groq({
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business idea is required' }, { status: 400 })
     }
 
-    const systemPrompt = `You are an expert Indian startup advisor for Learnova AI. You deeply understand:
+    const baseSystemPrompt = `You are an expert Indian startup advisor for Learnova AI. You deeply understand:
 - Indian consumer behaviour and price sensitivity (customers won't pay more than they need to)
 - Tier 1, Tier 2, Tier 3 city market dynamics
 - Indian startup ecosystem (bootstrapped founders, angel networks, Sequoia India, govt schemes)
@@ -51,6 +52,14 @@ ALWAYS structure your validation response exactly like this:
 [Single most important thing to do right now]
 
 Always use ₹ for pricing. Always think about UPI and cash-on-delivery. Always consider whether this works in a city of 5 lakh population.`
+
+    // Enrich system prompt with live market intelligence for this idea
+    const searchQuery = `${idea} India startup market ${industry || ''} competition 2025`.trim()
+    const { finalSystemPrompt: systemPrompt } = await askAIWithSearch({
+      userMessage: searchQuery,
+      systemPrompt: baseSystemPrompt,
+      needsSearch: true,
+    })
 
     const userPrompt = `Validate this business idea for the Indian market:
 Idea: ${idea}

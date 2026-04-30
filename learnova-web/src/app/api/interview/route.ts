@@ -1,5 +1,6 @@
 import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { askAIWithSearch } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -69,9 +70,17 @@ Return ONLY a JSON array of strings, like this:
 
 Do not include any other text or explanations.`;
 
+      // Enrich system prompt with live interview questions/tips for this role
+      const searchQuery = `${interviewType.replace(/_/g, ' ')} interview questions tips India ${role || ''} 2025`.trim()
+      const { finalSystemPrompt: enrichedSystemPrompt } = await askAIWithSearch({
+        userMessage: searchQuery,
+        systemPrompt,
+        needsSearch: true,
+      })
+
       const response = await chatWithHistory(
         [{ role: 'user', content: 'Generate interview questions' }],
-        systemPrompt
+        enrichedSystemPrompt
       );
 
       // Parse the response to extract questions

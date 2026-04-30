@@ -389,18 +389,43 @@ function LandingContent() {
           </div>
 
           {/* Right Links */}
-          <div className="flex items-center gap-5">
-            {['Home', 'Chat', 'About'].map((link) => (
-              <button
-                key={link}
-                onClick={() => router.push(`/${link.toLowerCase() === 'home' ? '' : link.toLowerCase()}`)}
-                className="text-[13px] font-medium transition-colors hover:text-[#F5F3FF]"
-                style={{ color: '#C4B5FD' }}
-              >
-                {link}
-              </button>
-            ))}
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => router.push('/chat')}
+              className="text-[13px] font-medium transition-colors hover:text-[#F5F3FF]"
+              style={{ color: '#C4B5FD' }}
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => router.push('/about')}
+              className="text-[13px] font-medium transition-colors hover:text-[#F5F3FF]"
+              style={{ color: '#C4B5FD' }}
+            >
+              About
+            </button>
+            <a
+              href="/privacy"
+              className="text-[13px] font-medium transition-colors hover:text-[#F5F3FF]"
+              style={{ color: '#C4B5FD' }}
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="/terms"
+              className="text-[13px] font-medium transition-colors hover:text-[#F5F3FF]"
+              style={{ color: '#C4B5FD' }}
+            >
+              Terms of Service
+            </a>
           </div>
+        </div>
+
+        {/* Copyright Line */}
+        <div className="max-w-7xl mx-auto mt-6 pt-4 border-t" style={{ borderColor: '#1E1B4B' }}>
+          <p className="text-[11px] text-center" style={{ color: '#4B5563' }}>
+            © 2025 Learnova AI. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>

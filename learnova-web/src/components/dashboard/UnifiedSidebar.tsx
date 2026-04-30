@@ -12,7 +12,7 @@ import {
   Calendar,
   Home,
   HelpCircle,
-  BarChart3,
+  GraduationCap,
   Mic,
   PenTool,
   TrendingUp,
@@ -67,7 +67,7 @@ function UnifiedSidebar({
   const navigateItems = [
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: HelpCircle, label: 'Doubt Solver', path: '/doubt-solver' },
-    { icon: BarChart3, label: 'My Progress', path: '/progress' },
+    { icon: GraduationCap, label: 'EduFinder', path: '/edufinder' },
     { icon: Mic, label: 'Mock Interview', path: '/interview' },
     { icon: PenTool, label: 'AI Writer', path: '/writer', pro: true },
     { icon: TrendingUp, label: 'Business Ideas', path: '/business-ideas' },

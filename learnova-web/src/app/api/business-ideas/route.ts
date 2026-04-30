@@ -1,5 +1,6 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { askAIWithSearch } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -52,9 +53,19 @@ Return ONLY a JSON array. No text before or after. No markdown. Just pure JSON s
 
 Make all ${count || 5} ideas different industries. Match their exact budget (${labelMap['4']?.[answers?.['4'] as string] || 'unknown'}) and time (${labelMap['3']?.[answers?.['3'] as string] || 'unknown'}). Be specific with Indian rupee amounts and Indian market context.`;
 
+    // Enrich prompt with live Indian startup/market data
+    const interestLabel = labelMap['1']?.[answers?.['1'] as string] || answers?.['1'] || 'business';
+    const budgetLabel = labelMap['4']?.[answers?.['4'] as string] || 'any budget';
+    const searchQuery = `India startup business ideas ${interestLabel} ${budgetLabel} market 2025`;
+    const { finalSystemPrompt } = await askAIWithSearch({
+      userMessage: searchQuery,
+      systemPrompt: `You are an expert Indian business coach who gives personalized startup ideas based on real Indian market conditions.`,
+      needsSearch: true,
+    });
+
     console.log('🤖 Calling Groq AI...');
 
-    const text = await generateText(prompt);
+    const text = await generateText(finalSystemPrompt ? prompt : prompt, finalSystemPrompt || undefined);
 
     console.log('📤 Raw AI response length:', text?.length);
     console.log('📤 First 200 chars:', text?.substring(0, 200));

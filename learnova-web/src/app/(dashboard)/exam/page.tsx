@@ -38,8 +38,11 @@ export default function ExamSimulatorPage() {
   const [userAnswers, setUserAnswers] = useState<{[key: number]: string}>({})
   const [questionStatus, setQuestionStatus] = useState<{[key: number]: 'right' | 'wrong' | 'unanswered'}>({})
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [language, setLanguage] = useState<'english' | 'hindi'>('english')
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [noAnswerWarning, setNoAnswerWarning] = useState(false)
   
   const sliderRef = useRef<HTMLInputElement>(null)
 
@@ -64,29 +67,68 @@ export default function ExamSimulatorPage() {
 
   const handleStartExam = async () => {
     setLoading(true)
+    setError(null)
     setStartTime(new Date())
-    
+
+    const requestPayload = {
+      examType,
+      subject,
+      chapter: chapter || undefined,
+      questionCount,
+      language,
+    }
+
+    // Debug: log exactly what is being sent to the API
+    console.log('[EXAM PAGE] Sending request to /api/exam:', requestPayload)
+
     try {
       const response = await fetch('/api/exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          examType,
-          subject,
-          chapter: chapter || undefined,
-          questionCount,
-          language,
-        }),
+        body: JSON.stringify(requestPayload),
       })
 
       const data = await response.json()
-      
-      if (data.questions && data.questions.length > 0) {
-        setQuestions(data.questions)
-        setStep('exam')
+
+      // Debug: log exactly what the API returned
+      console.log('[EXAM PAGE] Raw API response:', data)
+
+      if (!response.ok) {
+        // Show error in-place — do NOT reset to setup; keep form values intact
+        const message = data.error || 'Failed to generate questions. Please try again.'
+        console.error('[EXAM PAGE] API error response:', message)
+        setError(message)
+        return
       }
-    } catch (error) {
-      console.error('Failed to generate exam:', error)
+
+      if (!Array.isArray(data.questions) || data.questions.length === 0) {
+        // Validation failed: log what we got and surface a clear message
+        console.error('[EXAM PAGE] Received invalid questions array:', data.questions)
+        setError('Could not generate questions — please try again.')
+        return
+      }
+
+      // Validate each question has the required fields
+      const allValid = data.questions.every(
+        (q: any) =>
+          typeof q.question === 'string' ||
+          (typeof q.text === 'string' &&
+            Array.isArray(q.options) &&
+            q.options.length >= 2 &&
+            q.correctAnswer)
+      )
+      if (!allValid) {
+        console.error('[EXAM PAGE] Some questions failed field validation:', data.questions)
+        setError('Could not generate questions — please try again.')
+        return
+      }
+
+      setQuestions(data.questions)
+      setStep('exam')
+    } catch (err: any) {
+      // Network / unexpected error — show in-place, do NOT reset the form
+      console.error('[EXAM PAGE] Unexpected error during exam generation:', err)
+      setError(err.message || 'Something went wrong. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -155,6 +197,22 @@ export default function ExamSimulatorPage() {
     setUserAnswers({})
     setQuestionStatus({})
     setStartTime(null)
+    setCurrentQuestionIndex(0)
+    setNoAnswerWarning(false)
+  }
+
+  const handleNextQuestion = () => {
+    const currentQ = questions[currentQuestionIndex]
+    if (!userAnswers[currentQ.number]) {
+      setNoAnswerWarning(true)
+      return
+    }
+    setNoAnswerWarning(false)
+    if (currentQuestionIndex === questions.length - 1) {
+      handleFinishExam()
+    } else {
+      setCurrentQuestionIndex(prev => prev + 1)
+    }
   }
 
   const getScore = () => {
@@ -332,6 +390,17 @@ export default function ExamSimulatorPage() {
             </div>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div 
+              className="mt-4 p-3 rounded-[10px] text-[13px] flex items-center gap-2"
+              style={{ background: '#450A0A', color: '#F87171', border: '1px solid #7F1D1D' }}
+            >
+              <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#F87171]" />
+              {error}
+            </div>
+          )}
+
           {/* Start Button */}
           <button
             onClick={handleStartExam}
@@ -343,17 +412,21 @@ export default function ExamSimulatorPage() {
               boxShadow: '0 8px 32px #7C3AED40',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.filter = 'brightness(1.1)'
-              e.currentTarget.style.boxShadow = '0 12px 40px #7C3AED50'
-              e.currentTarget.style.transform = 'translateY(-1px)'
+              if (!loading) {
+                e.currentTarget.style.filter = 'brightness(1.1)'
+                e.currentTarget.style.boxShadow = '0 12px 40px #7C3AED50'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.filter = 'brightness(1)'
-              e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED40'
-              e.currentTarget.style.transform = 'translateY(0)'
+              if (!loading) {
+                e.currentTarget.style.filter = 'brightness(1)'
+                e.currentTarget.style.boxShadow = '0 8px 32px #7C3AED40'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }
             }}
           >
-            <Zap size={18} />
+            <Zap size={18} className={loading ? 'animate-pulse' : ''} />
             {loading ? 'Generating Questions...' : 'Start Test'}
           </button>
         </div>
@@ -363,6 +436,11 @@ export default function ExamSimulatorPage() {
 
   // ===== EXAM STEP =====
   if (step === 'exam') {
+    const currentQ = questions[currentQuestionIndex]
+    const isLastQuestion = currentQuestionIndex === questions.length - 1
+    const progressPercent = ((currentQuestionIndex + 1) / questions.length) * 100
+    const hasAnswered = !!userAnswers[currentQ?.number]
+
     return (
       <div className="min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
         {/* Back Link */}
@@ -374,106 +452,137 @@ export default function ExamSimulatorPage() {
           ← Back to Setup
         </button>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mt-4 mb-6">
-          <h1 className="text-[24px] font-semibold" style={{ color: '#F5F3FF' }}>
-            {subject} - {examType}
+        {/* Question Counter + Subject */}
+        <div className="flex items-center justify-between mt-4 mb-3">
+          <h1 className="text-[18px] font-semibold" style={{ color: '#F5F3FF' }}>
+            {subject} · {examType}
           </h1>
-          <button
-            onClick={handleFinishExam}
-            className="text-[14px] font-medium px-4 py-2 rounded-lg transition-all hover:brightness-110"
+          <span className="text-[14px] font-medium" style={{ color: '#A78BFA' }}>
+            Question {currentQuestionIndex + 1} of {questions.length}
+          </span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full rounded-full mb-6" style={{ height: '6px', background: '#2D1B69' }}>
+          <div
+            className="rounded-full transition-all duration-500"
             style={{
-              background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
-              color: 'white',
+              height: '6px',
+              width: `${progressPercent}%`,
+              background: 'linear-gradient(90deg, #7C3AED, #4F46E5)',
+              boxShadow: '0 0 8px #7C3AED80',
+            }}
+          />
+        </div>
+
+        {/* Question Card */}
+        {currentQ && (
+          <div
+            className="rounded-[14px] p-6"
+            style={{
+              background: '#160D2E',
+              border: '1px solid #2D1B69',
             }}
           >
-            Finish Test
-          </button>
-        </div>
+            {/* Difficulty Badge */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
+                {currentQ.chapter || ''}
+              </span>
+              <span
+                className="text-[11px] px-2.5 py-0.5 rounded-[20px]"
+                style={{
+                  background: currentQ.difficulty === 'Easy' ? '#052E16' : currentQ.difficulty === 'Medium' ? '#451A03' : '#450A0A',
+                  color: currentQ.difficulty === 'Easy' ? '#4ADE80' : currentQ.difficulty === 'Medium' ? '#FB923C' : '#F87171',
+                  border: `1px solid ${currentQ.difficulty === 'Easy' ? '#166534' : currentQ.difficulty === 'Medium' ? '#92400E' : '#7F1D1D'}`,
+                }}
+              >
+                {currentQ.difficulty}
+              </span>
+            </div>
 
-        {/* Questions */}
-        <div className="flex flex-col gap-4">
-          {questions.map((question, idx) => (
-            <div
-              key={question.number}
-              className="rounded-[14px] p-6"
-              style={{
-                background: '#160D2E',
-                border: '1px solid #2D1B69',
-              }}
-            >
-              {/* Top Row */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
-                  Q{idx + 1} of {questions.length}
-                </span>
-                <span
-                  className="text-[11px] px-2.5 py-0.5 rounded-[20px]"
-                  style={{
-                    background: question.difficulty === 'Easy' ? '#052E16' : question.difficulty === 'Medium' ? '#451A03' : '#450A0A',
-                    color: question.difficulty === 'Easy' ? '#4ADE80' : question.difficulty === 'Medium' ? '#FB923C' : '#F87171',
-                    border: `1px solid ${question.difficulty === 'Easy' ? '#166534' : question.difficulty === 'Medium' ? '#92400E' : '#7F1D1D'}`,
-                  }}
-                >
-                  {question.difficulty}
-                </span>
-              </div>
+            {/* Question Text */}
+            <p className="text-[17px] leading-relaxed mb-5" style={{ color: '#F5F3FF' }}>
+              {currentQ.text}
+            </p>
 
-              {/* Question Text */}
-              <p className="text-[16px] leading-relaxed mb-4" style={{ color: '#F5F3FF' }}>
-                {question.text}
-              </p>
-
-              {/* Options */}
-              <div className="flex flex-col gap-2">
-                {question.options.map((option) => {
-                  const isSelected = userAnswers[question.number] === option.label
-                  return (
-                    <button
-                      key={option.label}
-                      onClick={() => handleSelectAnswer(question.number, option.label)}
-                      className="w-full flex items-center gap-3 rounded-[10px] px-4 py-3 text-left transition-all"
+            {/* Options */}
+            <div className="flex flex-col gap-2.5">
+              {currentQ.options.map((option) => {
+                const isSelected = userAnswers[currentQ.number] === option.label
+                return (
+                  <button
+                    key={option.label}
+                    onClick={() => {
+                      handleSelectAnswer(currentQ.number, option.label)
+                      setNoAnswerWarning(false)
+                    }}
+                    className="w-full flex items-center gap-3 rounded-[10px] px-4 py-3.5 text-left transition-all"
+                    style={{
+                      background: isSelected ? 'linear-gradient(135deg, #7C3AED20, #4F46E515)' : '#0F0A1E',
+                      border: `1px solid ${isSelected ? '#7C3AED' : '#2D1B69'}`,
+                      boxShadow: isSelected ? '0 0 12px #7C3AED30' : 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.borderColor = '#7C3AED'
+                        e.currentTarget.style.background = '#160D2E'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.borderColor = '#2D1B69'
+                        e.currentTarget.style.background = '#0F0A1E'
+                      }
+                    }}
+                  >
+                    <span
+                      className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold"
                       style={{
-                        background: isSelected ? 'linear-gradient(135deg, #7C3AED15, #4F46E510)' : '#0F0A1E',
-                        border: `1px solid ${isSelected ? '#7C3AED' : '#2D1B69'}`,
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = '#7C3AED'
-                          e.currentTarget.style.background = '#160D2E'
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = '#2D1B69'
-                          e.currentTarget.style.background = '#0F0A1E'
-                        }
+                        background: isSelected ? '#7C3AED' : '#1E1040',
+                        color: isSelected ? 'white' : '#A78BFA',
+                        border: `1px solid ${isSelected ? '#7C3AED' : '#4338CA'}`,
                       }}
                     >
-                      <span className="font-semibold min-w-[24px]" style={{ color: '#A78BFA' }}>
-                        {option.label}
-                      </span>
-                      <span className="text-[14px]" style={{ color: isSelected ? '#F5F3FF' : '#C4B5FD' }}>
-                        {option.text}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+                      {option.label}
+                    </span>
+                    <span className="text-[14px]" style={{ color: isSelected ? '#F5F3FF' : '#C4B5FD' }}>
+                      {option.text}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Finish Button */}
+        {/* No Answer Warning */}
+        {noAnswerWarning && (
+          <div
+            className="mt-3 px-4 py-2.5 rounded-[10px] text-[13px] flex items-center gap-2"
+            style={{ background: '#451A03', color: '#FB923C', border: '1px solid #92400E' }}
+          >
+            <span>⚠</span>
+            Please select an answer to continue.
+          </div>
+        )}
+
+        {/* Next / Submit Button */}
         <button
-          onClick={handleFinishExam}
-          className="w-full mt-8 text-[16px] font-semibold text-white rounded-[12px] py-4 transition-all hover:brightness-110"
+          onClick={handleNextQuestion}
+          className="w-full mt-5 text-[16px] font-semibold text-white rounded-[12px] py-4 transition-all"
           style={{
-            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
-            boxShadow: '0 8px 32px #7C3AED40',
+            background: hasAnswered
+              ? 'linear-gradient(135deg, #7C3AED, #4F46E5)'
+              : 'linear-gradient(135deg, #3D2A7D, #2E2880)',
+            boxShadow: hasAnswered ? '0 8px 32px #7C3AED40' : 'none',
+            cursor: 'pointer',
+            opacity: 1,
           }}
+          onMouseEnter={(e) => { if (hasAnswered) e.currentTarget.style.filter = 'brightness(1.1)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)' }}
         >
-          Submit Test & See Results
+          {isLastQuestion ? 'Submit Test & See Results' : 'Next Question →'}
         </button>
       </div>
     )

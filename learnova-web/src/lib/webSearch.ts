@@ -88,8 +88,10 @@ export function shouldSearch(query: string): boolean {
  */
 export async function searchWeb(query: string): Promise<SearchResult[]> {
   // Use your deployed SearXNG instance first, then fallback to public instances
+  const primaryInstance = (process.env.SEARXNG_URL || 'https://learnova-searxng.onrender.com/search')
+    .replace('/search', ''); // strip /search — this array appends it below
   const searxngInstances = [
-    'https://learnova-searxng.onrender.com', // Your deployed instance
+    primaryInstance,            // Your deployed instance (from env)
     'https://search.sapti.me',
     'https://searx.tiekoetter.com',
     'https://searx.daetalytica.io',

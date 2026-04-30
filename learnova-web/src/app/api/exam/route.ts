@@ -1,76 +1,135 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
+import { askAIWithSearch } from '@/lib/aiWithSearch'
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 })
+
+// Primary model — fast and capable. Fallback if rate-limited or unavailable.
+const PRIMARY_MODEL = 'llama-3.3-70b-versatile'
+const FALLBACK_MODEL = 'llama-3.1-8b-instant'
+
+/**
+ * Call Groq with automatic model fallback.
+ * If the primary model returns a 429 (rate limit) or 503/500 (service error),
+ * we immediately retry with the fallback model instead of returning an error.
+ */
+async function callGroqWithFallback(
+  messages: { role: 'system' | 'user'; content: string }[],
+  options: { temperature: number; max_tokens: number }
+) {
+  const tryModel = async (model: string) =>
+    groq.chat.completions.create({
+      messages,
+      model,
+      temperature: options.temperature,
+      max_tokens: options.max_tokens,
+    })
+
+  try {
+    console.log(`[EXAM API] Trying primary model: ${PRIMARY_MODEL}`)
+    return await tryModel(PRIMARY_MODEL)
+  } catch (err: any) {
+    const status = err?.status ?? err?.statusCode ?? 0
+    const isRetryable = status === 429 || status === 500 || status === 503 || status === 0
+    if (isRetryable) {
+      console.warn(
+        `[EXAM API] Primary model failed (status ${status}). Falling back to ${FALLBACK_MODEL}…`
+      )
+      return await tryModel(FALLBACK_MODEL)
+    }
+    // Non-retryable error — rethrow so the outer catch handles it
+    throw err
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const { examType, subject, chapter, questionCount, language } = body
 
-    let systemPrompt = `You are an expert Indian competitive exam tutor. Generate MCQs strictly following this format:
+    // ── Build prompt ──────────────────────────────────────────────────────────
+    const topicClause = chapter ? ` focusing on chapter/topic: ${chapter}` : ''
+    const langClause =
+      language === 'hindi'
+        ? ' Write question text, options, and explanation in Hindi (Devanagari script). Equations and formulas may remain in English.'
+        : ''
 
-Q[N]. [Question text]
-(A) option
-(B) option
-(C) option
-(D) option
-✓ Correct Answer: (X)
-Explanation: [step-by-step reasoning, mention NCERT chapter if applicable]
-Difficulty: [Easy / Medium / Hard]
+    const baseSystemPrompt = `You are an expert Indian competitive exam tutor specialising in ${examType}.
+Your job is to generate multiple-choice questions and return them as a valid JSON array.
+IMPORTANT RULES:
+- Respond with a valid JSON array ONLY — no markdown, no explanation, no code blocks, no surrounding text.
+- Each element of the array must be an object with exactly these fields:
+  {
+    "question": "<question text>",
+    "options": ["<option A text>", "<option B text>", "<option C text>", "<option D text>"],
+    "correct_answer": "<one of: A, B, C, or D>",
+    "explanation": "<step-by-step reasoning, mention NCERT chapter or exam topic if applicable>"
+  }
+- Generate EXACTLY ${questionCount} questions.
+- Do not include anything outside the JSON array in your response.${langClause}`
 
-Rules:
-- Exactly 4 options per question
-- Always show correct answer and explanation after each question
-- Mention which NCERT chapter or JEE/NEET topic this is from
-- Use Indian examples, units, and context
-- When asked for a mock test: ask subject + chapter + number of questions, then generate all at once
-- Generate exactly ${questionCount} questions
-- Return ONLY the questions in the format above, no additional text`
+    // ── Enrich system prompt with live web search results (3 s cap) ──────────
+    const searchQuery = `${examType} ${subject}${chapter ? ' ' + chapter : ''} important topics questions syllabus`
+    const searchPromise = askAIWithSearch({
+      userMessage: searchQuery,
+      systemPrompt: baseSystemPrompt,
+      needsSearch: true,
+    })
+    // Never let a slow SearXNG instance block question generation
+    const searchTimeout = new Promise<{ finalSystemPrompt: string; usedSearch: boolean }>(
+      (resolve) =>
+        setTimeout(
+          () => resolve({ finalSystemPrompt: baseSystemPrompt, usedSearch: false }),
+          3000
+        )
+    )
+    const { finalSystemPrompt: systemPrompt } = await Promise.race([searchPromise, searchTimeout])
 
-    if (language === 'hindi') {
-      systemPrompt += "\n\nIMPORTANT: Generate questions in Hindi (Devanagari script) for question text and explanations. NCERT Hindi textbook terms use karo jahan possible ho. Equations aur formulas English mein reh sakte hain. Options should be in Hindi."
-    }
+    const userPrompt = `Generate ${questionCount} MCQ questions for ${examType} — ${subject}${topicClause}.
+Return a JSON array of ${questionCount} objects. Each object must have: question, options (array of 4 strings), correct_answer (A/B/C/D), explanation.
+Do not include anything outside the JSON array in your response.`
 
-    const userPrompt = `Generate ${questionCount} MCQ questions for ${examType} - ${subject}${chapter ? ` (Chapter: ${chapter})` : ''}.
+    // ── Debug: log the prompt ─────────────────────────────────────────────────
+    console.log('[EXAM API] Prompt sent to AI:', { systemPrompt, userPrompt })
 
-Follow the exact format specified. Each question should have:
-1. Question number (Q1., Q2., etc.)
-2. Question text
-3. Four options labeled (A), (B), (C), (D)
-4. Correct answer with ✓ symbol
-5. Detailed explanation
-6. Difficulty level (Easy/Medium/Hard)`
-
-    const completion = await groq.chat.completions.create({
-      messages: [
+    const completion = await callGroqWithFallback(
+      [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-      max_tokens: 4000,
-    })
+      { temperature: 0.7, max_tokens: 4000 }
+    )
 
-    const responseText = completion.choices[0]?.message?.content || ''
+    const rawText = completion.choices[0]?.message?.content || ''
 
-    // Parse the response to extract questions
-    const questions = parseQuestions(responseText)
+    // ── Debug: log the raw AI response ────────────────────────────────────────
+    console.log('[EXAM API] Raw AI response:', rawText)
 
+    // ── Parse & validate ──────────────────────────────────────────────────────
+    const questions = parseAndValidateQuestions(rawText)
+
+    if (questions.length === 0) {
+      console.error('[EXAM API] Parsed 0 valid questions from response:', rawText)
+      return NextResponse.json(
+        { error: 'Could not generate questions — please try again.' },
+        { status: 422 }
+      )
+    }
+
+    console.log(`[EXAM API] Successfully parsed ${questions.length} questions.`)
     return NextResponse.json({ questions })
   } catch (error: any) {
-    console.error('Exam generation error:', error)
-    
-    // Handle timeout errors
+    console.error('[EXAM API] Generation error:', error)
+
     if (error?.name === 'AbortError' || error?.message?.includes('timeout')) {
       return NextResponse.json(
         { error: 'Request timed out. Please try again with fewer questions or a simpler topic.' },
         { status: 408 }
       )
     }
-    
+
     return NextResponse.json(
       { error: 'Failed to generate questions. The AI service is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }
@@ -78,62 +137,89 @@ Follow the exact format specified. Each question should have:
   }
 }
 
-function parseQuestions(text: string) {
-  const questions: any[] = []
-  const questionBlocks = text.split(/(?=Q\d+\.)/).filter(Boolean)
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  for (let i = 0; i < questionBlocks.length; i++) {
-    const block = questionBlocks[i]
-    try {
-      // Extract question number
-      const numberMatch = block.match(/Q(\d+)\./)
-      const number = numberMatch ? parseInt(numberMatch[1]) : i + 1
-
-      // Extract question text
-      const textMatch = block.match(/Q\d+\.\s+([\s\S]*?)(?=\n\(A\))/)
-      const questionText = textMatch ? textMatch[1].trim() : ''
-
-      // Extract options
-      const options: { label: string; text: string }[] = []
-      const optionMatches = block.matchAll(/\(([A-D])\)\s+([^\n]+)/g)
-      for (const match of optionMatches) {
-        options.push({
-          label: match[1],
-          text: match[2].trim(),
-        })
-      }
-
-      // Extract correct answer
-      const answerMatch = block.match(/✓\s*Correct Answer:\s*\(([A-D])\)/)
-      const correctAnswer = answerMatch ? answerMatch[1] : ''
-
-      // Extract explanation
-      const explanationMatch = block.match(/Explanation:\s*([\s\S]*?)(?=Difficulty:|$)/)
-      const explanation = explanationMatch ? explanationMatch[1].trim() : ''
-
-      // Extract difficulty
-      const difficultyMatch = block.match(/Difficulty:\s*(Easy|Medium|Hard)/i)
-      const difficulty = difficultyMatch ? (difficultyMatch[1] as 'Easy' | 'Medium' | 'Hard') : 'Medium'
-
-      // Extract chapter/topic if mentioned
-      const chapterMatch = explanation.match(/(?:NCERT|chapter|topic)[:\s]+([^\n,.]+)/i)
-      const chapter = chapterMatch ? chapterMatch[1].trim() : undefined
-
-      if (questionText && options.length === 4 && correctAnswer) {
-        questions.push({
-          number,
-          text: questionText,
-          options,
-          correctAnswer,
-          explanation,
-          difficulty,
-          chapter,
-        })
-      }
-    } catch (error) {
-      console.error('Error parsing question block:', error)
-    }
+/**
+ * Strip markdown code fences from a string and return the inner content.
+ * Handles ```json … ```, ``` … ```, and raw text with extra prose before/after
+ * the JSON array.
+ */
+function stripMarkdownFences(text: string): string {
+  // Remove ```json ... ``` or ``` ... ``` fences
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/)
+  if (fenceMatch) {
+    return fenceMatch[1].trim()
   }
 
-  return questions
+  // Try to extract the first JSON array directly (handles extra prose)
+  const arrayMatch = text.match(/(\[[\s\S]*\])/)
+  if (arrayMatch) {
+    return arrayMatch[1].trim()
+  }
+
+  return text.trim()
+}
+
+const OPTION_LABELS = ['A', 'B', 'C', 'D']
+
+/**
+ * Parse the raw AI text into a structured question array, with full validation.
+ * Maps the JSON schema { question, options[], correct_answer, explanation }
+ * to the shape the client expects:
+ * { number, text, options: [{label, text}], correctAnswer, explanation, difficulty }
+ */
+function parseAndValidateQuestions(rawText: string) {
+  const cleaned = stripMarkdownFences(rawText)
+
+  let parsed: any[]
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch (e) {
+    console.error('[EXAM API] JSON.parse failed. Cleaned text was:', cleaned)
+    return []
+  }
+
+  if (!Array.isArray(parsed)) {
+    console.error('[EXAM API] Parsed value is not an array:', parsed)
+    return []
+  }
+
+  const valid: any[] = []
+
+  parsed.forEach((item: any, idx: number) => {
+    // Required field checks
+    if (typeof item?.question !== 'string' || !item.question.trim()) {
+      console.warn(`[EXAM API] Item ${idx}: missing or invalid "question" field`, item)
+      return
+    }
+    if (!Array.isArray(item?.options) || item.options.length < 2) {
+      console.warn(`[EXAM API] Item ${idx}: "options" must be an array with at least 2 items`, item)
+      return
+    }
+    if (typeof item?.correct_answer !== 'string' || !item.correct_answer.trim()) {
+      console.warn(`[EXAM API] Item ${idx}: missing or invalid "correct_answer" field`, item)
+      return
+    }
+
+    // Normalise correct_answer to uppercase single letter
+    const correctAnswer = item.correct_answer.trim().toUpperCase().charAt(0)
+
+    // Map flat options array → [{label, text}] shape
+    const options = item.options.slice(0, 4).map((opt: any, i: number) => ({
+      label: OPTION_LABELS[i],
+      text: String(opt).trim(),
+    }))
+
+    valid.push({
+      number: idx + 1,
+      text: item.question.trim(),
+      options,
+      correctAnswer,
+      explanation: typeof item.explanation === 'string' ? item.explanation.trim() : '',
+      difficulty: 'Medium' as const,
+      chapter: undefined,
+    })
+  })
+
+  return valid
 }
