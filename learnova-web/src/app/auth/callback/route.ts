@@ -15,33 +15,44 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
+          getAll() {
+            return cookieStore.getAll()
           },
-          set(name: string, value: string, options) {
-            cookieStore.set(name, value, options)
-          },
-          remove(name: string, options) {
-            cookieStore.delete(name)
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {}
           },
         },
       }
     )
 
-    // Exchange the code for a session — this is the critical step
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
       console.error('Auth callback error:', error)
-      return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+      return NextResponse.redirect(`${origin}/auth?error=auth_failed`)
     }
 
     if (data.user) {
-      // Always redirect to chat — skip onboarding
-      return NextResponse.redirect(`${origin}/chat`)
+      // Read the pending role from cookie (set by client before OAuth redirect)
+      const pendingRole = cookieStore.get('learnova_pending_role')?.value
+
+      if (pendingRole && (pendingRole === 'student' || pendingRole === 'founder')) {
+        // User explicitly chose a role via landing page CTA — always apply it
+        await supabase
+          .from('profiles')
+          .upsert({ id: data.user.id, role: pendingRole }, { onConflict: 'id' })
+      }
+
+      // Clear the pending role cookie
+      const response = NextResponse.redirect(`${origin}/dashboard`)
+      response.cookies.set('learnova_pending_role', '', { maxAge: 0, path: '/' })
+      return response
     }
   }
 
-  // No code in URL — redirect to login
-  return NextResponse.redirect(`${origin}/login`)
+  return NextResponse.redirect(`${origin}/auth`)
 }

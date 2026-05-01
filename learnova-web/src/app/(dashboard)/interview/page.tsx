@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useRole } from '@/contexts/RoleContext'
 
 type Step = 'setup' | 'voice-interview' | 'chat-interview' | 'voice-results' | 'chat-results'
 type InterviewMode = 'voice' | 'chat'
@@ -13,6 +14,7 @@ interface VoiceEval { overallScore: number; communication: number; technical: nu
 
 export default function InterviewPage() {
   const { user } = useAuth()
+  const { role } = useRole()
   const [step, setStep] = useState<Step>('setup')
   const [mode, setMode] = useState<InterviewMode>('voice')
   const [interviewType, setInterviewType] = useState('')
@@ -269,7 +271,8 @@ export default function InterviewPage() {
     finally { setLoading(false) }
   }
 
-  const interviewTypes = [
+  // All interview types — filtered by role below
+  const allInterviewTypes = [
     { group: 'School & College', options: [
       { value: 'school_general', label: '🏫 School Interview (Class 9–12)' },
       { value: 'school_science', label: '🔬 Science Stream Interview' },
@@ -296,6 +299,11 @@ export default function InterviewPage() {
       { value: 'bank_interview', label: '🏦 Bank PO Interview' },
     ]},
   ]
+
+  // Role-filtered interview types
+  const interviewTypes = role === 'founder'
+    ? allInterviewTypes.filter(g => g.group === 'Startup & Business')
+    : allInterviewTypes.filter(g => g.group !== 'Startup & Business')
 
   const typeLabel = interviewTypes.flatMap(g => g.options).find(o => o.value === interviewType)?.label || 'Interview'
 

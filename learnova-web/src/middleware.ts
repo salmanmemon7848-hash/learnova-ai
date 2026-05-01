@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
+    pathname === '/auth' ||
     pathname === '/about' ||
     pathname === '/privacy' ||
     pathname === '/terms' ||
@@ -51,17 +52,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Get the current session — this reads the real Supabase cookie correctly
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Not authenticated trying to access protected route → send to login
+  // Not authenticated → send to /auth
   if (!session) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL('/auth', request.url))
   }
 
-  // Authenticated user trying to access login or signup → send to chat
+  // Authenticated user trying to access old login/signup → send to dashboard
   if (session && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/chat', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return response

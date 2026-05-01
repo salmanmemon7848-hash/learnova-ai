@@ -2,25 +2,33 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessageSquare, Target, Camera, Lightbulb, Settings } from 'lucide-react'
+import { MessageSquare, Target, Camera, Lightbulb, Settings, CheckCircle } from 'lucide-react'
+import type { UserRole } from '@/contexts/RoleContext'
 
-const navItems = [
-  { icon: MessageSquare, label: 'Chat', href: '/chat' },
-  { icon: Target, label: 'Exam', href: '/exam' },
-  { icon: Camera, label: 'Doubt', href: '/doubt-solver' },
-  { icon: Lightbulb, label: 'Ideas', href: '/business-ideas' },
-  { icon: Settings, label: 'Settings', href: '/settings' },
+const studentItems = [
+  { icon: MessageSquare, label: 'Chat',     href: '/chat' },
+  { icon: Target,        label: 'Exam',     href: '/exam' },
+  { icon: Camera,        label: 'Doubt',    href: '/doubt-solver' },
+  { icon: Lightbulb,     label: 'Ideas',    href: '/business-ideas' },
+  { icon: Settings,      label: 'Settings', href: '/settings' },
 ]
 
-export default function MobileBottomNav() {
+const founderItems = [
+  { icon: MessageSquare, label: 'Chat',      href: '/chat' },
+  { icon: CheckCircle,   label: 'Validate',  href: '/validate' },
+  { icon: Lightbulb,     label: 'Ideas',     href: '/business-ideas' },
+  { icon: Settings,      label: 'Settings',  href: '/settings' },
+]
+
+export default function MobileBottomNav({ role }: { role?: UserRole }) {
   const pathname = usePathname()
+  const items = role === 'founder' ? founderItems : studentItems
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex lg:hidden items-center justify-around bg-[#12121A] border-t border-white/10 px-2 py-2 h-16">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon
         const isActive = pathname === item.href
-        
         return (
           <Link
             key={item.href}

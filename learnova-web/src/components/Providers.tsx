@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { RoleProvider } from '@/contexts/RoleContext'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -18,7 +19,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <RoleProvider>
+          {children}
+        </RoleProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

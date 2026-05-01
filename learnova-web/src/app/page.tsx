@@ -12,12 +12,14 @@ function LandingContent() {
 
   const handleStudentClick = () => {
     setPersona('student');
-    router.push('/chat');
+    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'student');
+    router.push('/auth');
   };
 
   const handleFounderClick = () => {
     setPersona('founder');
-    router.push('/chat');
+    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'founder');
+    router.push('/auth');
   };
 
   const handlePromptClick = (prompt: string) => {
@@ -25,7 +27,7 @@ function LandingContent() {
   };
 
   const handleGetStarted = () => {
-    router.push('/chat');
+    router.push('/auth');
   };
 
   const features = [
@@ -95,7 +97,7 @@ function LandingContent() {
           {/* Right Buttons */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push('/auth')}
               className="text-[14px] font-medium transition-all hover:bg-[#1E1B4B]"
               style={{
                 color: '#A78BFA',
