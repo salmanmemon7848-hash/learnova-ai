@@ -10,7 +10,26 @@ type Phase = 'idle' | 'ai-speaking' | 'listening' | 'processing' | 'thinking'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 interface ChatAnswer { question: string; answer: string; score: number; feedback: string; improvement: string }
-interface VoiceEval { overallScore: number; communication: number; technical: number; confidence: number; presentation: number; strength: string; improvement: string }
+interface DimScore { score: number; verdict: string; evidence: string; detailed_feedback: string; improvement: string }
+interface QReview { question_number: number; question_asked: string; candidate_answer_summary: string; answer_quality: string; what_was_good: string; what_was_missing: string; ideal_answer_points: string[]; score: number }
+interface WeekPlan { week: string; focus: string; daily_practice: string; goal: string }
+interface VoiceEval {
+  overall_score?: number; hiring_decision?: string; hiring_reason?: string; executive_summary?: string;
+  dimension_scores?: Record<string, DimScore>;
+  question_by_question_review?: QReview[];
+  critical_weaknesses?: { weakness: string; impact: string; fix: string }[];
+  genuine_strengths?: { strength: string; evidence: string }[];
+  red_flags?: string[]; green_flags?: string[];
+  interview_ready?: string;
+  '30_day_improvement_plan'?: WeekPlan[];
+  resources_to_study?: { resource: string; why: string; time_needed: string }[];
+  senior_judge_message?: string;
+  // Legacy fields kept for backward compat
+  clarity?: number; confidence?: number; relevance?: number; depth?: number;
+  strongest_moment?: string; weakest_moment?: string; specific_improvements?: string[];
+  final_verdict?: string; overallScore?: number; communication?: number; technical?: number;
+  presentation?: number; strength?: string; improvement?: string;
+}
 
 export default function InterviewPage() {
   const { user } = useAuth()
@@ -40,10 +59,13 @@ export default function InterviewPage() {
   const isRecordingRef = useRef(false)
   const conversationHistoryRef = useRef<Message[]>([])
   const firstQuestionAskedRef = useRef(false)
+  const normalizedLanguageRef = useRef<LangKey>('english')
 
   // Chat mode state
-  const [chatQuestions, setChatQuestions] = useState<string[]>([])
-  const [chatCurrentQ, setChatCurrentQ] = useState(0)
+  interface ChatQuestion { id: number; question: string; category: string; difficulty: string; languageError?: boolean; }
+  const [chatQuestions, setChatQuestions] = useState<ChatQuestion[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isInterviewComplete, setIsInterviewComplete] = useState(false)
   const [chatAnswers, setChatAnswers] = useState<ChatAnswer[]>([])
   const [userAnswer, setUserAnswer] = useState('')
   const [showFeedback, setShowFeedback] = useState(false)
@@ -68,7 +90,7 @@ export default function InterviewPage() {
       pitch: 1.0,
       whisperLanguage: 'hi',
       whisperPrompt: 'यह एक हिंदी बोलने वाला उम्मीदवार है जो नौकरी के इंटरव्यू में है।',
-      voiceNames: ['hindi', 'hi-in', 'lekha', 'divya', 'kalpana'],
+      voiceNames: ['hindi', 'hi-in', 'lekha', 'divya', 'kalpana', 'google हिन्दी'],
       fallbackLang: 'hi-IN',
       interviewerName: 'Rajesh',
     },
@@ -77,16 +99,38 @@ export default function InterviewPage() {
       rate: 0.82,
       pitch: 0.97,
       whisperLanguage: 'hi',
-      whisperPrompt: 'This speaker mixes Hindi and English naturally — Hinglish. Job interview context.',
-      voiceNames: ['hindi', 'hi-in', 'ravi', 'india'],
+      whisperPrompt: 'This speaker mixes Hindi and English naturally in a job interview. Hinglish context.',
+      voiceNames: ['hindi', 'hi-in', 'ravi', 'india', 'google हिन्दी'],
       fallbackLang: 'en-IN',
       interviewerName: 'Vikram',
     },
   } as const
 
   type LangKey = keyof typeof languageProfiles
-  const normalizedLanguage: LangKey = (language as LangKey) in languageProfiles ? (language as LangKey) : 'english'
-  const activeProfile = languageProfiles[normalizedLanguage]
+
+  // ── normalizeLanguage — robust variant mapping (STEP 2) ───────────────────
+  const normalizeLanguage = (rawValue: string): LangKey => {
+    if (!rawValue) return 'english';
+    const val = rawValue.toLowerCase().trim();
+    const hindiVariants = ['hindi', 'hi', 'hi-in', 'हिंदी', 'hindi language', 'in hindi'];
+    const hinglishVariants = ['hinglish', 'hi-en', 'hindi+english', 'mixed', 'hinglish language'];
+    if (hindiVariants.some(v => val.includes(v))) return 'hindi';
+    if (hinglishVariants.some(v => val.includes(v))) return 'hinglish';
+    return 'english';
+  };
+
+  const normalizedLanguage = normalizeLanguage(language);
+  const activeProfile = languageProfiles[normalizedLanguage];
+
+  useEffect(() => {
+    const normalized = normalizeLanguage(language);
+    normalizedLanguageRef.current = normalized;
+    console.log('[Language] language changed to:', language);
+    console.log('[Language] normalizedLanguageRef updated to:', normalized);
+  }, [language]);
+
+  console.log('[Language] Raw selected value:', language);
+  console.log('[Language] Normalized to:', normalizedLanguage);
 
   // ── Ref-safe history updater (fixes stale closure bug) ───────────────────
   const addToHistory = (role: 'user' | 'assistant', content: string) => {
@@ -97,75 +141,178 @@ export default function InterviewPage() {
     return updated
   }
 
-  // ── TTS with onDone callback ─────────────────────────────────────────────
-  const speakText = (text: string, profile: typeof languageProfiles[LangKey], onDone?: () => void) => {
+  // ── Fallback questions so interview never freezes (FIX 3) ────────────────
+  const getFallbackQuestion = (
+    questionIndex: number,
+    lang: LangKey = 'english'
+  ): string => {
+    const fallbacks = {
+      english: [
+        'Tell me about yourself and your background.',
+        'What are your greatest strengths?',
+        'Describe a challenging situation you faced and how you handled it.',
+        'Where do you see yourself in 5 years?',
+        'Why are you interested in this role?',
+        'Tell me about a project you are most proud of.',
+        'How do you handle pressure and tight deadlines?',
+        'Do you have any questions for me?',
+      ],
+      hindi: [
+        'अपने बारे में और अपनी पृष्ठभूमि के बारे में बताइए।',
+        'आपकी सबसे बड़ी ताकत क्या है?',
+        'एक ऐसी चुनौतीपूर्ण स्थिति बताइए जिसका आपने सामना किया।',
+        'आप अगले 5 साल में खुद को कहाँ देखते हैं?',
+        'आप इस भूमिका में रुचि क्यों रखते हैं?',
+        'एक ऐसे प्रोजेक्ट के बारे में बताइए जिस पर आपको गर्व है।',
+        'आप दबाव और कड़ी समय सीमा को कैसे संभालते हैं?',
+        'क्या आपके मेरे लिए कोई सवाल हैं?',
+      ],
+      hinglish: [
+        'Apne baare mein batao aur background kya hai?',
+        'Tumhari sabse badi strength kya hai?',
+        'Ek challenging situation batao jab tumne kuch difficult handle kiya ho.',
+        'Agle 5 saal mein tum khud ko kahan dekhte ho?',
+        'Is role mein interested kyun ho?',
+        'Koi ek project batao jis par tumhe proud feel hota hai.',
+        'Pressure aur tight deadlines kaise handle karte ho?',
+        'Koi questions hain tumhare mere liye?',
+      ],
+    };
+
+    const list = fallbacks[lang] || fallbacks.english;
+    return list[Math.min(questionIndex, list.length - 1)];
+  }
+
+  // ── TTS with safety timeout — onend not firing fix (FIX 5) ───────────────
+  const speakText = (text: string, profile?: typeof languageProfiles[LangKey], onDone?: () => void) => {
     if (!speechSupported) { onDone?.(); return }
+    
+    // Always fall back to ref if no profile passed
+    const activeProfile = profile ||
+      languageProfiles[normalizedLanguageRef.current] ||
+      languageProfiles.english;
+      
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     const voices = window.speechSynthesis.getVoices()
     const matchedVoice =
-      voices.find(v => v.lang === profile.lang) ||
-      voices.find(v => profile.voiceNames.some(name => v.name.toLowerCase().includes(name))) ||
-      voices.find(v => v.lang === profile.fallbackLang) ||
+      voices.find(v => v.lang === activeProfile.lang) ||
+      voices.find(v => activeProfile.voiceNames.some((name: string) => v.name.toLowerCase().includes(name))) ||
+      voices.find(v => v.lang === activeProfile.fallbackLang) ||
       voices.find(v => v.lang.startsWith('en'))
+      
     if (matchedVoice) utterance.voice = matchedVoice
-    utterance.lang = profile.lang
-    utterance.rate = profile.rate
-    utterance.pitch = profile.pitch
+    utterance.lang = activeProfile.lang
+    utterance.rate = activeProfile.rate
+    utterance.pitch = activeProfile.pitch
     utterance.volume = 1.0
-    utterance.onend = () => { setPhase('idle'); onDone?.() }
-    utterance.onerror = () => { setPhase('idle'); onDone?.() }
+
+    console.log('[Speech] Speaking text in language:', activeProfile.lang, text.slice(0, 80))
+    console.log('[Speech] Voice selected:', matchedVoice?.name || 'default')
+
+    // Calculate safety timeout — avg ~150 wpm
+    const wordCount = text.split(/\s+/).length
+    const expectedDurationMs = Math.max(3000, (wordCount / 150) * 60 * 1000 * (1 / activeProfile.rate))
+    const safetyMs = expectedDurationMs + 3000
+
+    let speakingEnded = false
+    const onSpeakEnd = () => {
+      if (speakingEnded) return
+      speakingEnded = true
+      console.log('[Speech] onend fired')
+      setPhase('idle')
+      onDone?.()
+    }
+
+    utterance.onstart = () => {
+      console.log('[Speech] onstart fired');
+    }
+    utterance.onend = onSpeakEnd
+    utterance.onerror = onSpeakEnd
+    // Safety fallback — if onend never fires, trigger manually
+    setTimeout(onSpeakEnd, safetyMs)
+
     window.speechSynthesis.speak(utterance)
   }
 
   // ── Whisper transcription ─────────────────────────────────────────────────
-  const sendToWhisper = async (audioBlob: Blob): Promise<string> => {
-    const profile = activeProfile
+  const sendToWhisper = async (audioBlob: Blob, lang?: LangKey): Promise<string> => {
+    const currentLang = lang || normalizedLanguageRef.current || 'english';
+    const profile = languageProfiles[currentLang] || languageProfiles.english;
     const formData = new FormData()
     formData.append('file', audioBlob, 'audio.webm')
-    formData.append('model', 'whisper-large-v3')
-    formData.append('language', profile.whisperLanguage)
+    formData.append('language', profile.whisperLanguage) // 'hi' for Hindi/Hinglish, 'en' for English
     formData.append('prompt', profile.whisperPrompt)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_GROQ_API_KEY}` },
-          body: formData,
-        })
-        const data = await res.json()
-        if (data.text) return data.text
-      } catch {}
+
+    console.log('[Whisper] Transcribing with language hint:', profile.whisperLanguage);
+    console.log('[Whisper] Prompt:', profile.whisperPrompt.slice(0, 60));
+
+    try {
+      const res = await fetch('/api/interview/transcribe', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      console.log('[Whisper] Transcription result:', data.text?.slice(0, 100));
+      if (data.text) return data.text
+    } catch (err) {
+      console.error('[Whisper] Transcription error:', err)
     }
     return ''
   }
 
-  // ── Get next question from API ────────────────────────────────────────────
+  // ── Get next question from API — never throws (FIX 3) ────────────────────
   const getNextQuestion = async (fullHistory: Message[]): Promise<string> => {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await fetch('/api/interview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'voice_turn',
-            interviewType,
-            language: normalizedLanguage,
-            messages: fullHistory,
-          }),
-        })
-        const data = await res.json()
-        if (data.text) return data.text
-      } catch {
-        if (attempt === 1) {
-          const lastQ = fullHistory.filter(m => m.role === 'assistant').slice(-1)[0]?.content || ''
-          setPhase('ai-speaking')
-          speakText('One moment please. ' + lastQ, activeProfile, () => startRecording())
-          return ''
-        }
+    // CRITICAL: Always read from ref, never from state variable
+    const currentLanguage = normalizedLanguageRef.current;
+    console.log('[API] Calling /api/interview — history length:', fullHistory.length)
+    console.log('[API] Sending language to interview API:', currentLanguage);
+    try {
+      const res = await fetch('/api/interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'voice_turn',
+          interviewType,
+          language: currentLanguage, // MUST be 'english', 'hindi', or 'hinglish'
+          messages: fullHistory,
+        }),
+      })
+
+      console.log('[API] Response status:', res.status)
+      console.log('[API] Response content-type:', res.headers.get('content-type'))
+
+      // Check if response is OK before parsing JSON
+      if (!res.ok) {
+        const rawText = await res.text()
+        console.error('[API] Non-OK status:', res.status, rawText.slice(0, 200))
+        return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
       }
+
+      // Check content-type before parsing as JSON
+      const contentType = res.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const rawText = await res.text()
+        console.error('[API] Non-JSON response:', rawText.slice(0, 200))
+        return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
+      }
+
+      const data = await res.json()
+
+      const question = data.text || data.question || data.response || data.content || ''
+      if (!question || question.trim() === '') {
+        console.warn('[API] Empty question in response body')
+        return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
+      }
+
+      console.log('[API] Response received:', question.slice(0, 100))
+      return question
+
+    } catch (error: any) {
+      // NEVER let this crash the voice flow
+      console.error('[API] getNextQuestion failed:', error.message)
+      return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
     }
-    return ''
   }
 
   // ── Recording — reliable onstop pattern ──────────────────────────────────
@@ -200,13 +347,19 @@ export default function InterviewPage() {
 
   const handleRecordingComplete = async () => {
     try {
+      console.log('[Interview] Recording complete — starting transcription')
       setPhase('processing')
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-      const spokenText = await sendToWhisper(audioBlob)
+      
+      const currentLang = normalizedLanguageRef.current;
+      console.log('[Recording] Complete — language:', currentLang);
+      
+      const spokenText = await sendToWhisper(audioBlob, currentLang)
+      console.log('[Interview] Transcription result:', spokenText?.slice(0, 100))
 
       if (!spokenText || spokenText.trim() === '') {
         setPhase('ai-speaking')
-        speakText("I didn't catch that. Please try again.", activeProfile, () => {
+        speakText("I didn't catch that. Please try again.", languageProfiles[currentLang], () => {
           setTimeout(() => startRecording(), 1000)
         })
         return
@@ -217,8 +370,35 @@ export default function InterviewPage() {
       const afterUserHistory = addToHistory('user', spokenText)
 
       setPhase('thinking')
+      console.log('[Interview] Sending to API — history length:', afterUserHistory.length)
+
+      // SAFETY TIMEOUT — if thinking lasts more than 15 seconds, use fallback (FIX 4)
+      let thinkingResolved = false
+      const thinkingTimeout = setTimeout(() => {
+        if (thinkingResolved) return
+        thinkingResolved = true
+        console.warn('[Interview] Thinking timeout — using fallback question')
+        const fallback = getFallbackQuestion(afterUserHistory.filter(m => m.role === 'assistant').length, currentLang)
+        const afterFallbackHistory = addToHistory('assistant', fallback)
+        setCurrentQuestion(fallback)
+        setQuestionNum(q => q + 1)
+        setPhase('ai-speaking')
+        speakText(fallback, languageProfiles[currentLang], () => { startRecording() })
+      }, 15000)
+
       const nextQuestion = await getNextQuestion(afterUserHistory)
-      if (!nextQuestion) return
+
+      // Cancel the timeout — we got a real response in time
+      if (thinkingResolved) return // timeout already handled it
+      thinkingResolved = true
+      clearTimeout(thinkingTimeout)
+
+      if (!nextQuestion) {
+        setPhase('idle')
+        return
+      }
+
+      console.log('[Interview] API response received:', nextQuestion.slice(0, 100))
 
       setCurrentQuestion(nextQuestion)
       setQuestionNum(q => q + 1)
@@ -227,12 +407,19 @@ export default function InterviewPage() {
       const userTurns = afterAssistantHistory.filter(m => m.role === 'user').length
       if (userTurns > TOTAL_QUESTIONS) {
         setPhase('ai-speaking')
-        speakText(nextQuestion, activeProfile, async () => {
+        console.log('[Interview] Starting speech synthesis (final evaluation)')
+        speakText(nextQuestion, languageProfiles[currentLang], async () => {
           try {
+            console.log('[API] Sending voice_evaluate with language:', currentLang);
             const evalRes = await fetch('/api/interview', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'voice_evaluate', messages: afterAssistantHistory }),
+              body: JSON.stringify({
+                action: 'voice_evaluate',
+                interviewType,
+                language: currentLang, // language MUST be included — was missing before
+                messages: afterAssistantHistory,
+              }),
             })
             const evalData = await evalRes.json()
             setVoiceEval(evalData)
@@ -241,9 +428,11 @@ export default function InterviewPage() {
         })
       } else {
         setPhase('ai-speaking')
-        speakText(nextQuestion, activeProfile, () => { startRecording() })
+        console.log('[Speech] Using language profile:', currentLang);
+        speakText(nextQuestion, languageProfiles[currentLang], () => { startRecording() })
       }
-    } catch {
+    } catch (error: any) {
+      console.error('[Interview] handleRecordingComplete error:', error?.message)
       setPhase('idle')
     }
   }
@@ -252,6 +441,13 @@ export default function InterviewPage() {
   const startVoiceInterview = async () => {
     if (firstQuestionAskedRef.current) return // prevent re-triggering
     firstQuestionAskedRef.current = true
+    
+    // Set language ref immediately when interview starts
+    const lang = normalizeLanguage(language);
+    normalizedLanguageRef.current = lang;
+    console.log('[Interview Start] Language set to:', lang);
+    console.log('[Interview Start] language state raw value:', language);
+    
     setLoading(true)
     setError('')
     setMicDenied(false)
@@ -266,7 +462,7 @@ export default function InterviewPage() {
       setLastStudentAnswer('')
       setStep('voice-interview')
       setPhase('ai-speaking')
-      speakText(q, activeProfile, () => { startRecording() })
+      speakText(q, languageProfiles[lang], () => { startRecording() })
     } catch { setError('Connection issue. Please try again.') }
     finally { setLoading(false) }
   }
@@ -332,17 +528,89 @@ export default function InterviewPage() {
 
 
   // ── CHAT: start / submit / next ───────────────────────────────────────────
+  const parseAndValidateQuestions = (rawResponse: string) => {
+    try {
+      // Strip any markdown fences if model adds them
+      const cleaned = rawResponse
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+      
+      const questions = JSON.parse(cleaned);
+      
+      // Validate it's an array
+      if (!Array.isArray(questions)) {
+        throw new Error('Response is not an array');
+      }
+      
+      // Remove duplicate questions (by text similarity)
+      const seen = new Set();
+      const uniqueQuestions = questions.filter((q: any) => {
+        const key = (q.question || '').toLowerCase().trim().slice(0, 50);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      
+      // Reassign IDs sequentially after dedup
+      return uniqueQuestions.map((q: any, index: number) => ({
+        ...q,
+        id: index + 1
+      }));
+    } catch (error) {
+      console.error('Question parsing error:', error);
+      return [];
+    }
+  };
+
+  const validateLanguageConsistency = (questions: any[], expectedLanguage: string) => {
+    if (expectedLanguage !== 'hindi') return questions; // only check for Hindi
+    
+    const hindiPattern = /[\u0900-\u097F]/; // Devanagari Unicode range
+    
+    return questions.map((q, index) => {
+      const hasHindi = hindiPattern.test(q.question || '');
+      if (!hasHindi) {
+        console.warn(
+          'Language mismatch detected in question', index + 1, 
+          '— flagging for regeneration'
+        );
+        // Mark it so you can optionally regenerate or log it
+        return { ...q, languageError: true };
+      }
+      return q;
+    });
+  };
+
   const startChatInterview = async () => {
     setLoading(true)
     setError('')
+    setCurrentIndex(0)
+    setIsInterviewComplete(false)
     try {
+      const langToSend = normalizeLanguage(language);
+      console.log('[API] generate_questions — language:', langToSend);
       const res = await fetch('/api/interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generate_questions', interviewType, schoolClass, language }),
+        body: JSON.stringify({
+          action: 'generate_questions',
+          interviewType,
+          schoolClass,
+          language: langToSend,
+          numberOfQuestions: TOTAL_QUESTIONS,
+        }),
       })
       const data = await res.json()
-      setChatQuestions(data.questions || [])
+      
+      const validated = validateLanguageConsistency(
+        parseAndValidateQuestions(data.rawResponse || ''), 
+        langToSend
+      );
+      
+      const finalQuestions = validated.filter(q => !q.languageError);
+      
+      setChatQuestions(finalQuestions)
       setStep('chat-interview')
     } catch { setError('Failed to start interview.') }
     finally { setLoading(false) }
@@ -351,33 +619,42 @@ export default function InterviewPage() {
   const startInterview = () => mode === 'voice' ? startVoiceInterview() : startChatInterview()
 
   const submitChatAnswer = async () => {
-    if (!userAnswer.trim()) return
+    if (!userAnswer.trim() || !chatQuestions[currentIndex]) return
     setLoading(true)
     try {
+      const langToSend = normalizeLanguage(language);
+      console.log('[API] evaluate_answer — language:', langToSend);
       const res = await fetch('/api/interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'evaluate_answer', question: chatQuestions[chatCurrentQ], answer: userAnswer, language }),
+        body: JSON.stringify({ action: 'evaluate_answer', question: chatQuestions[currentIndex].question, answer: userAnswer, language: langToSend }),
       })
       const data = await res.json()
-      setChatAnswers(prev => [...prev, { question: chatQuestions[chatCurrentQ], answer: userAnswer, score: data.score || 0, feedback: data.feedback || '', improvement: data.improvement || '' }])
+      setChatAnswers(prev => [...prev, { question: chatQuestions[currentIndex].question, answer: userAnswer, score: data.score || 0, feedback: data.feedback || '', improvement: data.improvement || '' }])
       setShowFeedback(true)
     } catch { setError('Failed to evaluate answer.') }
     finally { setLoading(false) }
   }
 
-  const nextChatQuestion = () => {
-    setShowFeedback(false)
-    setUserAnswer('')
-    if (chatCurrentQ < chatQuestions.length - 1) setChatCurrentQ(chatCurrentQ + 1)
-    else setStep('chat-results')
-  }
+  const handleNextQuestion = () => {
+    setShowFeedback(false);
+    setUserAnswer('');
+    
+    // Prevent going beyond the last question
+    if (currentIndex >= chatQuestions.length - 1) {
+      setIsInterviewComplete(true);
+      setStep('chat-results');
+      return;
+    }
+    // Move to next question only if not at end
+    setCurrentIndex(prev => prev + 1);
+  };
 
   const resetAll = () => {
     setStep('setup'); setConversationHistory([]); setCurrentQuestion(''); setQuestionNum(0)
     setPhase('idle'); setLastStudentAnswer(''); setVoiceEval(null)
     setMicDenied(false); setVoiceError('')
-    setChatQuestions([]); setChatCurrentQ(0)
+    setChatQuestions([]); setCurrentIndex(0); setIsInterviewComplete(false)
     setChatAnswers([]); setUserAnswer(''); setShowFeedback(false); setError('')
     isRecordingRef.current = false
     conversationHistoryRef.current = []
@@ -622,49 +899,254 @@ export default function InterviewPage() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VOICE RESULTS
+  // VOICE RESULTS — Deep 4-tab evaluation
   // ═══════════════════════════════════════════════════════════════════════════
   if (step === 'voice-results') {
     const ev = voiceEval
+    const score = ev?.overall_score ?? ev?.overallScore ?? 0
+    const hiringDecision = ev?.hiring_decision || 'Maybe'
+    const hiringColors: Record<string, string> = {
+      'Strong Yes': '#10b981', 'Yes': '#34d399', 'Maybe': '#f59e0b', 'No': '#ef4444', 'Strong No': '#b91c1c',
+    }
+    const hiringColor = hiringColors[hiringDecision] || '#f59e0b'
+    const readyColors: Record<string, string> = {
+      'Yes — ready now': '#10b981',
+      'Almost — 2-4 weeks more practice': '#f59e0b',
+      'Not Yet — needs 1-2 months': '#ef4444',
+      'Far from ready': '#b91c1c',
+    }
+    const readyStatus = ev?.interview_ready || 'Almost — 2-4 weeks more practice'
+    const readyColor = readyColors[readyStatus] || '#f59e0b'
+    const [activeTab, setActiveTab] = useState<'overview'|'questions'|'weaknesses'|'plan'>('overview')
+    const [expandedQ, setExpandedQ] = useState<number|null>(null)
+    const dimScores = ev?.dimension_scores || {}
+    const qReviews = ev?.question_by_question_review || []
+    const weaknesses = ev?.critical_weaknesses || []
+    const strengths = ev?.genuine_strengths || []
+    const redFlags = ev?.red_flags || []
+    const greenFlags = ev?.green_flags || []
+    const plan30 = ev?.['30_day_improvement_plan'] || []
+    const resources = ev?.resources_to_study || []
+
+    const RCARD: React.CSSProperties = {
+      background: 'linear-gradient(135deg,#160D2E,#1E1040)',
+      border: `1px solid ${C.border}`,
+      borderRadius: 14,
+      padding: '20px 22px',
+      marginBottom: 12,
+    }
+
     return (
-      <div style={{ maxWidth: 640, margin: '0 auto', color: C.text }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Interview Complete! 🎉</h1>
-        <p style={{ color: C.muted, marginBottom: 24 }}>Here is your performance evaluation.</p>
+      <div style={{ maxWidth: 860, margin: '0 auto', color: C.text, paddingBottom: 48 }}>
+        <style>{`
+          .iq-tab { padding:8px 18px;border-radius:20px;border:1px solid;cursor:pointer;white-space:nowrap;font-size:0.88rem;transition:all .2s; }
+          .iq-tab.active { border-color:#7C3AED;background:rgba(124,58,237,0.2);color:#A78BFA;font-weight:600; }
+          .iq-tab:not(.active) { border-color:rgba(255,255,255,0.15);background:transparent;color:inherit; }
+          .iq-tab:hover:not(.active) { border-color:#7C3AED80; }
+          .dim-bar-bg { height:4px;border-radius:4px;background:rgba(255,255,255,0.1);margin-bottom:10px;overflow:hidden; }
+        `}</style>
 
-        <div style={{ background: 'linear-gradient(135deg,#160D2E,#1E1040)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, marginBottom: 20, boxShadow: '0 0 40px #7C3AED18' }}>
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <div style={{ fontSize: 56, fontWeight: 700, background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              {ev?.overallScore ?? '--'}<span style={{ fontSize: 24 }}>/10</span>
-            </div>
-            <div style={{ color: C.muted, fontSize: 14 }}>Overall Score</div>
+        {/* HERO */}
+        <div style={{ ...RCARD, textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ fontSize: '3.5rem', fontWeight: 700, background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+            {score}/10
           </div>
-
-          <ScoreBar label="💬 Communication" value={ev?.communication ?? 0} />
-          <ScoreBar label="🧠 Technical Knowledge" value={ev?.technical ?? 0} />
-          <ScoreBar label="💪 Confidence" value={ev?.confidence ?? 0} />
-          <ScoreBar label="🎯 Presentation" value={ev?.presentation ?? 0} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 20 }}>
-            <div style={{ background: 'rgba(16,185,129,.08)', border: '1px solid rgba(16,185,129,.3)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 11, color: '#10B981', fontWeight: 600, marginBottom: 6 }}>⭐ STRENGTH</div>
-              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{ev?.strength || '—'}</div>
-            </div>
-            <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.3)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: 11, color: '#F59E0B', fontWeight: 600, marginBottom: 6 }}>💡 IMPROVE</div>
-              <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{ev?.improvement || '—'}</div>
-            </div>
+          <div style={{ display: 'inline-block', padding: '6px 20px', borderRadius: 24, background: hiringColor + '22', border: `1px solid ${hiringColor}`, color: hiringColor, fontWeight: 600, fontSize: '1rem', margin: '12px 0' }}>
+            {hiringDecision}
           </div>
+          <p style={{ opacity: 0.7, maxWidth: 600, margin: '8px auto 0', lineHeight: 1.6, fontSize: 14 }}>{ev?.hiring_reason}</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button onClick={resetAll}
-            style={{ flex: 1, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: '0 8px 32px #7C3AED40' }}>
-            🔄 Try Again
-          </button>
-          <button onClick={() => { resetAll(); setTimeout(() => setMode('chat'), 50) }}
-            style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.accentL, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-            💬 Switch to Chat
-          </button>
+        {/* EXECUTIVE SUMMARY */}
+        {ev?.executive_summary && (
+          <div style={RCARD}>
+            <h3 style={{ marginBottom: 10, fontSize: 15 }}>📋 Executive Summary</h3>
+            <p style={{ lineHeight: 1.7, opacity: 0.9, fontSize: 14 }}>{ev.executive_summary}</p>
+          </div>
+        )}
+
+        {/* TABS */}
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0', marginBottom: 16 }}>
+          {(['overview','questions','weaknesses','plan'] as const).map(tab => (
+            <button key={tab} className={`iq-tab${activeTab===tab?' active':''}`} onClick={() => setActiveTab(tab)}>
+              {tab==='overview'?'📊 Overview':tab==='questions'?'🔍 Q&A Review':tab==='weaknesses'?'⚠️ Weaknesses':'📅 30-Day Plan'}
+            </button>
+          ))}
+        </div>
+
+        {/* TAB: OVERVIEW */}
+        {activeTab === 'overview' && (
+          <>
+            {/* 6 Dimension Cards */}
+            {Object.keys(dimScores).length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 12, marginBottom: 16 }}>
+                {Object.entries(dimScores).map(([key, dim]) => {
+                  const dc = dim.score >= 7 ? '#10b981' : dim.score >= 5 ? '#f59e0b' : '#ef4444'
+                  return (
+                    <div key={key} style={{ ...RCARD, padding: 16, marginBottom: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <h4 style={{ margin: 0, fontSize: '0.82rem', opacity: 0.7, textTransform: 'capitalize' }}>{key.replace(/_/g,' ')}</h4>
+                        <span style={{ fontWeight: 700, color: dc }}>{dim.score}/10</span>
+                      </div>
+                      <div className="dim-bar-bg"><div style={{ height: '100%', borderRadius: 4, width: `${dim.score*10}%`, background: dc, transition: 'width .6s ease' }} /></div>
+                      <div style={{ display: 'inline-block', fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', marginBottom: 6 }}>{dim.verdict}</div>
+                      <p style={{ fontSize: '0.82rem', opacity: 0.75, margin: '4px 0', lineHeight: 1.5 }}>{dim.detailed_feedback}</p>
+                      <div style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 8, padding: '7px 10px', fontSize: '0.78rem', marginTop: 6 }}>💡 {dim.improvement}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Red + Green Flags */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div style={RCARD}>
+                <h3 style={{ color: '#ef4444', marginBottom: 10, fontSize: 14 }}>🚩 Red Flags</h3>
+                {redFlags.length === 0 ? <p style={{ opacity: 0.5, fontSize: 13 }}>None detected</p>
+                  : redFlags.map((f,i) => <div key={i} style={{ padding: '7px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', marginBottom: 6, fontSize: '0.82rem' }}>❌ {f}</div>)}
+              </div>
+              <div style={RCARD}>
+                <h3 style={{ color: '#10b981', marginBottom: 10, fontSize: 14 }}>✅ Green Flags</h3>
+                {greenFlags.length === 0 ? <p style={{ opacity: 0.5, fontSize: 13 }}>None observed</p>
+                  : greenFlags.map((f,i) => <div key={i} style={{ padding: '7px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: 6, fontSize: '0.82rem' }}>✅ {f}</div>)}
+              </div>
+            </div>
+
+            {/* Readiness */}
+            <div style={{ ...RCARD, textAlign: 'center', padding: '20px' }}>
+              <h3 style={{ marginBottom: 10, fontSize: 14 }}>🎯 Interview Readiness</h3>
+              <div style={{ display: 'inline-block', padding: '10px 24px', borderRadius: 24, background: readyColor + '22', border: `1px solid ${readyColor}`, color: readyColor, fontWeight: 600, fontSize: '0.95rem' }}>{readyStatus}</div>
+            </div>
+
+            {/* Senior Judge */}
+            {ev?.senior_judge_message && (
+              <div style={{ ...RCARD, background: 'rgba(124,58,237,0.08)', borderColor: 'rgba(124,58,237,0.3)' }}>
+                <h3 style={{ marginBottom: 10, fontSize: 14 }}>👨‍⚖️ Senior Judge's Message</h3>
+                <p style={{ lineHeight: 1.8, fontStyle: 'italic', opacity: 0.9, fontSize: 14 }}>"{ev.senior_judge_message}"</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* TAB: Q&A REVIEW */}
+        {activeTab === 'questions' && (
+          <div>
+            {qReviews.length === 0
+              ? <div style={{ ...RCARD, textAlign: 'center', opacity: 0.5 }}>No question-by-question data available.</div>
+              : qReviews.map((q, i) => {
+                const qc = q.answer_quality === 'Excellent' ? '#10b981' : q.answer_quality === 'Good' ? '#34d399' : q.answer_quality === 'Average' ? '#f59e0b' : '#ef4444'
+                return (
+                  <div key={i} style={RCARD}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setExpandedQ(expandedQ===i?null:i)}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                        <span style={{ opacity: 0.5, fontSize: '0.82rem', flexShrink: 0 }}>Q{q.question_number}</span>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, background: qc + '20', color: qc, flexShrink: 0 }}>{q.answer_quality}</span>
+                        <p style={{ margin: 0, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: expandedQ===i?'normal':'nowrap' }}>{q.question_asked}</p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                        <strong style={{ color: qc }}>{q.score}/10</strong>
+                        <span style={{ opacity: 0.5 }}>{expandedQ===i?'▲':'▼'}</span>
+                      </div>
+                    </div>
+                    {expandedQ === i && (
+                      <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                        <div style={{ marginBottom: 10 }}>
+                          <strong style={{ fontSize: '0.75rem', opacity: 0.6 }}>YOUR ANSWER</strong>
+                          <p style={{ opacity: 0.8, fontSize: '0.88rem', marginTop: 4 }}>{q.candidate_answer_summary}</p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                          <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: 10 }}>
+                            <strong style={{ fontSize: '0.75rem', color: '#10b981' }}>✅ What Was Good</strong>
+                            <p style={{ fontSize: '0.82rem', marginTop: 5 }}>{q.what_was_good}</p>
+                          </div>
+                          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: 10 }}>
+                            <strong style={{ fontSize: '0.75rem', color: '#ef4444' }}>❌ What Was Missing</strong>
+                            <p style={{ fontSize: '0.82rem', marginTop: 5 }}>{q.what_was_missing}</p>
+                          </div>
+                        </div>
+                        <div style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 8, padding: 10 }}>
+                          <strong style={{ fontSize: '0.75rem', color: '#A78BFA' }}>💡 Ideal Answer Should Include</strong>
+                          <ul style={{ marginTop: 6, paddingLeft: 18 }}>
+                            {q.ideal_answer_points.map((p, j) => <li key={j} style={{ fontSize: '0.82rem', marginBottom: 3 }}>{p}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+          </div>
+        )}
+
+        {/* TAB: WEAKNESSES */}
+        {activeTab === 'weaknesses' && (
+          <div>
+            <h3 style={{ marginBottom: 14, fontSize: 15 }}>⚠️ Critical Weaknesses to Fix</h3>
+            {weaknesses.map((w, i) => (
+              <div key={i} style={{ ...RCARD, borderLeft: '3px solid #ef4444' }}>
+                <h4 style={{ color: '#ef4444', marginBottom: 8, fontSize: 14 }}>#{i+1} {w.weakness}</h4>
+                <div style={{ marginBottom: 8 }}>
+                  <strong style={{ fontSize: '0.75rem', opacity: 0.6 }}>IMPACT</strong>
+                  <p style={{ fontSize: '0.88rem', marginTop: 4 }}>{w.impact}</p>
+                </div>
+                <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8, padding: 10 }}>
+                  <strong style={{ fontSize: '0.75rem', color: '#10b981' }}>HOW TO FIX</strong>
+                  <p style={{ fontSize: '0.88rem', marginTop: 4 }}>{w.fix}</p>
+                </div>
+              </div>
+            ))}
+
+            <h3 style={{ margin: '20px 0 14px', fontSize: 15 }}>💪 Genuine Strengths</h3>
+            {strengths.length === 0
+              ? <div style={{ ...RCARD, opacity: 0.5, textAlign: 'center', fontSize: 13 }}>No significant strengths observed yet</div>
+              : strengths.map((s, i) => (
+                  <div key={i} style={{ ...RCARD, borderLeft: '3px solid #10b981' }}>
+                    <h4 style={{ color: '#10b981', marginBottom: 6, fontSize: 14 }}>{s.strength}</h4>
+                    <p style={{ fontSize: '0.88rem', opacity: 0.8 }}>Evidence: {s.evidence}</p>
+                  </div>
+                ))}
+
+            <h3 style={{ margin: '20px 0 14px', fontSize: 15 }}>📚 Resources to Study</h3>
+            {resources.map((r, i) => (
+              <div key={i} style={{ ...RCARD, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <strong style={{ fontSize: 14 }}>{r.resource}</strong>
+                    <p style={{ fontSize: '0.82rem', opacity: 0.7, marginTop: 4 }}>{r.why}</p>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', opacity: 0.5, whiteSpace: 'nowrap', marginLeft: 12 }}>{r.time_needed}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB: 30-DAY PLAN */}
+        {activeTab === 'plan' && (
+          <div>
+            <h3 style={{ marginBottom: 14, fontSize: 15 }}>📅 Your 30-Day Interview Improvement Plan</h3>
+            {plan30.map((week, i) => (
+              <div key={i} style={RCARD}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <h4 style={{ margin: 0, color: '#A78BFA', fontSize: 14 }}>{week.week}</h4>
+                  <span style={{ fontSize: '0.78rem', opacity: 0.6 }}>🎯 {week.goal}</span>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <strong style={{ fontSize: '0.75rem', opacity: 0.6 }}>FOCUS</strong>
+                  <p style={{ marginTop: 4, fontSize: '0.88rem' }}>{week.focus}</p>
+                </div>
+                <div style={{ background: 'rgba(124,58,237,0.1)', borderRadius: 8, padding: '10px 12px' }}>
+                  <strong style={{ fontSize: '0.75rem', color: '#A78BFA' }}>DAILY PRACTICE</strong>
+                  <p style={{ marginTop: 4, fontSize: '0.88rem' }}>{week.daily_practice}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+          <button onClick={resetAll} style={{ flex: 1, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: '0 8px 32px #7C3AED40' }}>🔄 Try Again</button>
+          <button onClick={() => { resetAll(); setTimeout(() => setMode('chat'), 50) }} style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.accentL, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>💬 Switch to Chat</button>
         </div>
       </div>
     )
@@ -676,12 +1158,12 @@ export default function InterviewPage() {
   if (step === 'chat-interview') return (
     <div style={{ maxWidth: 700, margin: '0 auto', color: C.text }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <span style={{ fontSize: 13, color: C.muted }}>Question {chatCurrentQ + 1} of {chatQuestions.length}</span>
+        <span style={{ fontSize: 13, color: C.muted }}>Question {currentIndex + 1} of {chatQuestions.length}</span>
         <button onClick={resetAll} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.muted, borderRadius: 8, padding: '6px 14px', fontSize: 13, cursor: 'pointer' }}>End Interview</button>
       </div>
 
       <div style={{ background: '#160D2E', border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
-        <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 16, lineHeight: 1.5 }}>{chatQuestions[chatCurrentQ]}</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 16, lineHeight: 1.5 }}>{chatQuestions[currentIndex]?.question}</h3>
         <textarea value={userAnswer} onChange={e => setUserAnswer(e.target.value)} placeholder="Type your answer here..." rows={6} disabled={showFeedback}
           style={{ width: '100%', background: 'rgba(255,255,255,.04)', border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: '12px 14px', fontSize: 14, resize: 'none', outline: 'none' }} />
         {!showFeedback && (
@@ -708,9 +1190,9 @@ export default function InterviewPage() {
               <div style={{ fontSize: 12, fontWeight: 600, color: '#F59E0B', marginBottom: 4 }}>What to improve:</div>
               <p style={{ fontSize: 13, color: C.muted }}>{last.improvement}</p>
             </div>
-            <button onClick={nextChatQuestion}
+            <button onClick={handleNextQuestion}
               style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-              {chatCurrentQ < chatQuestions.length - 1 ? 'Next Question →' : 'View Results'}
+              {currentIndex < chatQuestions.length - 1 ? 'Next Question →' : 'View Results'}
             </button>
           </div>
         )
@@ -723,7 +1205,9 @@ export default function InterviewPage() {
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', color: C.text }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Interview Complete! 🎉</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
+        {isInterviewComplete ? 'Interview Complete! 🎉' : 'Interview Results'}
+      </h1>
       <div style={{ background: 'linear-gradient(135deg,#160D2E,#1E1040)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, textAlign: 'center', marginBottom: 20, boxShadow: '0 0 40px #7C3AED18' }}>
         <div style={{ fontSize: 56, fontWeight: 700, background: 'linear-gradient(135deg,#A78BFA,#7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{avgChatScore}</div>
         <div style={{ color: C.muted, fontSize: 14 }}>Average Score out of 10</div>

@@ -39,7 +39,8 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
 
 export async function chatWithHistory(
   messages: { role: string; content: string }[],
-  systemPrompt?: string
+  systemPrompt?: string,
+  modelOverride?: string
 ): Promise<string> {
   const formatted: any[] = [];
   if (systemPrompt) formatted.push({ role: 'system', content: systemPrompt });
@@ -48,17 +49,28 @@ export async function chatWithHistory(
     content: m.content,
   })));
 
+  const runChat = async (model: string) => {
+    return groqClient.chat.completions.create({
+      model,
+      messages: formatted,
+      max_tokens: 2048,
+      temperature: 0.7,
+    });
+  };
+
   try {
     // Add 30 second timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
-    const response = await groqClient.chat.completions.create({
-      model: DEFAULT_MODEL,
-      messages: formatted,
-      max_tokens: 2048,
-      temperature: 0.7,
-    });
+    let response;
+    try {
+      response = await runChat(modelOverride || DEFAULT_MODEL);
+    } catch (primaryError) {
+      if (!modelOverride) throw primaryError;
+      console.warn(`Model override "${modelOverride}" failed, falling back to ${DEFAULT_MODEL}`);
+      response = await runChat(DEFAULT_MODEL);
+    }
 
     clearTimeout(timeout);
     return response.choices[0]?.message?.content || '';
@@ -71,5 +83,21 @@ export async function chatWithHistory(
     }
     
     throw new Error('AI is temporarily unavailable. Please try again in a moment.');
+  }
+}
+
+export async function transcribeAudio(audioFile: File, language?: string, prompt?: string): Promise<string> {
+  try {
+    const transcription = await groqClient.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-large-v3',
+      language: language || 'en',
+      prompt: prompt || '',
+      response_format: 'json',
+    });
+    return transcription.text;
+  } catch (error: any) {
+    console.error('Groq Whisper error:', error?.message || error);
+    throw new Error('Speech recognition failed. Please try again or type your answer.');
   }
 }
