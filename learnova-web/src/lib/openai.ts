@@ -40,7 +40,9 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
 export async function chatWithHistory(
   messages: { role: string; content: string }[],
   systemPrompt?: string,
-  modelOverride?: string
+  modelOverride?: string,
+  temperatureOverride?: number,
+  maxTokensOverride?: number
 ): Promise<string> {
   const formatted: any[] = [];
   if (systemPrompt) formatted.push({ role: 'system', content: systemPrompt });
@@ -53,8 +55,8 @@ export async function chatWithHistory(
     return groqClient.chat.completions.create({
       model,
       messages: formatted,
-      max_tokens: 2048,
-      temperature: 0.7,
+      max_tokens: maxTokensOverride ?? 2048,
+      temperature: temperatureOverride ?? 0.7,
     });
   };
 

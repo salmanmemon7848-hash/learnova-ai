@@ -267,7 +267,7 @@ DURING THE INTERVIEW:
 5. Ask 8–12 questions total depending on role.
 
 QUESTION TYPES TO INCLUDE:
-- 2 Introductory questions (Tell me about yourself, strengths/weaknesses)
+- 2 Introductory questions (professional background, strengths/weaknesses)
 - 3–4 Technical / Role-specific questions
 - 2 Situational questions (e.g. "Tell me about a time you failed")
 - 1–2 Pressure questions (e.g. "Why should I hire you over someone with more experience?")

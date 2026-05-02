@@ -1,4 +1,5 @@
 import { chatWithHistory } from '@/lib/openai';
+import { generateInterviewQuestions } from '@/lib/groqInterviewService';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -8,8 +9,8 @@ import {
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
-  getLanguageInstruction,
 } from '@/lib/learnovaKnowledge';
+import { LANGUAGE_CONFIGS, getLanguageInstruction, normalizeLanguage, validateLanguage } from '@/lib/languageConfig';
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,15 +27,17 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { action, interviewType, schoolClass, role, language, question, answer, messages, numberOfQuestions, experienceLevel } = body;
-    const INTERVIEW_MODEL = process.env.MOCK_INTERVIEW_MODEL || 'gemini-pro-high';
+    const INTERVIEW_MODEL = 'llama-3.3-70b-versatile';
     const normalizeAPILanguage = (lang: string): 'english' | 'hindi' | 'hinglish' => {
       const val = (lang || '').toLowerCase().trim();
-      if (['hindi', 'hi', 'hi-in'].some(v => val.includes(v))) return 'hindi';
-      if (['hinglish', 'hi-en', 'mixed'].some(v => val.includes(v))) return 'hinglish';
+      if (['hinglish', 'hi-en', 'mixed', 'hindi+english'].some(v => val === v || val.includes(v))) return 'hinglish';
+      if (['hindi', 'hi', 'hi-in'].some(v => val === v || val.includes(v))) return 'hindi';
       return 'english';
     };
     const normalizedLang = normalizeAPILanguage(language);
-    const selectedLanguage = normalizedLang === 'hindi' ? 'Hindi' : normalizedLang === 'hinglish' ? 'Hinglish' : 'English';
+    const selectedLanguage = normalizeLanguage(language);
+    const langConfig = LANGUAGE_CONFIGS[selectedLanguage];
+    const langInstruction = getLanguageInstruction(selectedLanguage);
     const totalQuestions = Number.isFinite(Number(numberOfQuestions)) ? Number(numberOfQuestions) : 8;
     console.log('[Interview API] Language received:', language);
     console.log('[Interview API] Language normalized:', normalizedLang);
@@ -46,18 +49,165 @@ export async function POST(req: NextRequest) {
 
     // VOICE MODE: conversational turn
     if (action === 'voice_turn') {
-      const strictLanguageRule = `
-CRITICAL LANGUAGE RULE — READ THIS FIRST:
-The user has selected: "${normalizedLang}" as their interview language.
+      const VOICE_FALLBACKS: Record<'english' | 'hindi' | 'hinglish', string[]> = {
+        english: [
+          'Please introduce your background and recent experience.',
+          'What core skills make you a strong fit for this role?',
+          'Describe a challenging project and the exact steps you took to solve it.',
+          'How do you prioritize tasks when deadlines are tight?',
+          'Tell me about a time you resolved a team conflict professionally.',
+          'Which technical or domain area do you want to improve next, and how?',
+          'Explain a difficult decision you made at work and its outcome.',
+          'How do you stay updated with changes in your field?',
+          'Describe a mistake you made and what you learned from it.',
+          'How do you handle feedback when you disagree with it?',
+          'What would your manager say is your biggest strength and one growth area?',
+          'What questions would you like to ask me about this role?',
+        ],
+        hindi: [
+          'कृपया अपने बैकग्राउंड और हाल के अनुभव के बारे में बताइए।',
+          'इस भूमिका के लिए आपको मजबूत उम्मीदवार क्या बनाता है?',
+          'किसी चुनौतीपूर्ण प्रोजेक्ट का उदाहरण दीजिए और आपने उसे कैसे हल किया, यह चरणों में समझाइए।',
+          'कड़े समय-सीमा में आप कामों की प्राथमिकता कैसे तय करते हैं?',
+          'टीम में मतभेद होने पर आपने उसे पेशेवर तरीके से कैसे सुलझाया, एक उदाहरण दीजिए।',
+          'किस तकनीकी या डोमेन क्षेत्र में आप आगे सुधार करना चाहते हैं और कैसे?',
+          'काम में लिया गया कोई कठिन निर्णय बताइए और उसका परिणाम क्या रहा।',
+          'अपने क्षेत्र में बदलावों के साथ अपडेट रहने के लिए आप क्या करते हैं?',
+          'कोई गलती बताइए जो आपने की और आपने उससे क्या सीखा।',
+          'जब आप किसी फीडबैक से सहमत नहीं होते, तब आप कैसे प्रतिक्रिया देते हैं?',
+          'आपका मैनेजर आपकी सबसे बड़ी ताकत और एक सुधार क्षेत्र के बारे में क्या कहेगा?',
+          'इस भूमिका के बारे में आप मुझसे कौन-से प्रश्न पूछना चाहेंगे?',
+        ],
+        hinglish: [
+          'Please apne background aur recent experience ke baare mein batao.',
+          'Is role ke liye aapko strong candidate kya banata hai?',
+          'Ek challenging project ka example do aur step by step batao aapne usse kaise solve kiya.',
+          'Tight deadlines mein aap tasks ko prioritize kaise karte ho?',
+          'Team conflict ko professional way mein kaise resolve kiya, ek example do.',
+          'Kaunsi technical ya domain skill mein aap next improvement karna chahte ho aur kaise?',
+          'Work mein liya hua ek difficult decision batao aur uska outcome kya tha.',
+          'Apne field mein changes ke saath updated rehne ke liye aap kya karte ho?',
+          'Koi mistake batao jo aapne ki aur aapne kya seekha.',
+          'Jab aap kisi feedback se agree nahi karte, tab aap kaise respond karte ho?',
+          'Aapka manager aapki biggest strength aur ek growth area ke baare mein kya bolega?',
+          'Is role ke baare mein aap mujhe kaunse questions poochna chahoge?',
+        ],
+      };
 
-You MUST write EVERY single response in ${normalizedLang} ONLY.
-Do NOT mix languages under any circumstance.
-Do NOT switch to English if the language is Hindi.
-Do NOT switch to Hindi if the language is English.
-Every question, every word, every punctuation — must be in ${normalizedLang}.
-This rule has NO exceptions. Not even for technical terms.
-If a technical term exists in ${normalizedLang}, use it.
-If no translation exists, write the term as-is but keep all surrounding text in ${normalizedLang}.
+      const sanitizeVoiceText = (text: string) =>
+        (text || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const normalizeForComparison = (text: string) =>
+        sanitizeVoiceText(text).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '');
+
+      /** Pull the sentence that is most likely the actual interview question (model often returns 2 sentences). */
+      const extractLikelyQuestionPortion = (raw: string): string => {
+        const t = sanitizeVoiceText(raw);
+        if (!t) return '';
+        const segments = t.split(/\s*(?:[.!?।]+|\n)\s+/).map((s) => s.trim()).filter(Boolean);
+        if (segments.length === 0) return t;
+        const qLike =
+          /[?？]|क्या|कैसे|क्यों|कहाँ|कब|describe|explain|tell me|what |why |how |which |could you|please|बताइए|बताओ|batao|kyun|kaise|kya|\baap\b/i;
+        for (let i = segments.length - 1; i >= 0; i--) {
+          const s = segments[i];
+          if (qLike.test(s) && s.length >= 12) return s;
+        }
+        return segments[segments.length - 1];
+      };
+
+      const wordDiceCoefficient = (aNorm: string, bNorm: string): number => {
+        const wa = new Set(aNorm.split(/\s+/).filter((w) => w.length > 1));
+        const wb = new Set(bNorm.split(/\s+/).filter((w) => w.length > 1));
+        if (wa.size === 0 || wb.size === 0) return 0;
+        let inter = 0;
+        for (const w of wa) if (wb.has(w)) inter++;
+        return (2 * inter) / (wa.size + wb.size);
+      };
+
+      const isSubstantiallySameQuestion = (candidateQ: string, previousQs: string[]): boolean => {
+        const n = normalizeForComparison(candidateQ);
+        if (n.length < 10) return false;
+        for (const pRaw of previousQs) {
+          const p = normalizeForComparison(pRaw);
+          if (!p) continue;
+          if (n === p) return true;
+          const shorter = n.length <= p.length ? n : p;
+          const longer = n.length > p.length ? n : p;
+          if (shorter.length >= 24 && longer.includes(shorter)) return true;
+          if (wordDiceCoefficient(n, p) >= 0.45) return true;
+        }
+        return false;
+      };
+
+      const pickUnusedVoiceQuestion = (
+        lang: 'english' | 'hindi' | 'hinglish',
+        startSlot: number,
+        previousAssistantTexts: string[]
+      ): string => {
+        const bank = VOICE_FALLBACKS[lang] || VOICE_FALLBACKS.english;
+        const prevExtracted = previousAssistantTexts.map((t) => extractLikelyQuestionPortion(t));
+        const order: number[] = [];
+        for (let i = Math.max(0, startSlot); i < bank.length; i++) order.push(i);
+        for (let i = 0; i < Math.min(startSlot, bank.length); i++) order.push(i);
+        for (const idx of order) {
+          const line = bank[idx];
+          if (!isSubstantiallySameQuestion(line, prevExtracted)) return line;
+        }
+        let bestLine = bank[startSlot % bank.length];
+        let bestSeparation = -1;
+        for (const line of bank) {
+          let maxDice = 0;
+          for (const p of prevExtracted) {
+            const d = wordDiceCoefficient(normalizeForComparison(line), normalizeForComparison(p));
+            if (d > maxDice) maxDice = d;
+          }
+          const separation = 1 - maxDice;
+          if (separation > bestSeparation) {
+            bestSeparation = separation;
+            bestLine = line;
+          }
+        }
+        return bestLine;
+      };
+
+      const ensureVoiceLanguage = (
+        text: string,
+        nextSlot: number,
+        previouslyAsked: string[]
+      ) => {
+        const cleaned = sanitizeVoiceText(text);
+        if (!cleaned) return pickUnusedVoiceQuestion(normalizedLang, nextSlot, previouslyAsked);
+
+        const valid = validateLanguage(cleaned, selectedLanguage);
+        if (!valid) {
+          console.warn(
+            `[Interview API] Voice question language mismatch for ${selectedLanguage}. Using language-safe fallback.`,
+            cleaned.substring(0, 120)
+          );
+          return pickUnusedVoiceQuestion(normalizedLang, nextSlot, previouslyAsked);
+        }
+
+        const candidateQ = extractLikelyQuestionPortion(cleaned);
+        const prevExtracted = previouslyAsked.map((q) => extractLikelyQuestionPortion(q));
+        if (isSubstantiallySameQuestion(candidateQ, prevExtracted)) {
+          console.warn('[Interview API] Duplicate or near-duplicate voice question — substituting next unique question.');
+          return pickUnusedVoiceQuestion(normalizedLang, nextSlot, previouslyAsked);
+        }
+
+        return cleaned;
+      };
+
+      const strictLanguageRule = `
+ABSOLUTE LANGUAGE RULE:
+SELECTED LANGUAGE: ${selectedLanguage}
+SCRIPT TO USE: ${langConfig.script}
+
+${langInstruction}
+
+This language rule is mandatory and higher priority than everything else.
+All output must be in ${selectedLanguage}.
 `;
 
       const systemPrompts: Record<string, string> = {
@@ -74,15 +224,15 @@ Voice rules — responses will be spoken aloud:
 - Sound like a real human interviewer on a phone call
 
 Interview structure:
-- Q1: "So, tell me about yourself and what brought you here."
+- Q1: "Please introduce your background and what motivates your career choices."
 - Q2-Q4: Core questions based on ${interviewType || 'General'}
 - Q5-Q6: Behavioral — "Tell me about a time when..."
 - Q7: One deeper challenging question
 - Q8: "Do you have any questions for me?"
 - After Q8: Spoken evaluation under 80 words. End with "All the best, thank you for your time."
 
-Never repeat a question already asked. Track conversation history carefully.`,
-
+Never repeat a question already asked. Track conversation history carefully.
+Before you respond, compare your planned next question to every assistant question in the history; if it is the same topic or wording, replace it with a different question.`,
         hindi: `${knowledgeBlock}\n${strictLanguageRule}
 आप Learnova के AI इंटरव्यूअर हैं — एक पेशेवर इंटरव्यूअर जो पूरी तरह हिंदी में इंटरव्यू ले रहे हैं।
 
@@ -103,7 +253,8 @@ Never repeat a question already asked. Track conversation history carefully.`,
 - Q8: "क्या आपके कोई सवाल हैं मेरे लिए?"
 - Q8 के बाद: 80 शब्दों में बोलकर मूल्यांकन। अंत में: "बहुत धन्यवाद और शुभकामनाएं।"
 
-पहले से पूछे गए सवाल दोबारा मत पूछें.`,
+पहले से पूछे गए सवाल दोबारा मत पूछें।
+जवाब देने से पहले, अपना अगला सवाल पूरे इतिहास से मिलाएँ; अगर विषय या शब्द समान लगें तो दूसरा सवाल पूछें।`,
 
         hinglish: `${knowledgeBlock}
 CRITICAL LANGUAGE RULE — READ THIS FIRST:
@@ -131,7 +282,8 @@ Interview structure:
 - Q8: "Koi questions hain tumhare mere liye?"
 - After Q8: Evaluation in Hinglish under 80 words. End with "Bahut achha tha interview, all the best!"
 
-Never repeat a question already asked.`,
+Never repeat a question already asked.
+Before responding, check your next question against every prior assistant line in history; if it matches in topic or wording, ask something different.`,
       };
 
       const systemPrompt = systemPrompts[normalizedLang] || systemPrompts['english'];
@@ -139,18 +291,19 @@ Never repeat a question already asked.`,
 
       const rawHistory: any[] = messages || [];
       const trimmedHistory = rawHistory.slice(-10);
+      const previouslyAsked = trimmedHistory
+        .filter((m: any) => m?.role === 'assistant')
+        .map((m: any) => String(m?.content || ''));
+      /** Next question slot: number of assistant turns already completed (0 = opening question). */
+      const nextSlot = previouslyAsked.length;
 
       try {
-        const response = await chatWithHistory(trimmedHistory, systemPrompt, INTERVIEW_MODEL);
-        if (!response || response.trim() === '') {
-          return NextResponse.json({
-            text: 'That is interesting. Could you elaborate a bit more on that?',
-          });
-        }
-        return NextResponse.json({ text: response });
+        const response = await chatWithHistory(trimmedHistory, systemPrompt, INTERVIEW_MODEL, 0.2, 1200);
+        const safeVoiceText = ensureVoiceLanguage(response, nextSlot, previouslyAsked);
+        return NextResponse.json({ text: safeVoiceText });
       } catch (aiError: any) {
         return NextResponse.json({
-          text: 'I see. Let us continue — could you tell me about a challenging situation you have handled?',
+          text: pickUnusedVoiceQuestion(normalizedLang, nextSlot, previouslyAsked),
         }, { status: 200 });
       }
     }
@@ -161,12 +314,14 @@ Never repeat a question already asked.`,
 
       const evaluationPrompt = `${knowledgeBlock}
 
+${langInstruction}
+
 You are a senior hiring manager and strict professional evaluator with 20 years of experience at top Indian and global companies. You have interviewed thousands of candidates. You give honest, detailed, and sometimes uncomfortable feedback because you want the candidate to genuinely improve.
 
 You just completed a full voice interview with this candidate.
 
 Interview type: ${interviewType || 'General'}
-Language used: ${normalizedLang}
+Language used: ${selectedLanguage}
 Full conversation transcript:
 ${conversationHistory.map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}
 
@@ -270,7 +425,7 @@ Return exactly this JSON structure (fill all fields with real assessment based o
   "senior_judge_message": "3-4 sentences as a strict but fair senior professional speaking directly to the candidate. Reference specific things from their interview. Personal and real, not generic."
 }`;
 
-      const response = await chatWithHistory(conversationHistory, evaluationPrompt, INTERVIEW_MODEL);
+      const response = await chatWithHistory(conversationHistory, evaluationPrompt, INTERVIEW_MODEL, 0.2, 4000);
 
       const defaultEval: any = {
         overall_score: 7,
@@ -336,134 +491,70 @@ Return exactly this JSON structure (fill all fields with real assessment based o
       const roleQuery = role || interviewType || 'general interview';
       const searchContext = await getSearchContext(roleQuery, 'interview', { role: role || '' });
       const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
-
-      const contextMap: Record<string, string> = {
-        school_general: `school teacher/principal interviewing a ${schoolClass || 'Class 9-12'} student`,
-        school_science: `interviewer assessing a ${schoolClass || 'Class 11-12'} Science stream student`,
-        school_commerce: `interviewer assessing a ${schoolClass || 'Class 11-12'} Commerce stream student`,
-        college_admission: 'college admission officer interviewing a student applying for undergraduate admission in India',
-        iit_interview: 'IIT/NIT counsellor assessing a JEE qualifier student',
-        medical_college: 'medical college interviewer assessing a NEET qualifier student',
-        software_engineer: 'senior software engineer conducting a technical + behavioral interview at an Indian tech company',
-        marketing: 'marketing manager conducting an interview at an Indian company',
-        sales: 'sales manager conducting an interview at an Indian company',
-        operations: 'operations manager conducting an interview at an Indian company',
-        finance: 'finance manager conducting an interview at an Indian bank or financial institution',
-        hr: 'HR manager conducting a behavioral and cultural fit interview',
-        startup_founder: 'experienced startup mentor grilling a young Indian founder about their startup idea',
-        investor_pitch: 'angel investor asking tough questions about a startup pitch',
-        upsc_interview: 'UPSC board member conducting the personality test (interview) round',
-        ssc_interview: 'SSC panel member conducting a government job interview',
-        bank_interview: 'bank HR manager conducting a Bank PO interview',
-      };
-
-      const systemPrompt = `${knowledgeBlock}
-${searchContext ? `\n\n${searchContext}` : ''}
-${searchUsageInstruction}
-
-You are a professional mock interview conductor for Learnova AI.
-
-CRITICAL LANGUAGE RULE — READ THIS FIRST:
-The user has selected: "${selectedLanguage}" as their interview language.
-
-You MUST write EVERY single question in ${selectedLanguage} ONLY.
-Do NOT mix languages under any circumstance.
-Do NOT switch to English if the language is Hindi.
-Do NOT switch to Hindi if the language is English.
-Every question, every word, every punctuation — must be in ${selectedLanguage}.
-This rule has NO exceptions. Not even for technical terms.
-If a technical term exists in ${selectedLanguage}, use it.
-If no translation exists, write the term as-is but keep all surrounding
-text in ${selectedLanguage}.
-
-INTERVIEW CONTEXT:
-- Job Role: ${role || contextMap[interviewType] || 'General Role'}
-- Experience Level: ${experienceLevel || schoolClass || 'Not specified'}
-- Interview Type: ${interviewType || 'General'}
-- Language: ${selectedLanguage}
-
-YOUR TASK:
-Generate a complete set of mock interview questions for this candidate.
-
-Generate exactly ${totalQuestions} unique mock interview questions.
-
-STRICT RULES — follow all of them without exception:
-
-LANGUAGE RULE:
-- Write ALL questions in ${selectedLanguage} ONLY
-- Zero mixing of languages allowed
-- If selectedLanguage is Hindi, use Devanagari script throughout
-
-UNIQUENESS RULE:
-- Every question must be completely different from the others
-- No two questions should test the same concept or skill
-- Do NOT repeat any question even if rephrased
-- Do NOT ask the same question in different words
-
-SEQUENCE RULE:
-- Questions must follow a logical progression: easy → medium → hard
-- Do NOT loop back or repeat earlier questions
-- Each question must build on or differ from all previous ones
-
-FORMAT RULE:
-- Return ONLY a valid JSON array, nothing else
-- No markdown, no backticks, no explanation text outside the JSON
-- No preamble like "Here are your questions:"
-- Format exactly like this:
-
-[
-  {
-    "id": 1,
-    "question": "question text here in ${selectedLanguage}",
-    "category": "technical/behavioral/situational",
-    "difficulty": "easy/medium/hard"
-  },
-  {
-    "id": 2,
-    "question": "question text here in ${selectedLanguage}",
-    "category": "technical/behavioral/situational", 
-    "difficulty": "easy/medium/hard"
-  }
-]
-
-Generate exactly ${totalQuestions} questions now. No more, no less.`;
-
-      const response = await chatWithHistory(
-        [{ role: 'user', content: `Generate exactly ${totalQuestions} questions now. No more, no less. JSON array ONLY.` }],
-        systemPrompt,
-        INTERVIEW_MODEL
-      );
-
-      return NextResponse.json({ rawResponse: response });
+      const questions = await generateInterviewQuestions({
+        jobRole: roleQuery,
+        experienceLevel: experienceLevel || schoolClass || 'Mid-level',
+        interviewType: `${interviewType || 'General'} ${searchUsageInstruction || ''} ${searchContext || ''}`.trim(),
+        numberOfQuestions: totalQuestions,
+        language: selectedLanguage,
+      });
+      return NextResponse.json({ questions, language: selectedLanguage, total: questions.length });
     }
 
     if (action === 'evaluate_answer') {
-      const langInstruction: Record<string, string> = {
-        english: 'Respond in clear professional English.',
-        hindi: 'प्रतिक्रिया हिंदी में दें।',
-        hinglish: 'Respond in natural Hinglish.',
-      };
+      const evaluationPrompt = `
+${langInstruction}
 
-      const systemPrompt = `You are an interviewer evaluating an answer.
+CRITICAL: Your ENTIRE feedback response must be in ${selectedLanguage} only.
+Zero English if language is Hindi. Zero Devanagari if language is Hinglish.
 
-${langInstruction[normalizedLang] || langInstruction.english}
-
+Evaluate this mock interview answer:
 Question: ${question}
 User's Answer: ${answer}
 
-Return ONLY a JSON object:
+Provide feedback in ${selectedLanguage} covering:
+1. Strengths of the answer
+2. Areas to improve
+3. A better/ideal answer example
+4. Score out of 10
+
+Return ONLY this JSON (all values in ${selectedLanguage}):
 {
   "score": 7,
-  "feedback": "What was good (2-3 sentences)",
-  "improvement": "What to improve (2-3 sentences)"
-}`;
+  "strengths": "write in ${selectedLanguage}",
+  "improvements": "write in ${selectedLanguage}",
+  "idealAnswer": "write in ${selectedLanguage}",
+  "overallFeedback": "write in ${selectedLanguage}"
+}
+`.trim();
 
-      const response = await chatWithHistory([{ role: 'user', content: 'Evaluate my answer' }], systemPrompt, INTERVIEW_MODEL);
+      const response = await chatWithHistory(
+        [{ role: 'user', content: evaluationPrompt }],
+        undefined,
+        INTERVIEW_MODEL,
+        0.2,
+        1000
+      );
       try {
         const match = response.match(/\{[\s\S]*\}/);
-        if (match) return NextResponse.json(JSON.parse(match[0]));
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          return NextResponse.json({
+            ...parsed,
+            feedback: parsed.overallFeedback || parsed.strengths || '',
+            improvement: parsed.improvements || '',
+          });
+        }
       } catch {}
-      return NextResponse.json({ score: 5, feedback: 'Good attempt.', improvement: 'Use the STAR method.' });
+      return NextResponse.json({
+        score: 5,
+        strengths: 'Good attempt.',
+        improvements: 'Use the STAR method.',
+        idealAnswer: '',
+        overallFeedback: 'Good attempt.',
+        feedback: 'Good attempt.',
+        improvement: 'Use the STAR method.',
+      });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -471,7 +562,7 @@ Return ONLY a JSON object:
     console.error('[Interview] FATAL route error:', fatalError?.message || fatalError);
     return NextResponse.json(
       {
-        text: 'I apologize for the interruption. Let us continue — could you tell me about your greatest professional strength?',
+        text: 'The session paused unexpectedly. Please continue with your next response.',
         error: fatalError?.message,
       },
       { status: 200 }
