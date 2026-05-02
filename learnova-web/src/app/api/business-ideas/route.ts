@@ -1,7 +1,14 @@
-import { generateText } from '@/lib/openai';
+﻿import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
-import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
+import { BUSINESS_IDEA_PROMPT } from '@/lib/systemPrompts';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  LEARNOVA_FULL_CONTEXT,
+  FOUNDER_KNOWLEDGE,
+  getLanguageInstruction,
+  buildIndianSearchQuery,
+} from '@/lib/learnovaKnowledge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,135 +19,172 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { answers, existingIdeas, count } = body;
+    const { conversationContext, answers, existingIdeas, count } = body;
 
-    console.log('📥 Business Ideas API called with answers:', answers);
+    console.log('ðŸ“¥ Business Ideas API called');
 
+    // Build context string from MCQ answers for backward compatibility
     const labelMap: Record<string, Record<string, string>> = {
       '1': { tech: 'Technology & Apps', education: 'Education & Coaching', health: 'Health & Wellness', lifestyle: 'Fashion & Beauty', food: 'Food & Agriculture', finance: 'Finance & Investment' },
       '2': { communication: 'Communication & Talking', creative: 'Creative Work', technical: 'Technical/Coding', organizing: 'Planning & Organizing', teaching: 'Teaching & Explaining', problem_solving: 'Problem Solving' },
       '3': { minimal: 'Less than 1 hour/day', part_time: '1-3 hours/day', serious: '3-6 hours/day', full_time: 'Full time 8+ hours/day' },
-      '4': { zero: 'Zero budget', low: 'Under ₹10,000', medium: '₹10,000 to ₹1 Lakh', high: '₹1 Lakh or more' },
+      '4': { zero: 'Zero budget', low: 'Under â‚¹10,000', medium: 'â‚¹10,000 to â‚¹1 Lakh', high: 'â‚¹1 Lakh or more' },
       '5': { students: 'Students & Young People', professionals: 'Working Professionals', small_business: 'Small Business Owners', rural: 'Rural Communities', families: 'Parents & Families', everyone: 'Mass Market' },
       '6': { product: 'Sell physical products', service: 'Offer a service', platform: 'Build app or platform', content: 'Content or courses', resell: 'Resell or franchise' },
       '7': { financial_risk: 'Losing money', time: 'Not enough time', market_risk: 'Nobody will buy', skills_gap: 'Lacks skills', competition: 'Too much competition', fearless: 'Not afraid at all' },
-      '8': { side_income: '₹20-50K side income/month', full_income: 'Replace full-time salary', exit: 'Build and sell company', scale: 'Scale to 100+ crore', impact: 'Social impact' },
+      '8': { side_income: 'â‚¹20-50K side income/month', full_income: 'Replace full-time salary', exit: 'Build and sell company', scale: 'Scale to 100+ crore', impact: 'Social impact' },
     };
 
-    const profile = Object.entries(answers || {}).map(([qId, val]) => {
-      const readable = labelMap[qId]?.[val as string] || val;
-      const qNames: Record<string, string> = {
-        '1': 'Interest', '2': 'Strength', '3': 'Daily Time',
-        '4': 'Budget', '5': 'Target Customer', '6': 'Business Model',
-        '7': 'Biggest Fear', '8': '3-Year Goal',
-      };
-      return `${qNames[qId] || `Q${qId}`}: ${readable}`;
-    }).join('\n');
+    const qNames: Record<string, string> = {
+      '1': 'Industry Interest', '2': 'Core Strength', '3': 'Daily Time Available',
+      '4': 'Starting Budget', '5': 'Target Customer', '6': 'Preferred Business Model',
+      '7': 'Biggest Fear', '8': '3-Year Goal',
+    };
+
+    // Build context from MCQ answers
+    const ctx = conversationContext || (() => {
+      const profile: Record<string, string> = {};
+      Object.entries(answers || {}).forEach(([qId, val]) => {
+        const readable = labelMap[qId]?.[val as string] || (val as string);
+        profile[qNames[qId] || `Q${qId}`] = readable;
+      });
+      return profile;
+    })();
 
     const excludeText = existingIdeas?.length > 0
-      ? `Do NOT repeat: ${existingIdeas.join(', ')}.`
+      ? `Do NOT suggest any of these already-shown ideas: ${existingIdeas.join(', ')}.`
       : '';
 
-    // FASTER, SHORTER PROMPT for quicker response
-    const prompt = `You are an expert Indian business coach. Generate exactly ${count || 5} personalized startup ideas for this person:
+    const budgetVal = answers?.['4'] as string;
+    const budgetLabel = labelMap['4']?.[budgetVal] || 'flexible budget';
+    const timeVal = answers?.['3'] as string;
+    const timeLabel = labelMap['3']?.[timeVal] || 'flexible time';
+    const industryVal = answers?.['1'] as string;
+    const industryLabel = labelMap['1']?.[industryVal] || 'business';
 
-${profile}
+    const languageInstruction = getLanguageInstruction(
+      typeof ctx === 'object' ? Object.values(ctx as Record<string, string>).join(' ') : String(ctx)
+    );
+
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${FOUNDER_KNOWLEDGE}
+
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are Learnova's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
+
+Everything you know about this founder:
+${JSON.stringify(ctx, null, 2)}
+
+Rules:
+- Every idea must be deeply personalized to their specific profile
+- If budget is low or zero, suggest only bootstrappable ideas
+- Factor in their time availability â€” part-time means low-maintenance ideas
+- Reference real Indian startups and specific Indian market realities
+- Be specific about Indian rupee amounts
+- Never suggest ideas that contradict their budget or time constraints
 ${excludeText}
 
-Return ONLY a JSON array. No text before or after. No markdown. Just pure JSON starting with [ and ending with ]:
+Respond ONLY in this exact JSON with no extra text or markdown:
 
-[{"name":"Business Name","category":"Category","description":"What it is and how it works in 2-3 sentences","difficulty":"Easy","viabilityScore":80,"scores":{"market_demand":80,"profit_potential":75,"ease_of_execution":85,"india_fit":90},"revenue":"₹X-Y/month","investment":"₹X to start","timeToRevenue":"X weeks","whyPerfect":"Why this matches their exact profile","howItWorks":"Day to day operations","revenueModel":"Exact pricing math","firstSteps":["Step 1","Step 2","Step 3","Step 4","Step 5","Step 6","Step 7"],"indianExamples":"Real Indian examples","toolsNeeded":["Tool1","Tool2","Tool3"],"risks":"Main risks and how to avoid","competitiveEdge":"Their unique advantage"}]
+{
+  "ideas": [
+    {
+      "rank": 1,
+      "idea_name": "string",
+      "one_line": "string â€” elevator pitch in one sentence",
+      "problem_solved": "string",
+      "target_customer": "string â€” specific, not generic",
+      "why_now": "string â€” why this idea makes sense in India right now",
+      "startup_cost": "â‚¹X â€“ â‚¹Y",
+      "revenue_model": "string",
+      "time_to_first_revenue": "string",
+      "real_indian_example": "string â€” similar successful startup or entrepreneur in India",
+      "biggest_risk": "string",
+      "founder_fit_score": 85,
+      "founder_fit_reason": "string â€” based on their specific skills and background",
+      "first_3_steps": ["string", "string", "string"],
+      "market_size_india": "string"
+    }
+  ],
+  "mentor_observation": "string â€” personal observation about this founder's strengths",
+  "honest_warning": "string â€” one honest risk specific to their situation",
+  "recommended_idea": 1,
+  "why_recommended": "string â€” specific reason based on their full profile"
+}
 
-Make all ${count || 5} ideas different industries. Match their exact budget (${labelMap['4']?.[answers?.['4'] as string] || 'unknown'}) and time (${labelMap['3']?.[answers?.['3'] as string] || 'unknown'}). Be specific with Indian rupee amounts and Indian market context.`;
+Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
 
-    // Enrich prompt with live Indian startup/market data
-    const interestLabel = labelMap['1']?.[answers?.['1'] as string] || answers?.['1'] || 'business';
-    const budgetLabel = labelMap['4']?.[answers?.['4'] as string] || 'any budget';
-    const searchQuery = `India startup business ideas ${interestLabel} ${budgetLabel} market 2025`;
-    const { finalSystemPrompt } = await askAIWithSearch({
-      userMessage: searchQuery,
-      systemPrompt: `You are an expert Indian business coach who gives personalized startup ideas based on real Indian market conditions.`,
-      needsSearch: true,
-    });
+    // Enrich with live Indian market data
+    const searchContext = await getSearchContext(`${industryLabel} startup`, 'business-ideas', { industry: industryLabel });
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+    const finalSystemPrompt = searchContext
+      ? `${systemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${systemPrompt}\n\n${searchUsageInstruction}`;
 
-    console.log('🤖 Calling Groq AI...');
+    console.log('ðŸ¤– Calling Groq AI for business ideas...');
+    const text = await generateText(systemPrompt, finalSystemPrompt || undefined);
+    console.log('ðŸ“¤ Raw AI response length:', text?.length);
 
-    const text = await generateText(finalSystemPrompt ? prompt : prompt, finalSystemPrompt || undefined);
+    let result: any = null;
 
-    console.log('📤 Raw AI response length:', text?.length);
-    console.log('📤 First 200 chars:', text?.substring(0, 200));
-
-    // Try multiple parsing strategies
-    let ideas = null;
-
-    // Strategy 1: Direct parse if starts with [
+    // Strategy 1: Direct parse
     try {
       const trimmed = text?.trim();
-      if (trimmed?.startsWith('[')) {
-        ideas = JSON.parse(trimmed);
-        console.log('✅ Strategy 1 worked — direct parse');
+      if (trimmed?.startsWith('{')) {
+        result = JSON.parse(trimmed);
+        console.log('âœ… Strategy 1 worked');
       }
-    } catch (e) {
-      console.log('Strategy 1 failed:', e);
-    }
+    } catch (_) {}
 
-    // Strategy 2: Find JSON array in text
-    if (!ideas) {
+    // Strategy 2: Regex find object
+    if (!result) {
       try {
-        const match = text?.match(/\[[\s\S]*\]/);
+        const match = text?.match(/\{[\s\S]*\}/);
         if (match) {
-          ideas = JSON.parse(match[0]);
-          console.log('✅ Strategy 2 worked — regex match');
+          result = JSON.parse(match[0]);
+          console.log('âœ… Strategy 2 worked');
         }
-      } catch (e) {
-        console.log('Strategy 2 failed:', e);
-      }
+      } catch (_) {}
     }
 
-    // Strategy 3: Clean markdown and retry
-    if (!ideas) {
+    // Strategy 3: Clean markdown
+    if (!result) {
       try {
         const cleaned = text?.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const match = cleaned?.match(/\[[\s\S]*\]/);
+        const match = cleaned?.match(/\{[\s\S]*\}/);
         if (match) {
-          ideas = JSON.parse(match[0]);
-          console.log('✅ Strategy 3 worked — cleaned markdown');
+          result = JSON.parse(match[0]);
+          console.log('âœ… Strategy 3 worked');
         }
-      } catch (e) {
-        console.log('Strategy 3 failed:', e);
-      }
+      } catch (_) {}
     }
 
-    // Strategy 4: Fix common JSON issues and retry
-    if (!ideas) {
+    // Strategy 4: Fix trailing commas
+    if (!result) {
       try {
-        const fixed = text
-          ?.replace(/,\s*]/g, ']')
-          ?.replace(/,\s*}/g, '}')
-          ?.replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ');
-        const match = fixed?.match(/\[[\s\S]*\]/);
+        const fixed = text?.replace(/,\s*]/g, ']').replace(/,\s*}/g, '}');
+        const match = fixed?.match(/\{[\s\S]*\}/);
         if (match) {
-          ideas = JSON.parse(match[0]);
-          console.log('✅ Strategy 4 worked — fixed JSON');
+          result = JSON.parse(match[0]);
+          console.log('âœ… Strategy 4 worked');
         }
-      } catch (e) {
-        console.log('Strategy 4 failed:', e);
-      }
+      } catch (_) {}
     }
 
-    if (!ideas || ideas.length === 0) {
-      console.error('❌ All parsing strategies failed. Raw text:', text);
+    if (!result || !result.ideas || result.ideas.length === 0) {
+      console.error('âŒ All parse strategies failed.');
       return NextResponse.json(
         { error: 'AI response could not be parsed. Please try again.' },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Successfully parsed ${ideas.length} ideas`);
-    return NextResponse.json({ ideas });
+    console.log(`âœ… Successfully parsed ${result.ideas.length} ideas`);
+    return NextResponse.json({ result });
 
   } catch (error: any) {
-    console.error('❌ Business Ideas Route Error:', error?.message || error);
+    console.error('âŒ Business Ideas Route Error:', error?.message || error);
     return NextResponse.json(
       { error: 'Server error. Please try again.' },
       { status: 500 }

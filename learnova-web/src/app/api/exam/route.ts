@@ -1,12 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
-import { askAIWithSearch } from '@/lib/aiWithSearch'
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
+import {
+  LEARNOVA_FULL_CONTEXT,
+  STUDENT_KNOWLEDGE,
+  CAREER_GUIDE_KNOWLEDGE,
+  EDUFINDER_KNOWLEDGE,
+  AI_WRITER_KNOWLEDGE,
+  getLanguageInstruction,
+  buildIndianSearchQuery,
+} from '@/lib/learnovaKnowledge'
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 })
 
-// Primary model — fast and capable. Fallback if rate-limited or unavailable.
+// Primary model â€” fast and capable. Fallback if rate-limited or unavailable.
 const PRIMARY_MODEL = 'llama-3.3-70b-versatile'
 const FALLBACK_MODEL = 'llama-3.1-8b-instant'
 
@@ -35,63 +44,111 @@ async function callGroqWithFallback(
     const isRetryable = status === 429 || status === 500 || status === 503 || status === 0
     if (isRetryable) {
       console.warn(
-        `[EXAM API] Primary model failed (status ${status}). Falling back to ${FALLBACK_MODEL}…`
+        `[EXAM API] Primary model failed (status ${status}). Falling back to ${FALLBACK_MODEL}â€¦`
       )
       return await tryModel(FALLBACK_MODEL)
     }
-    // Non-retryable error — rethrow so the outer catch handles it
+    // Non-retryable error â€” rethrow so the outer catch handles it
     throw err
   }
+}
+
+// â”€â”€ Adaptive difficulty instructions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const adaptiveInstructions: Record<string, string> = {
+  beginner:     'Generate straightforward recall-based questions. No tricks. Simple language. Class 6â€“8 level.',
+  intermediate: 'Mix recall and application questions. Some questions should require 2-step thinking. Class 9â€“12 level.',
+  advanced:     'Include conceptual, analytical, and trap questions. JEE/NEET/competitive exam standard. Some questions should have very close option pairs.',
+  adaptive:     'Generate a mixed set: 3 easy, 4 medium, 3 hard questions (scale proportionally). Clearly mark each with its difficulty.',
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { examType, subject, chapter, questionCount, language } = body
+    const { examType, subject, chapter, questionCount, language, studentLevel = 'adaptive' } = body
 
-    // ── Build prompt ──────────────────────────────────────────────────────────
-    const topicClause = chapter ? ` focusing on chapter/topic: ${chapter}` : ''
-    const langClause =
+    // â”€â”€ Build adaptive system prompt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const numQuestions = questionCount || 10
+    const topicClause  = chapter ? ` focusing on chapter/topic: ${chapter}` : ''
+    const langClause   =
       language === 'hindi'
         ? ' Write question text, options, and explanation in Hindi (Devanagari script). Equations and formulas may remain in English.'
         : ''
 
-    const baseSystemPrompt = `You are an expert Indian competitive exam tutor specialising in ${examType}.
-Your job is to generate multiple-choice questions and return them as a valid JSON array.
-IMPORTANT RULES:
-- Respond with a valid JSON array ONLY — no markdown, no explanation, no code blocks, no surrounding text.
-- Each element of the array must be an object with exactly these fields:
-  {
-    "question": "<question text>",
-    "options": ["<option A text>", "<option B text>", "<option C text>", "<option D text>"],
-    "correct_answer": "<one of: A, B, C, or D>",
-    "explanation": "<step-by-step reasoning, mention NCERT chapter or exam topic if applicable>"
-  }
-- Generate EXACTLY ${questionCount} questions.
-- Do not include anything outside the JSON array in your response.${langClause}`
+    const levelInstruction = adaptiveInstructions[studentLevel] ?? adaptiveInstructions['adaptive']
 
-    // ── Enrich system prompt with live web search results (3 s cap) ──────────
-    const searchQuery = `${examType} ${subject}${chapter ? ' ' + chapter : ''} important topics questions syllabus`
-    const searchPromise = askAIWithSearch({
-      userMessage: searchQuery,
-      systemPrompt: baseSystemPrompt,
-      needsSearch: true,
-    })
-    // Never let a slow SearXNG instance block question generation
-    const searchTimeout = new Promise<{ finalSystemPrompt: string; usedSearch: boolean }>(
-      (resolve) =>
-        setTimeout(
-          () => resolve({ finalSystemPrompt: baseSystemPrompt, usedSearch: false }),
-          3000
-        )
-    )
-    const { finalSystemPrompt: systemPrompt } = await Promise.race([searchPromise, searchTimeout])
+    // â”€â”€ Language detection & India-specific search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const sampleMsg = `${subject} ${chapter || ''} ${examType}`.trim();
+    const languageInstruction = getLanguageInstruction(language === 'hindi' ? 'à¤¨à¤®à¤¸à¥à¤¤à¥‡' : sampleMsg);
 
-    const userPrompt = `Generate ${questionCount} MCQ questions for ${examType} — ${subject}${topicClause}.
-Return a JSON array of ${questionCount} objects. Each object must have: question, options (array of 4 strings), correct_answer (A/B/C/D), explanation.
-Do not include anything outside the JSON array in your response.`
+    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${STUDENT_KNOWLEDGE}
 
-    // ── Debug: log the prompt ─────────────────────────────────────────────────
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are Learnova's adaptive exam engine for Indian students.
+
+Student level: ${levelInstruction}
+Subject: ${subject}
+Topic/Chapter: ${chapter || 'General'}
+Exam type: ${examType}
+Number of questions: ${numQuestions}
+
+Generate exactly ${numQuestions} MCQ questions. Use web search results provided to make questions current and syllabus-accurate.${langClause}
+
+Respond ONLY in this exact JSON â€” no markdown, no extra text:
+
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "string",
+      "options": {
+        "A": "string",
+        "B": "string",
+        "C": "string",
+        "D": "string"
+      },
+      "correct_answer": "A",
+      "difficulty": "easy",
+      "topic_tag": "string â€” specific sub-topic this tests",
+      "explanation": "string â€” full explanation of why this answer is correct",
+      "why_wrong": {
+        "B": "string â€” why B is wrong",
+        "C": "string â€” why C is wrong",
+        "D": "string â€” why D is wrong"
+      },
+      "exam_relevance": "string â€” which exam this type of question appears in"
+    }
+  ]
+}
+
+Rules:
+- Never repeat a question type twice in a row
+- For adaptive level: first 3 questions must be easier, last 3 must be harder
+- explanation must be at least 2 sentences
+- why_wrong must be filled for all 3 wrong options
+- topic_tag must be specific (e.g. "Newton's Third Law" not just "Physics")
+- Never generate image-dependent questions since we cannot show images
+- difficulty must be exactly one of: easy, medium, hard`
+
+    // Enrich system prompt with live web search results (3 s cap)
+    const searchContext = await Promise.race([
+      getSearchContext(
+        `${examType} ${subject} ${chapter || ''}`.trim(),
+        'exam',
+        { subject, examType, chapter: chapter || '' }
+      ),
+      new Promise<string>((resolve) => setTimeout(() => resolve(''), 3000)),
+    ]);
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+    const systemPrompt = searchContext
+      ? `${baseSystemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${baseSystemPrompt}\n\n${searchUsageInstruction}`;
+
+    const userPrompt = `Generate ${numQuestions} MCQ questions for ${examType} â€” ${subject}${topicClause}.
+Return the JSON object with a "questions" array of ${numQuestions} objects. Each object must have: id, question, options (object with A/B/C/D keys), correct_answer (A/B/C/D), difficulty (easy/medium/hard), topic_tag, explanation, why_wrong (object with wrong option keys), exam_relevance.
+Do not include anything outside the JSON object in your response.`
+
     console.log('[EXAM API] Prompt sent to AI:', { systemPrompt, userPrompt })
 
     const completion = await callGroqWithFallback(
@@ -99,21 +156,19 @@ Do not include anything outside the JSON array in your response.`
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      { temperature: 0.7, max_tokens: 4000 }
+      { temperature: 0.7, max_tokens: 6000 }
     )
 
     const rawText = completion.choices[0]?.message?.content || ''
-
-    // ── Debug: log the raw AI response ────────────────────────────────────────
     console.log('[EXAM API] Raw AI response:', rawText)
 
-    // ── Parse & validate ──────────────────────────────────────────────────────
+    // â”€â”€ Parse & validate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const questions = parseAndValidateQuestions(rawText)
 
     if (questions.length === 0) {
       console.error('[EXAM API] Parsed 0 valid questions from response:', rawText)
       return NextResponse.json(
-        { error: 'Could not generate questions — please try again.' },
+        { error: 'Could not generate questions â€” please try again.' },
         { status: 422 }
       )
     }
@@ -137,12 +192,10 @@ Do not include anything outside the JSON array in your response.`
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Strip markdown code fences from a string and return the inner content.
- * Handles ```json … ```, ``` … ```, and raw text with extra prose before/after
- * the JSON array.
+ * Strip markdown code fences and extract the JSON object/array.
  */
 function stripMarkdownFences(text: string): string {
   // Remove ```json ... ``` or ``` ... ``` fences
@@ -151,7 +204,13 @@ function stripMarkdownFences(text: string): string {
     return fenceMatch[1].trim()
   }
 
-  // Try to extract the first JSON array directly (handles extra prose)
+  // Try to extract the outermost { â€¦ } block (new schema: { questions: [...] })
+  const objMatch = text.match(/(\{[\s\S]*\})/)
+  if (objMatch) {
+    return objMatch[1].trim()
+  }
+
+  // Fallback: try to extract a plain array (old schema)
   const arrayMatch = text.match(/(\[[\s\S]*\])/)
   if (arrayMatch) {
     return arrayMatch[1].trim()
@@ -164,14 +223,14 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D']
 
 /**
  * Parse the raw AI text into a structured question array, with full validation.
- * Maps the JSON schema { question, options[], correct_answer, explanation }
- * to the shape the client expects:
- * { number, text, options: [{label, text}], correctAnswer, explanation, difficulty }
+ * Supports both:
+ *   - NEW schema: { questions: [{ id, question, options:{A,B,C,D}, correct_answer, difficulty, topic_tag, explanation, why_wrong, exam_relevance }] }
+ *   - OLD schema: [{ question, options:[], correct_answer, explanation }]
  */
 function parseAndValidateQuestions(rawText: string) {
   const cleaned = stripMarkdownFences(rawText)
 
-  let parsed: any[]
+  let parsed: any
   try {
     parsed = JSON.parse(cleaned)
   } catch (e) {
@@ -179,45 +238,77 @@ function parseAndValidateQuestions(rawText: string) {
     return []
   }
 
-  if (!Array.isArray(parsed)) {
-    console.error('[EXAM API] Parsed value is not an array:', parsed)
+  // Handle new { questions: [...] } wrapper
+  let items: any[] = []
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.questions)) {
+    items = parsed.questions
+  } else if (Array.isArray(parsed)) {
+    items = parsed
+  } else {
+    console.error('[EXAM API] Parsed value is neither array nor {questions:[]}:', parsed)
     return []
   }
 
   const valid: any[] = []
 
-  parsed.forEach((item: any, idx: number) => {
-    // Required field checks
-    if (typeof item?.question !== 'string' || !item.question.trim()) {
-      console.warn(`[EXAM API] Item ${idx}: missing or invalid "question" field`, item)
-      return
-    }
-    if (!Array.isArray(item?.options) || item.options.length < 2) {
-      console.warn(`[EXAM API] Item ${idx}: "options" must be an array with at least 2 items`, item)
-      return
-    }
-    if (typeof item?.correct_answer !== 'string' || !item.correct_answer.trim()) {
-      console.warn(`[EXAM API] Item ${idx}: missing or invalid "correct_answer" field`, item)
+  items.forEach((item: any, idx: number) => {
+    // â”€â”€ Required: question text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const questionText = item?.question || item?.text
+    if (typeof questionText !== 'string' || !questionText.trim()) {
+      console.warn(`[EXAM API] Item ${idx}: missing question`, item)
       return
     }
 
-    // Normalise correct_answer to uppercase single letter
+    // â”€â”€ Required: correct_answer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (typeof item?.correct_answer !== 'string' || !item.correct_answer.trim()) {
+      console.warn(`[EXAM API] Item ${idx}: missing correct_answer`, item)
+      return
+    }
     const correctAnswer = item.correct_answer.trim().toUpperCase().charAt(0)
 
-    // Map flat options array → [{label, text}] shape
-    const options = item.options.slice(0, 4).map((opt: any, i: number) => ({
-      label: OPTION_LABELS[i],
-      text: String(opt).trim(),
-    }))
+    // â”€â”€ Options: accept object {A,B,C,D} or legacy array â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    let options: { label: string; text: string }[] = []
+    if (item?.options && typeof item.options === 'object' && !Array.isArray(item.options)) {
+      // New schema: { A: "...", B: "...", C: "...", D: "..." }
+      options = OPTION_LABELS
+        .filter((l) => typeof item.options[l] === 'string')
+        .map((l) => ({ label: l, text: String(item.options[l]).trim() }))
+    } else if (Array.isArray(item?.options)) {
+      // Old schema: ["opt1", "opt2", ...]
+      options = item.options.slice(0, 4).map((opt: any, i: number) => ({
+        label: OPTION_LABELS[i],
+        text: String(opt).trim(),
+      }))
+    }
+
+    if (options.length < 2) {
+      console.warn(`[EXAM API] Item ${idx}: insufficient options`, item)
+      return
+    }
+
+    // â”€â”€ Normalise difficulty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const rawDiff = (item?.difficulty || 'Medium').toString().toLowerCase()
+    const difficulty: 'Easy' | 'Medium' | 'Hard' =
+      rawDiff === 'easy' ? 'Easy' : rawDiff === 'hard' ? 'Hard' : 'Medium'
+
+    // â”€â”€ Build why_wrong map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    let whyWrong: Record<string, string> = {}
+    if (item?.why_wrong && typeof item.why_wrong === 'object') {
+      whyWrong = item.why_wrong
+    }
 
     valid.push({
-      number: idx + 1,
-      text: item.question.trim(),
+      number:        idx + 1,
+      id:            item?.id ?? idx + 1,
+      text:          questionText.trim(),
       options,
       correctAnswer,
-      explanation: typeof item.explanation === 'string' ? item.explanation.trim() : '',
-      difficulty: 'Medium' as const,
-      chapter: undefined,
+      explanation:   typeof item?.explanation === 'string' ? item.explanation.trim() : '',
+      difficulty,
+      topic_tag:     typeof item?.topic_tag === 'string' ? item.topic_tag.trim() : '',
+      why_wrong:     whyWrong,
+      exam_relevance: typeof item?.exam_relevance === 'string' ? item.exam_relevance.trim() : '',
+      chapter:       item?.chapter || item?.topic_tag || undefined,
     })
   })
 

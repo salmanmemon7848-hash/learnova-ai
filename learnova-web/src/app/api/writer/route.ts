@@ -1,8 +1,14 @@
-import { generateText } from '@/lib/openai';
+﻿import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
-import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  LEARNOVA_FULL_CONTEXT,
+  AI_WRITER_KNOWLEDGE,
+  getLanguageInstruction,
+  buildIndianSearchQuery,
+} from '@/lib/learnovaKnowledge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,22 +19,32 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
     const { contentType, topic, tone, details } = await req.json();
 
-    const baseSystemPrompt = `You are a professional content writer for an Indian audience.
-Write engaging, accurate, and culturally relevant content. Use clear language, appropriate for the tone requested.
-Always write the full content directly — no preamble, no meta-commentary.`;
+    // â”€â”€ Language detection & India-specific search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const languageInstruction = getLanguageInstruction(topic);
+    const searchQuery = buildIndianSearchQuery('writer', topic);
 
-    // Search for topic context — skip if this is a rewrite/format task
-    const { finalSystemPrompt } = await askAIWithSearch({
-      userMessage: topic,
-      systemPrompt: baseSystemPrompt,
-    });
+    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${AI_WRITER_KNOWLEDGE}
+
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are a professional content writer for an Indian audience.
+Write engaging, accurate, and culturally relevant content. Use clear language, appropriate for the tone requested.
+Always write the full content directly â€” no preamble, no meta-commentary.`;
+
+    // Search for topic context â€” skip if this is a rewrite/format task
+    const searchContext = await getSearchContext(topic, 'writer');
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+    const finalSystemPrompt = searchContext
+      ? `${baseSystemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${baseSystemPrompt}\n\n${searchUsageInstruction}`;
 
     const prompt = `Write a ${contentType} about "${topic}" in ${tone} tone for Indian audience.
 Details: ${details || 'None'}. Write full content directly, no preamble.`;
 
     const content = await generateText(prompt, finalSystemPrompt);
 
-    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
+    // â”€â”€ Save to Supabase (non-blocking) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const documentTitle = `${contentType.charAt(0).toUpperCase() + contentType.slice(1)}: ${topic.slice(0, 50)}`;
     try {
       await supabase.from('saved_files').insert({
@@ -45,7 +61,7 @@ Details: ${details || 'None'}. Write full content directly, no preamble.`;
 
     return NextResponse.json({ content });
   } catch (error: any) {
-    console.error('❌ Writer Error:', error?.message || error);
+    console.error('âŒ Writer Error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to generate content.' }, { status: 500 });
   }
 }

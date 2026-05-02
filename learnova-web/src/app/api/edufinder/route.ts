@@ -1,51 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { searchWeb } from '@/lib/searxng';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
+import {
+  LEARNOVA_FULL_CONTEXT,
+  EDUFINDER_KNOWLEDGE,
+  STUDENT_KNOWLEDGE,
+  getLanguageInstruction,
+  buildIndianSearchQuery,
+} from '@/lib/learnovaKnowledge';
 
-// ─── System Prompt ────────────────────────────────────────────────────────────
-
-const SYSTEM_PROMPT = `You are EduFinder — an intelligent institution discovery assistant inside an Indian education platform called Learnova AI. Your job is to recommend the most suitable schools, colleges, or coaching institutes based on a student's profile.
-
-You will receive:
-1. The student's profile including their exact city, state, and pincode
-2. LOCAL web search results — institutions found near their city
-3. NATIONAL web search results — top institutions across India
-
-Always use ₹ for fees. Always reference NIRF rankings when available.
-
-You must output TWO clearly labelled sections:
-
----SECTION: NEARBY---
-List 2 to 3 institutions found in or near the student's city and state.
-Only include institutions genuinely located in or very close to their city.
-If no local options are found, say: "No strong local matches found — consider the national picks below."
-
----SECTION: NATIONAL---
-List 3 to 5 top institutions across India best suited to this student's profile.
-Never recommend foreign institutions unless the user explicitly asked for abroad.
-
-For every institution in both sections use this exact format:
-
----
-🏆 [Rank]. [Institution Name]
-📍 Location: [City, State]
-🎓 Type: [Government / Private / Deemed / Autonomous]
-💰 Approx Fees: ₹[X] per year
-⭐ NIRF Ranking: [Rank or "Highly Regarded"]
-📌 Why it suits you: [2–3 lines personalised to their specific profile answers]
-🎯 Entrance Required: [Exam name or Direct Admission]
-💡 Scholarship Available: [Yes — mention type / No]
----
-
-After all recommendations, end with one short motivational line for Indian students.
-
-Special rules:
-- Budget under ₹50,000: Prioritise government colleges, mention PM scholarship schemes and NSP portal
-- No entrance exam: Recommend direct/management quota colleges, suggest which exam to register for
-- Never discourage low marks — suggest IGNOU, open universities, lateral entry options
-- Every "Why it suits you" must reference something specific from the student's actual answers
-- Never output more than 5 institutions in the national section`;
-
-// ─── POST handler ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ POST handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,64 +16,114 @@ export async function POST(req: NextRequest) {
     const { userType, eduLevel, fields, budget, userCity, userState, userPincode, entrance } = body;
 
     const fieldStr = Array.isArray(fields) && fields.length > 0 ? fields.join(' ') : 'general';
+    const location = [userCity, userState].filter(Boolean).join(', ');
+
+    // â”€â”€ Language detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const languageInstruction = getLanguageInstruction(fieldStr);
 
     const budgetMap: Record<string, string> = {
-      'Under ₹50,000': 'under 50000',
-      '₹50,000 – ₹2,00,000': 'under 2 lakh',
-      '₹2,00,000 – ₹5,00,000': 'under 5 lakh',
-      '₹5,00,000+': 'above 5 lakh',
+      'Under â‚¹50,000': 'under 50000',
+      'â‚¹50,000 â€“ â‚¹2,00,000': 'under 2 lakh',
+      'â‚¹2,00,000 â€“ â‚¹5,00,000': 'under 5 lakh',
+      'â‚¹5,00,000+': 'above 5 lakh',
     };
     const budgetStr = budgetMap[budget] || budget || '';
     const examStr = entrance && entrance.toLowerCase() !== 'none' ? entrance : '';
 
-    // ── Step A: Build two SearXNG queries ─────────────────────────────────────
-
-    const localQuery = `best ${fieldStr} schools colleges institutes in ${userCity || ''} ${userState || ''} ${userPincode || ''} ${budgetStr} 2025`.trim().replace(/\s+/g, ' ');
-    const nationalQuery = `best ${fieldStr} colleges India ${budgetStr} ${examStr} 2025 NIRF ranking`.trim().replace(/\s+/g, ' ');
-
-    console.log('[EduFinder] Local query:', localQuery);
-    console.log('[EduFinder] National query:', nationalQuery);
-
-    // ── Step B: Run both searches in parallel ──────────────────────────────────
-
-    const [localResults, nationalResults] = await Promise.allSettled([
-      searchWeb(localQuery),
-      searchWeb(nationalQuery),
+    // â”€â”€ Steps A & B: Run two smart searches in parallel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const [localContext, nationalContext] = await Promise.all([
+      getSearchContext(
+        `${fieldStr} colleges ${userCity || ''} ${userState || ''}`.trim(),
+        'edufinder',
+        { field: fieldStr, budget: budgetStr }
+      ),
+      getSearchContext(
+        `best ${fieldStr} colleges India ${examStr}`.trim(),
+        'edufinder',
+        { field: fieldStr, budget: budgetStr }
+      ),
     ]);
 
-    const localContext = localResults.status === 'fulfilled' && localResults.value.length > 0
-      ? localResults.value.map(r => `Title: ${r.title} | Summary: ${r.content}`).join('\n')
-      : 'No local results found.';
+    const searchUsageInstruction = buildSearchUsageInstruction(localContext || nationalContext);
 
-    const nationalContext = nationalResults.status === 'fulfilled' && nationalResults.value.length > 0
-      ? nationalResults.value.map(r => `Title: ${r.title} | Summary: ${r.content}`).join('\n')
-      : 'No national results found.';
+    console.log('[EduFinder] Local search context length:', localContext.length);
+    console.log('[EduFinder] National search context length:', nationalContext.length);
 
-    console.log('[EduFinder] Local results:', localResults.status === 'fulfilled' ? localResults.value.length : 0);
-    console.log('[EduFinder] National results:', nationalResults.status === 'fulfilled' ? nationalResults.value.length : 0);
+    // â”€â”€ Step C: Build upgraded system prompt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    // ── Step C: Build user message ─────────────────────────────────────────────
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${EDUFINDER_KNOWLEDGE}
+${STUDENT_KNOWLEDGE}
 
-    const userMessage = `Student Profile:
-- User type: ${userType || 'Student'}
-- Education level: ${eduLevel || 'Not specified'}
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+${searchUsageInstruction}
+
+You are EduFinder â€” a strict, honest institution advisor for Indian students. You give honest assessments, not just positive ones.
+
+Student profile:
+- User type: ${userType}
+- Education level: ${eduLevel}
 - Fields of interest: ${Array.isArray(fields) ? fields.join(', ') : 'Not specified'}
-- Annual budget: ${budget || 'Not specified'}
-- City: ${userCity || 'Not specified'}
-- State: ${userState || 'Not specified'}
-- Pincode: ${userPincode || 'Not specified'}
-- Entrance exam: ${entrance || 'None'}
+- Annual budget: ${budget}
+- Location preference: ${location || 'Not specified'}
+- Entrance exam status: ${entrance || 'None'}
 
-LOCAL Search Results (institutions near ${userCity || ''}, ${userState || ''}):
-${localContext}
+Use the web search results below to get current NIRF rankings, fees, and admission data.
 
-NATIONAL Search Results (top institutions across India):
-${nationalContext}
+WEB SEARCH RESULTS:
+LOCAL (near ${location}):
+${localContext || 'No local results found.'}
 
-Please recommend institutions in TWO sections: nearby institutions first, then national top picks.
-Return as: { "recommendations": "..." }`;
+NATIONAL:
+${nationalContext || 'No national results found.'}
 
-    // ── Step D: Call Groq API ──────────────────────────────────────────────────
+Respond ONLY in this exact JSON â€” no markdown, no extra text:
+
+{
+  "readiness_assessment": {
+    "overall_readiness": "Ready | Partially Ready | Not Ready Yet",
+    "readiness_score": number,
+    "honest_feedback": "string â€” be honest if student is not ready",
+    "improvement_needed": ["string", "string"]
+  },
+  "top_institutions": [
+    {
+      "rank": 1,
+      "name": "string",
+      "location": "City, State",
+      "type": "Government | Private | Deemed",
+      "fees_per_year": "â‚¹X",
+      "nirf_ranking": "string",
+      "why_good_match": "string â€” specific to student answers",
+      "why_might_not_fit": "string â€” honest downside",
+      "entrance_required": "string",
+      "scholarship_available": "string",
+      "admission_difficulty": "Easy | Moderate | Competitive | Highly Competitive",
+      "student_profile_match": number
+    }
+  ],
+  "field_analysis": {
+    "chosen_field": "string",
+    "market_demand": "High | Medium | Low",
+    "avg_starting_salary": "â‚¹X LPA",
+    "top_companies_hiring": ["string", "string"],
+    "honest_reality": "string â€” real talk about this field in India",
+    "alternative_fields": ["string", "string"]
+  },
+  "action_plan": [
+    {
+      "priority": 1,
+      "action": "string",
+      "deadline": "string",
+      "why_important": "string"
+    }
+  ],
+  "budget_reality_check": "string â€” honest assessment of what this budget can get in India",
+  "final_advice": "string â€” one paragraph of honest personalized guidance"
+}`;
+
+    // â”€â”€ Step D: Call Groq API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -120,10 +133,9 @@ Return as: { "recommendations": "..." }`;
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        max_tokens: 2000,
+        max_tokens: 3000,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userMessage },
+          { role: 'user', content: systemPrompt },
         ],
       }),
     });
@@ -135,14 +147,31 @@ Return as: { "recommendations": "..." }`;
     }
 
     const groqData = await groqResponse.json();
-    const recommendations = groqData?.choices?.[0]?.message?.content || '';
+    const rawContent = groqData?.choices?.[0]?.message?.content || '';
 
-    if (!recommendations) {
+    if (!rawContent) {
       return NextResponse.json({ error: 'No recommendations received from AI. Please try again.' }, { status: 500 });
     }
 
-    console.log('[EduFinder] ✅ Recommendations generated successfully');
-    return NextResponse.json({ recommendations });
+    // Try to parse JSON, fall back to raw text
+    let recommendations: any = null;
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        recommendations = JSON.parse(jsonMatch[0]);
+      } catch {
+        recommendations = null;
+      }
+    }
+
+    console.log('[EduFinder] âœ… Recommendations generated successfully');
+
+    if (recommendations) {
+      return NextResponse.json({ recommendations, structured: true });
+    }
+
+    // Fallback: return raw text
+    return NextResponse.json({ recommendations: rawContent, structured: false });
 
   } catch (error: any) {
     console.error('[EduFinder] Route error:', error?.message || error);

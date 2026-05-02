@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Calendar, Clock, Target, BookOpen } from 'lucide-react'
 
 const examSubjects: Record<string, string[]> = {
   school: ['Mathematics','Science','Social Studies','English','Hindi',
@@ -38,6 +37,7 @@ export default function PlannerPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [planError, setPlanError] = useState('')
   
   const [formData, setFormData] = useState({
     targetExam: '',
@@ -48,6 +48,9 @@ export default function PlannerPage() {
     strongSubjects: [] as string[],
     weakInput: '',
     strongInput: '',
+    currentLevel: 'intermediate',
+    includeBreaks: true,
+    examType: '',
   })
 
   const handleSubjectToggle = (type: 'weakSubjects' | 'strongSubjects', subject: string) => {
@@ -60,7 +63,6 @@ export default function PlannerPage() {
     })
   }
 
-  // Add subject function (works for both weak and strong)
   const addSubject = (
     type: 'weakSubjects' | 'strongSubjects',
     input: string
@@ -75,7 +77,6 @@ export default function PlannerPage() {
     }
   }
 
-  // Remove subject function
   const removeSubject = (
     type: 'weakSubjects' | 'strongSubjects',
     subject: string
@@ -92,6 +93,7 @@ export default function PlannerPage() {
 
   const handleGeneratePlan = async () => {
     setLoading(true)
+    setPlanError('')
     try {
       const response = await fetch('/api/planner', {
         method: 'POST',
@@ -100,17 +102,19 @@ export default function PlannerPage() {
       })
 
       const data = await response.json()
-      
+
       if (response.ok) {
         sessionStorage.setItem('generatedPlan', JSON.stringify(data))
         sessionStorage.setItem('planMeta', JSON.stringify(formData))
         router.push('/planner/results')
       } else {
-        alert(`Error: ${data.error || 'Failed to generate plan'}`)
+        const errorMessage = data?.error || 'Failed to generate plan. Please check all fields and try again.'
+        setPlanError(errorMessage)
+        console.error('Planner error:', errorMessage)
       }
     } catch (error) {
       console.error('Plan generation failed:', error)
-      alert('Failed to generate plan. Please try again.')
+      setPlanError('Network error — could not reach the server. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -156,7 +160,7 @@ export default function PlannerPage() {
               </label>
               <select
                 value={formData.targetExam}
-                onChange={(e) => setFormData({...formData, targetExam: e.target.value, weakSubjects: [], strongSubjects: []})}
+                onChange={(e) => setFormData({...formData, targetExam: e.target.value, weakSubjects: [], strongSubjects: [], examType: e.target.value === 'other' ? '' : e.target.options[e.target.selectedIndex]?.text?.replace(/^[^\w]+/, '') || ''})}
                 className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
                 style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
@@ -166,6 +170,23 @@ export default function PlannerPage() {
                 ))}
               </select>
             </div>
+
+            {/* Custom exam name for "Other" */}
+            {formData.targetExam === 'other' && (
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
+                  Exam Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. CLAT, CDS, RRB NTPC..."
+                  value={formData.examType}
+                  onChange={(e) => setFormData({...formData, examType: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 transition-all"
+                  style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                />
+              </div>
+            )}
 
             {/* Show class selector when School is selected */}
             {formData.targetExam === 'school' && (
@@ -219,13 +240,56 @@ export default function PlannerPage() {
               </div>
             </div>
 
+            {/* Current Level */}
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--foreground-secondary)' }}>
+                Current Preparation Level
+              </label>
+              <div className="flex gap-3">
+                {['beginner', 'intermediate', 'advanced'].map(level => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setFormData({...formData, currentLevel: level})}
+                    className="flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all capitalize"
+                    style={{
+                      backgroundColor: formData.currentLevel === level ? 'var(--accent)' : 'var(--background)',
+                      borderColor: formData.currentLevel === level ? 'var(--accent)' : 'var(--border)',
+                      border: '1px solid',
+                      color: formData.currentLevel === level ? '#ffffff' : 'var(--foreground)'
+                    }}
+                  >
+                    {level === 'beginner' ? '🌱' : level === 'intermediate' ? '📈' : '🔥'} {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Include Breaks toggle */}
+            <div className="flex items-center gap-3 py-2">
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, includeBreaks: !formData.includeBreaks})}
+                className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
+                style={{ backgroundColor: formData.includeBreaks ? 'var(--accent)' : 'var(--border)' }}
+              >
+                <span
+                  className="absolute top-1 w-4 h-4 rounded-full bg-white transition-all"
+                  style={{ left: formData.includeBreaks ? '26px' : '4px' }}
+                />
+              </button>
+              <span className="text-sm" style={{ color: 'var(--foreground-secondary)' }}>
+                Include scheduled breaks in the plan
+              </span>
+            </div>
+
             <button
               onClick={() => setStep(2)}
-              disabled={!formData.targetExam || !formData.examDate}
+              disabled={!formData.targetExam || !formData.examDate || (formData.targetExam === 'other' && !formData.examType)}
               className="w-full py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--accent)' }}
             >
-              Next Step
+              Next Step →
             </button>
           </div>
         )}
@@ -244,7 +308,6 @@ export default function PlannerPage() {
                 <span className="label-hint"> — needs more practice</span>
               </label>
 
-              {/* Quick-select chips from suggestions */}
               {availableSubjects.length > 0 && (
                 <div className="subject-chips-row">
                   {availableSubjects
@@ -261,7 +324,6 @@ export default function PlannerPage() {
                 </div>
               )}
 
-              {/* Manual text input */}
               <div className="subject-manual-input">
                 <input
                   type="text"
@@ -284,7 +346,6 @@ export default function PlannerPage() {
                 </button>
               </div>
 
-              {/* Added weak subjects as tags */}
               {formData.weakSubjects.length > 0 && (
                 <div className="selected-subjects">
                   {formData.weakSubjects.map(s => (
@@ -315,7 +376,6 @@ export default function PlannerPage() {
                 <span className="label-hint"> — just needs revision</span>
               </label>
 
-              {/* Quick-select chips */}
               {availableSubjects.length > 0 && (
                 <div className="subject-chips-row">
                   {availableSubjects
@@ -332,7 +392,6 @@ export default function PlannerPage() {
                 </div>
               )}
 
-              {/* Manual text input */}
               <div className="subject-manual-input">
                 <input
                   type="text"
@@ -355,7 +414,6 @@ export default function PlannerPage() {
                 </button>
               </div>
 
-              {/* Added strong subjects as tags */}
               {formData.strongSubjects.length > 0 && (
                 <div className="selected-subjects">
                   {formData.strongSubjects.map(s => (
@@ -384,7 +442,7 @@ export default function PlannerPage() {
                 onClick={() => setStep(1)}
                 className="btn-secondary flex-1"
               >
-                Back
+                ← Back
               </button>
               <button
                 onClick={() => setStep(3)}
@@ -398,27 +456,44 @@ export default function PlannerPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-2">Step 3: Your Strong Subjects</h2>
+            <h2 className="text-xl font-semibold mb-2">Step 3: Review & Generate</h2>
             <p className="text-sm mb-4" style={{ color: 'var(--foreground-muted)' }}>
-              Select subjects you're already good at (they'll get less time)
+              Confirm your details and generate your personalized AI study plan.
             </p>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {availableSubjects.filter(s => !formData.weakSubjects.includes(s)).map(subject => (
-                <button
-                  key={subject}
-                  onClick={() => handleSubjectToggle('strongSubjects', subject)}
-                  className="p-3 border rounded-lg text-sm transition-all"
-                  style={{
-                    backgroundColor: formData.strongSubjects.includes(subject) ? 'var(--success-light)' : 'var(--background)',
-                    borderColor: formData.strongSubjects.includes(subject) ? 'var(--success)' : 'var(--border)',
-                    color: formData.strongSubjects.includes(subject) ? 'var(--success)' : 'var(--foreground)'
-                  }}
-                >
-                  {subject}
-                </button>
+
+            {/* Summary of inputs */}
+            <div className="space-y-3">
+              {[
+                { label: 'Exam', value: formData.examType || formData.targetExam?.toUpperCase().replace('_',' ') },
+                { label: 'Exam Date', value: formData.examDate },
+                { label: 'Daily Hours', value: `${formData.studyHours} hours/day` },
+                { label: 'Level', value: formData.currentLevel },
+                { label: 'Weak Subjects', value: formData.weakSubjects.join(', ') || 'None' },
+                { label: 'Strong Subjects', value: formData.strongSubjects.join(', ') || 'None' },
+                { label: 'Breaks Included', value: formData.includeBreaks ? 'Yes' : 'No' },
+              ].map(row => (
+                <div key={row.label} className="flex justify-between py-2 border-b text-sm"
+                  style={{ borderColor: 'var(--border)' }}>
+                  <span style={{ color: 'var(--foreground-muted)' }}>{row.label}</span>
+                  <span className="font-medium" style={{ color: 'var(--foreground)' }}>{row.value}</span>
+                </div>
               ))}
             </div>
+
+            {/* Error display — shows actual API error instead of generic message */}
+            {planError && (
+              <div style={{
+                background: '#450A0A',
+                border: '1px solid #7F1D1D',
+                borderRadius: 10,
+                padding: '12px 16px',
+                color: '#F87171',
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}>
+                ⚠️ {planError}
+              </div>
+            )}
 
             <div className="flex gap-3 mt-6">
               <button
@@ -426,7 +501,7 @@ export default function PlannerPage() {
                 className="flex-1 py-3 border rounded-lg font-semibold hover:opacity-80 transition-all"
                 style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
-                Back
+                ← Back
               </button>
               <button
                 onClick={handleGeneratePlan}
@@ -434,7 +509,7 @@ export default function PlannerPage() {
                 className="flex-1 py-3 rounded-lg font-semibold text-white hover:opacity-90 transition-all disabled:opacity-50"
                 style={{ backgroundColor: 'var(--highlight)' }}
               >
-                {loading ? 'Generating Plan...' : 'Generate My Study Plan'}
+                {loading ? '⏳ Generating Plan...' : '✨ Generate My Study Plan'}
               </button>
             </div>
           </div>

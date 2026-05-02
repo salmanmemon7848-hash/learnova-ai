@@ -4,16 +4,56 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import ImageUploader from '@/components/features/DoubtSolver/ImageUploader'
 import { Camera, Sparkles, BookOpen, Target, Lightbulb, Save } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface DoubtResult {
+  concept_in_one_line: string
+  detected_level: string
+  step_by_step: { step: number; title: string; explanation: string }[]
+  simple_example: { title: string; example: string }
+  medium_example: { title: string; example: string }
+  advanced_example: { title: string; example: string }
+  why_it_works: string
+  common_mistakes: string[]
+  memory_trick: string
+  exam_tip: string
+  related_topics: string[]
+}
+
+type Level = 'auto' | 'basic' | 'medium' | 'advanced'
+
+const levels: { value: Level; label: string }[] = [
+  { value: 'auto',     label: '🤖 Auto Detect' },
+  { value: 'basic',    label: '🟢 Basic (Class 6–8)' },
+  { value: 'medium',   label: '🟡 Medium (Class 9–12)' },
+  { value: 'advanced', label: '🔴 Advanced (JEE/NEET/UPSC)' },
+]
+
+// ── Helper: try to parse JSON from raw AI string ──────────────────────────────
+function parseDoubtResult(raw: string): DoubtResult | null {
+  try {
+    // Strip markdown code fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+    // Find first { … } block
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    if (start === -1 || end === -1) return null
+    return JSON.parse(cleaned.slice(start, end + 1)) as DoubtResult
+  } catch {
+    return null
+  }
+}
 
 export default function DoubtSolverPage() {
   const { user } = useAuth()
   const [selectedImage, setSelectedImage] = useState<string>('')
   const [questionText, setQuestionText] = useState('')
   const [loading, setLoading] = useState(false)
-  const [solution, setSolution] = useState<string>('')
+  const [rawSolution, setRawSolution] = useState<string>('')
+  const [result, setResult] = useState<DoubtResult | null>(null)
   const [error, setError] = useState<string>('')
   const [language, setLanguage] = useState<'en' | 'hi' | 'hinglish'>('en')
+  const [level, setLevel] = useState<Level>('auto')
 
   const handleSubmit = async () => {
     if (!selectedImage && !questionText.trim()) {
@@ -23,7 +63,8 @@ export default function DoubtSolverPage() {
 
     setLoading(true)
     setError('')
-    setSolution('')
+    setRawSolution('')
+    setResult(null)
 
     try {
       const response = await fetch('/api/doubt-solver', {
@@ -33,16 +74,23 @@ export default function DoubtSolverPage() {
           imageUrl: selectedImage,
           questionText: questionText.trim(),
           language,
+          level,
         }),
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to solve doubt')
+        const errData = await response.json()
+        throw new Error(errData.error || 'Failed to solve doubt')
       }
 
       const data = await response.json()
-      setSolution(data.solution)
+      const parsed = parseDoubtResult(data.solution)
+      if (parsed) {
+        setResult(parsed)
+      } else {
+        // Fallback: show raw markdown
+        setRawSolution(data.solution)
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -53,9 +101,12 @@ export default function DoubtSolverPage() {
   const handleReset = () => {
     setSelectedImage('')
     setQuestionText('')
-    setSolution('')
+    setRawSolution('')
+    setResult(null)
     setError('')
   }
+
+  const hasOutput = !!result || !!rawSolution
 
   return (
     <div className="doubt-page max-w-6xl mx-auto">
@@ -75,13 +126,11 @@ export default function DoubtSolverPage() {
         <div className="space-y-4 sm:space-y-6">
           {/* Language Selector */}
           <div className="language-card">
-            <label className="language-label">
-              Select Language
-            </label>
+            <label className="language-label">Select Language</label>
             <div className="language-options">
               {[
-                { id: 'en', label: 'English' },
-                { id: 'hi', label: 'हिंदी' },
+                { id: 'en',       label: 'English' },
+                { id: 'hi',       label: 'हिंदी' },
                 { id: 'hinglish', label: 'Hinglish' },
               ].map((lang) => (
                 <button
@@ -95,19 +144,32 @@ export default function DoubtSolverPage() {
             </div>
           </div>
 
+          {/* Difficulty Level Selector */}
+          <div className="language-card">
+            <label className="language-label">Difficulty Level</label>
+            <div className="language-options flex-wrap">
+              {levels.map((l) => (
+                <button
+                  key={l.value}
+                  onClick={() => setLevel(l.value)}
+                  className={`lang-btn ${level === l.value ? 'active' : ''}`}
+                  style={{ fontSize: '13px', whiteSpace: 'nowrap' }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Image Upload */}
           <div className="upload-card">
-            <label className="language-label">
-              Upload Question Image
-            </label>
+            <label className="language-label">Upload Question Image</label>
             <ImageUploader onImageSelect={setSelectedImage} />
           </div>
 
           {/* Text Input */}
           <div className="upload-card">
-            <label className="language-label">
-              Or Type Your Question
-            </label>
+            <label className="language-label">Or Type Your Question</label>
             <textarea
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
@@ -136,10 +198,7 @@ export default function DoubtSolverPage() {
                 </>
               )}
             </button>
-            <button
-              onClick={handleReset}
-              className="btn-outline px-6 py-3.5"
-            >
+            <button onClick={handleReset} className="btn-outline px-6 py-3.5">
               Reset
             </button>
           </div>
@@ -154,7 +213,7 @@ export default function DoubtSolverPage() {
 
         {/* Right Column - Solution */}
         <div className="solution-card min-h-[600px]">
-          {!solution && !loading && (
+          {!hasOutput && !loading && (
             <div className="h-full flex flex-col items-center justify-center text-center py-16">
               <div className="w-20 h-20 rounded-[14px] flex items-center justify-center mb-6" style={{ backgroundColor: 'var(--accent-purple-glow)' }}>
                 <BookOpen className="w-10 h-10" style={{ color: 'var(--accent-purple-light)' }} />
@@ -177,25 +236,190 @@ export default function DoubtSolverPage() {
             </div>
           )}
 
-          {solution && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <Target className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
-                  Solution
-                </h3>
-                <button className="px-3 py-1.5 hover:bg-opacity-80 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--accent-purple-light)', border: '1px solid var(--border-card)' }}>
-                  <Save className="w-3.5 h-3.5" />
-                  Save as Note
-                </button>
+          {/* ── Structured JSON Result Cards ── */}
+          {result && (
+            <div className="doubt-result space-y-4">
+
+              {/* Header Card */}
+              <div className="result-card header-card" style={{
+                background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                border: '1px solid #2D1B69',
+                borderRadius: '14px',
+                padding: '20px',
+              }}>
+                <span className="level-badge" style={{
+                  display: 'inline-block',
+                  padding: '4px 14px',
+                  borderRadius: '20px',
+                  background: 'rgba(124,58,237,0.25)',
+                  border: '1px solid rgba(124,58,237,0.5)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#A78BFA',
+                  marginBottom: '10px',
+                }}>
+                  {result.detected_level}
+                </span>
+                <p style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: 500, margin: 0 }}>
+                  {result.concept_in_one_line}
+                </p>
               </div>
 
-              <div className="prose prose-base max-w-none" style={{ color: 'var(--text-primary)' }}>
-                <ReactMarkdown>{solution}</ReactMarkdown>
+              {/* Step by Step */}
+              <div style={{
+                background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                border: '1px solid #2D1B69',
+                borderRadius: '14px',
+                padding: '20px',
+              }}>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px', fontSize: '15px' }}>📚 Step-by-Step Explanation</h3>
+                {result.step_by_step.map((s) => (
+                  <div key={s.step} style={{
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                    padding: '10px 0',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{
+                      minWidth: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: 'var(--purple-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'white',
+                      flexShrink: 0,
+                    }}>
+                      {s.step}
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--text-primary)', fontSize: '14px' }}>{s.title}</strong>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '4px 0 0' }}>{s.explanation}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div className="mt-6 pt-6" style={{ borderTop: '1px solid var(--border-card)' }}>
-                <button className="w-full py-3 hover:text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--accent-purple-glow)', color: 'var(--accent-purple-light)' }}
+              {/* Examples Grid */}
+              <div className="doubt-examples-grid">
+                {[
+                  { key: 'simple',   emoji: '🟢', label: 'Simple',   data: result.simple_example,   accent: '#10b981' },
+                  { key: 'medium',   emoji: '🟡', label: 'Medium',   data: result.medium_example,   accent: '#f59e0b' },
+                  { key: 'advanced', emoji: '🔴', label: 'Advanced', data: result.advanced_example, accent: '#ef4444' },
+                ].map(({ key, emoji, label, data, accent }) => (
+                  <div key={key} style={{
+                    background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                    border: `1px solid ${accent}30`,
+                    borderRadius: '14px',
+                    padding: '16px',
+                  }}>
+                    <span style={{
+                      display: 'inline-block',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: accent,
+                      background: `${accent}18`,
+                      border: `1px solid ${accent}40`,
+                      borderRadius: '20px',
+                      padding: '3px 10px',
+                      marginBottom: '8px',
+                    }}>
+                      {emoji} {label}
+                    </span>
+                    <h4 style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, margin: '0 0 6px' }}>{data.title}</h4>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>{data.example}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Why It Works */}
+              <div style={{
+                background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                border: '1px solid #2D1B69',
+                borderRadius: '14px',
+                padding: '20px',
+              }}>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '10px', fontSize: '15px' }}>🧠 Why This Works</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>{result.why_it_works}</p>
+              </div>
+
+              {/* Two Col — Mistakes + Memory Trick */}
+              <div className="doubt-two-col">
+                <div style={{
+                  background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                  border: '1px solid #7F1D1D',
+                  borderRadius: '14px',
+                  padding: '20px',
+                }}>
+                  <h3 style={{ color: 'var(--text-primary)', marginBottom: '10px', fontSize: '15px' }}>⚠️ Common Mistakes</h3>
+                  {result.common_mistakes.map((m, i) => (
+                    <div key={i} style={{
+                      color: '#F87171',
+                      fontSize: '13px',
+                      padding: '6px 0',
+                      borderBottom: i < result.common_mistakes.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                    }}>
+                      ❌ {m}
+                    </div>
+                  ))}
+                </div>
+                <div style={{
+                  background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                  border: '1px solid #2D1B69',
+                  borderRadius: '14px',
+                  padding: '20px',
+                }}>
+                  <h3 style={{ color: 'var(--text-primary)', marginBottom: '10px', fontSize: '15px' }}>💡 Memory Trick</h3>
+                  <p style={{
+                    color: '#A78BFA',
+                    fontSize: '14px',
+                    fontStyle: 'italic',
+                    marginBottom: '16px',
+                    background: 'rgba(124,58,237,0.1)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}>
+                    {result.memory_trick}
+                  </p>
+                  <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px', fontSize: '15px' }}>🎯 Exam Tip</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>{result.exam_tip}</p>
+                </div>
+              </div>
+
+              {/* Related Topics */}
+              <div style={{
+                background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                border: '1px solid #2D1B69',
+                borderRadius: '14px',
+                padding: '20px',
+              }}>
+                <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px', fontSize: '15px' }}>🔗 Related Topics to Study Next</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {result.related_topics.map((t, i) => (
+                    <span key={i} style={{
+                      display: 'inline-block',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      background: 'rgba(124,58,237,0.2)',
+                      border: '1px solid rgba(124,58,237,0.4)',
+                      fontSize: '13px',
+                      color: '#A78BFA',
+                    }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Practice Button */}
+              <div style={{ borderTop: '1px solid var(--border-card)', paddingTop: '16px' }}>
+                <button
+                  className="w-full py-3 hover:text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                  style={{ backgroundColor: 'var(--accent-purple-glow)', color: 'var(--accent-purple-light)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'var(--gradient-brand)'
                     e.currentTarget.style.color = 'white'
@@ -208,6 +432,25 @@ export default function DoubtSolverPage() {
                   <Lightbulb className="w-5 h-5" />
                   Practice Similar Questions
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback: raw text if JSON parse failed */}
+          {rawSolution && !result && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Target className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
+                  Solution
+                </h3>
+                <button className="px-3 py-1.5 hover:bg-opacity-80 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--accent-purple-light)', border: '1px solid var(--border-card)' }}>
+                  <Save className="w-3.5 h-3.5" />
+                  Save as Note
+                </button>
+              </div>
+              <div className="prose prose-base max-w-none" style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+                {rawSolution}
               </div>
             </div>
           )}

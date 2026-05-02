@@ -1020,6 +1020,193 @@ html, body {
 }
 
 /* ==========================================
+   DOUBT SOLVER — RESULT CARDS
+   ========================================== */
+.doubt-examples-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .doubt-examples-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.doubt-two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .doubt-two-col { grid-template-columns: 1fr 1fr; }
+}
+
+/* Make lang-btn row wrap nicely for level selector */
+.language-options.flex-wrap {
+  flex-wrap: wrap;
+}
+.language-options.flex-wrap .lang-btn {
+  flex: unset;
+  min-width: calc(50% - 4px);
+}
+@media (min-width: 480px) {
+  .language-options.flex-wrap .lang-btn {
+    flex: 1;
+    min-width: auto;
+  }
+}
+
+/* ==========================================
+   EXAM — RESULTS DASHBOARD
+   ========================================== */
+.results-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topic-bar-bg {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.topic-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.topic-row {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.topic-row:last-child { border-bottom: none; }
+
+.topic-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.strength-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.strength-dot.strong  { background: #10b981; }
+.strength-dot.average { background: #f59e0b; }
+.strength-dot.weak    { background: #ef4444; }
+
+.topic-score {
+  font-size: 12px;
+  color: #A78BFA;
+  font-weight: 600;
+}
+
+.topic-recommendation {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+
+.priority-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.priority-item:last-child { border-bottom: none; }
+
+.priority-num {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--purple-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.next-step-box {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgba(124,58,237,0.12);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.question-review {
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.question-review.correct { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); }
+.question-review.wrong   { background: rgba(239,68,68,0.06);  border-color: rgba(239,68,68,0.2); }
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.difficulty-tag, .topic-tag-small {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.3);
+  color: #A78BFA;
+}
+
+.review-question {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.your-answer, .correct-answer {
+  font-size: 13px;
+  margin: 4px 0;
+}
+.your-answer   { color: #F87171; }
+.correct-answer { color: #4ADE80; }
+
+.explanation-box {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.why-wrong-box {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(239,68,68,0.08);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #F87171;
+}
+
+/* ==========================================
    PROGRESS PAGE
    ========================================== */
 .progress-page {

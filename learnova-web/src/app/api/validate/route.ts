@@ -1,6 +1,11 @@
 import Groq from 'groq-sdk'
-import { askAIWithSearch } from '@/lib/aiWithSearch'
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  LEARNOVA_FULL_CONTEXT,
+  FOUNDER_KNOWLEDGE,
+  getLanguageInstruction,
+} from '@/lib/learnovaKnowledge'
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -15,7 +20,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business idea is required' }, { status: 400 })
     }
 
-    const baseSystemPrompt = `You are an expert Indian startup advisor for Learnova AI. You deeply understand:
+    const languageInstruction = getLanguageInstruction(idea);
+
+    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${FOUNDER_KNOWLEDGE}
+
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are an expert Indian startup advisor for Learnova AI. You deeply understand:
 - Indian consumer behaviour and price sensitivity (customers won't pay more than they need to)
 - Tier 1, Tier 2, Tier 3 city market dynamics
 - Indian startup ecosystem (bootstrapped founders, angel networks, Sequoia India, govt schemes)
@@ -54,12 +66,11 @@ ALWAYS structure your validation response exactly like this:
 Always use ₹ for pricing. Always think about UPI and cash-on-delivery. Always consider whether this works in a city of 5 lakh population.`
 
     // Enrich system prompt with live market intelligence for this idea
-    const searchQuery = `${idea} India startup market ${industry || ''} competition 2025`.trim()
-    const { finalSystemPrompt: systemPrompt } = await askAIWithSearch({
-      userMessage: searchQuery,
-      systemPrompt: baseSystemPrompt,
-      needsSearch: true,
-    })
+    const searchContext = await getSearchContext(idea, 'validate', { industry: industry || '' })
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+    const systemPrompt = searchContext
+      ? `${baseSystemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${baseSystemPrompt}\n\n${searchUsageInstruction}`;
 
     const userPrompt = `Validate this business idea for the Indian market:
 Idea: ${idea}

@@ -225,7 +225,8 @@ export default function EduFinderPage() {
     entrance: '',
   })
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<string | null>(null)
+  const [results, setResults] = useState<any>(null)
+  const [structured, setStructured] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const resetWizard = () => {
@@ -235,6 +236,7 @@ export default function EduFinderPage() {
       userCity: '', userState: '', userPincode: '', entrance: '',
     })
     setResults(null)
+    setStructured(false)
     setError(null)
   }
 
@@ -250,6 +252,7 @@ export default function EduFinderPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong.')
       setResults(data.recommendations)
+      setStructured(data.structured === true)
     } catch (err: any) {
       setError(err.message || 'Failed to fetch recommendations. Please try again.')
     } finally {
@@ -282,62 +285,165 @@ export default function EduFinderPage() {
   // ── Results screen ─────────────────────────────────────────────────────────
 
   if (results) {
-    const { nearby, national, noLocalMatch } = parseResults(results)
+    const priorityColor: Record<string, string> = { high: '#EF4444', medium: '#F59E0B', low: '#10B981' }
+    const demandColor: Record<string, string> = { high: '#10B981', medium: '#F59E0B', low: '#EF4444' }
+    const readinessColor: Record<string, string> = { 'ready': '#10B981', 'partially-ready': '#F59E0B', 'not-ready-yet': '#EF4444' }
 
+    if (structured && results && typeof results === 'object') {
+      const r = results
+      const readinessKey = (r.readiness_assessment?.overall_readiness || '').toLowerCase().replace(/ /g, '-')
+      return (
+        <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 20px' }}>
+          <div className="flex items-center gap-3 mb-8">
+            <GraduationCap size={28} style={{ color: '#A78BFA' }} />
+            <h1 className="text-[28px] font-semibold" style={{ color: '#F5F3FF' }}>Your EduFinder Results</h1>
+          </div>
+
+          {/* Readiness */}
+          {r.readiness_assessment && (
+            <div className="rounded-[16px] p-6 mb-5" style={{ ...CARD_BASE, borderColor: readinessColor[readinessKey] + '60' }}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[17px] font-semibold" style={{ color: '#F5F3FF' }}>Your Readiness Assessment</h3>
+                <div className="text-[28px] font-bold" style={{ color: readinessColor[readinessKey] }}>{r.readiness_assessment.readiness_score}/100</div>
+              </div>
+              <div className="inline-block px-3 py-1 rounded-full text-[13px] font-semibold mb-3" style={{ background: readinessColor[readinessKey] + '20', color: readinessColor[readinessKey] }}>
+                {r.readiness_assessment.overall_readiness}
+              </div>
+              <p className="text-[14px] mb-3" style={{ color: '#C4B5FD' }}>{r.readiness_assessment.honest_feedback}</p>
+              {r.readiness_assessment.improvement_needed?.length > 0 && (
+                <div>
+                  <p className="text-[13px] font-semibold mb-2" style={{ color: '#F5F3FF' }}>Improvements needed:</p>
+                  {r.readiness_assessment.improvement_needed.map((item: string, i: number) => (
+                    <div key={i} className="text-[13px] mb-1" style={{ color: '#C4B5FD' }}>📌 {item}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Institutions */}
+          <h3 className="text-[18px] font-semibold mb-4" style={{ color: '#F5F3FF' }}>🏛️ Top Matching Institutions</h3>
+          {r.top_institutions?.map((inst: any, i: number) => {
+            const matchColor = inst.student_profile_match >= 80 ? '#10B981' : inst.student_profile_match >= 60 ? '#F59E0B' : '#EF4444'
+            return (
+              <div key={i} className="rounded-[16px] p-5 mb-4" style={{ background: '#0F0A1E', border: '1px solid #2D1B69' }}>
+                <div className="flex items-center gap-3 mb-3" style={{ flexWrap: 'wrap' }}>
+                  <span className="text-[13px] font-bold" style={{ color: '#A78BFA' }}>#{inst.rank}</span>
+                  <h3 className="text-[16px] font-semibold flex-1" style={{ color: '#F5F3FF' }}>{inst.name}</h3>
+                  <span className="text-[12px] font-bold px-3 py-1 rounded-full" style={{ background: matchColor + '20', color: matchColor }}>{inst.student_profile_match}% match</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 mb-3 text-[12px]" style={{ color: '#C4B5FD' }}>
+                  <span>📍 {inst.location}</span>
+                  <span>🎓 {inst.type}</span>
+                  <span>💰 {inst.fees_per_year}/year</span>
+                  <span>⭐ NIRF: {inst.nirf_ranking}</span>
+                  <span>🎯 {inst.entrance_required}</span>
+                  <span className="font-semibold" style={{ color: inst.admission_difficulty === 'Highly Competitive' ? '#EF4444' : '#F59E0B' }}>📊 {inst.admission_difficulty}</span>
+                </div>
+                <div className="p-3 rounded-[10px] mb-2" style={{ background: 'rgba(16,185,129,.07)', border: '1px solid rgba(16,185,129,.2)' }}>
+                  <p className="text-[12px] font-semibold mb-1" style={{ color: '#10B981' }}>✅ Why it suits you:</p>
+                  <p className="text-[13px]" style={{ color: '#C4B5FD' }}>{inst.why_good_match}</p>
+                </div>
+                <div className="p-3 rounded-[10px] mb-2" style={{ background: 'rgba(245,158,11,.07)', border: '1px solid rgba(245,158,11,.2)' }}>
+                  <p className="text-[12px] font-semibold mb-1" style={{ color: '#F59E0B' }}>⚠️ Honest downside:</p>
+                  <p className="text-[13px]" style={{ color: '#C4B5FD' }}>{inst.why_might_not_fit}</p>
+                </div>
+                {inst.scholarship_available && inst.scholarship_available !== 'No' && (
+                  <div className="text-[12px] px-3 py-2 rounded-[8px]" style={{ background: 'rgba(124,58,237,.15)', color: '#A78BFA' }}>💡 {inst.scholarship_available}</div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Field Analysis */}
+          {r.field_analysis && (
+            <div className="rounded-[16px] p-5 mb-4" style={CARD_BASE}>
+              <h3 className="text-[17px] font-semibold mb-3" style={{ color: '#F5F3FF' }}>📈 Field Reality — {r.field_analysis.chosen_field}</h3>
+              <div className="flex gap-3 mb-3" style={{ flexWrap: 'wrap' }}>
+                <span className="text-[12px] px-3 py-1 rounded-full font-semibold" style={{ background: (demandColor[r.field_analysis.market_demand?.toLowerCase()] || '#7C3AED') + '20', color: demandColor[r.field_analysis.market_demand?.toLowerCase()] || '#A78BFA' }}>{r.field_analysis.market_demand} Demand</span>
+                <span className="text-[13px]" style={{ color: '#C4B5FD' }}>💰 Avg Starting: {r.field_analysis.avg_starting_salary}</span>
+              </div>
+              <p className="text-[13px] mb-3" style={{ color: '#C4B5FD' }}>💬 {r.field_analysis.honest_reality}</p>
+              <p className="text-[12px] font-semibold mb-2" style={{ color: '#F5F3FF' }}>Top Hiring Companies:</p>
+              <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                {r.field_analysis.top_companies_hiring?.map((c: string, i: number) => (
+                  <span key={i} className="text-[12px] px-3 py-1 rounded-full" style={{ background: '#2D1B69', color: '#C4B5FD' }}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Plan */}
+          {r.action_plan?.length > 0 && (
+            <div className="rounded-[16px] p-5 mb-4" style={CARD_BASE}>
+              <h3 className="text-[17px] font-semibold mb-3" style={{ color: '#F5F3FF' }}>✅ Your Action Plan</h3>
+              {r.action_plan.map((a: any, i: number) => (
+                <div key={i} className="flex gap-3 mb-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold flex-shrink-0" style={{ background: '#7C3AED', color: '#fff' }}>{a.priority}</div>
+                  <div>
+                    <p className="text-[14px] font-semibold mb-1" style={{ color: '#F5F3FF' }}>{a.action}</p>
+                    <p className="text-[12px] mb-1" style={{ color: '#A78BFA' }}>📅 Deadline: {a.deadline}</p>
+                    <p className="text-[12px]" style={{ color: '#9CA3AF' }}>{a.why_important}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Budget + Final Advice */}
+          <div className="grid grid-cols-1 gap-4 mb-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+            {r.budget_reality_check && (
+              <div className="rounded-[16px] p-5" style={CARD_BASE}>
+                <h3 className="text-[15px] font-semibold mb-2" style={{ color: '#F5F3FF' }}>💰 Budget Reality Check</h3>
+                <p className="text-[13px]" style={{ color: '#C4B5FD' }}>{r.budget_reality_check}</p>
+              </div>
+            )}
+            {r.final_advice && (
+              <div className="rounded-[16px] p-5" style={{ ...CARD_BASE, borderColor: '#7C3AED60' }}>
+                <h3 className="text-[15px] font-semibold mb-2" style={{ color: '#F5F3FF' }}>🎯 Final Guidance</h3>
+                <p className="text-[13px]" style={{ color: '#C4B5FD' }}>{r.final_advice}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center mt-4">
+            <button onClick={resetWizard} className="flex items-center gap-2 text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all" style={{ border: '1px solid #4338CA', color: '#A78BFA' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#1E1B4B' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+              <RotateCcw size={15} /> 🔄 Start Over
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // Fallback: raw text
+    const { nearby, national, noLocalMatch } = parseResults(typeof results === 'string' ? results : JSON.stringify(results))
     return (
       <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 20px' }}>
         <div className="flex items-center gap-3 mb-8">
           <GraduationCap size={28} style={{ color: '#A78BFA' }} />
           <h1 className="text-[28px] font-semibold" style={{ color: '#F5F3FF' }}>Your EduFinder Results</h1>
         </div>
-
-        {/* NEARBY Section */}
         <div className="mb-8">
-          <h2 className="text-[20px] font-semibold mb-4" style={{ color: '#F5F3FF' }}>
-            📍 Institutions Near {answers.userCity || 'Your City'}
-          </h2>
+          <h2 className="text-[20px] font-semibold mb-4" style={{ color: '#F5F3FF' }}>📍 Institutions Near {answers.userCity || 'Your City'}</h2>
           {noLocalMatch || nearby.length === 0 ? (
-            <div
-              className="p-4 rounded-[12px] text-[14px]"
-              style={{ background: '#0F0A1E', border: '1px solid #2D1B69', color: '#9CA3AF' }}
-            >
-              No strong local matches found — consider the national picks below.
-            </div>
-          ) : (
-            nearby.map((block, i) => <InstitutionCard key={i} block={block} />)
-          )}
+            <div className="p-4 rounded-[12px] text-[14px]" style={{ background: '#0F0A1E', border: '1px solid #2D1B69', color: '#9CA3AF' }}>No strong local matches found — consider the national picks below.</div>
+          ) : (nearby.map((block, i) => <InstitutionCard key={i} block={block} />))}
         </div>
-
-        {/* NATIONAL Section */}
         <div className="mb-6">
-          <h2 className="text-[20px] font-semibold mb-4" style={{ color: '#F5F3FF' }}>
-            🇮🇳 Top Picks Across India
-          </h2>
+          <h2 className="text-[20px] font-semibold mb-4" style={{ color: '#F5F3FF' }}>🇮🇳 Top Picks Across India</h2>
           {national.length === 0 ? (
-            <div
-              className="rounded-[16px] p-6"
-              style={CARD_BASE}
-            >
-              <pre className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: '#C4B5FD', fontFamily: 'inherit' }}>
-                {results}
-              </pre>
+            <div className="rounded-[16px] p-6" style={CARD_BASE}>
+              <pre className="text-[14px] leading-relaxed whitespace-pre-wrap" style={{ color: '#C4B5FD', fontFamily: 'inherit' }}>{typeof results === 'string' ? results : JSON.stringify(results, null, 2)}</pre>
             </div>
-          ) : (
-            national.map((block, i) => <InstitutionCard key={i} block={block} />)
-          )}
+          ) : (national.map((block, i) => <InstitutionCard key={i} block={block} />))}
         </div>
-
-        {/* Start Over */}
         <div className="flex justify-center mt-6">
-          <button
-            onClick={resetWizard}
-            className="flex items-center gap-2 text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all"
-            style={{ border: '1px solid #4338CA', color: '#A78BFA' }}
+          <button onClick={resetWizard} className="flex items-center gap-2 text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all" style={{ border: '1px solid #4338CA', color: '#A78BFA' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = '#1E1B4B' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-          >
-            <RotateCcw size={15} />
-            🔄 Start Over
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}>
+            <RotateCcw size={15} /> 🔄 Start Over
           </button>
         </div>
       </div>
@@ -381,7 +487,7 @@ export default function EduFinderPage() {
         {step === 3 && <Step3 answers={answers} setAnswers={setAnswers} setStep={setStep} />}
         {step === 4 && <Step4 answers={answers} setAnswers={setAnswers} setStep={setStep} />}
         {step === 5 && <Step5 answers={answers} setAnswers={setAnswers} setStep={setStep} />}
-        {step === 6 && <Step6 answers={answers} setAnswers={setAnswers} handleSubmit={handleSubmit} />}
+        {step === 6 && <Step6 answers={answers} setAnswers={setAnswers} handleSubmit={handleSubmit} setStep={setStep} />}
       </div>
     </div>
   )
@@ -456,7 +562,10 @@ function Step2({ answers, setAnswers, setStep }: {
           </button>
         ))}
       </div>
-      <ContinueButton onClick={() => setStep(3)} disabled={!answers.eduLevel} />
+      <div className="flex gap-3">
+        <button onClick={() => setStep(1)} className="flex-1 mt-6 py-3 rounded-[12px] text-[14px] font-semibold transition-all" style={{ border: '1px solid #2D1B69', color: '#A78BFA' }}>← Back</button>
+        <ContinueButton onClick={() => setStep(3)} disabled={!answers.eduLevel} />
+      </div>
     </div>
   )
 }
@@ -499,7 +608,10 @@ function Step3({ answers, setAnswers, setStep }: {
           )
         })}
       </div>
-      <ContinueButton onClick={() => setStep(4)} disabled={answers.fields.length === 0} />
+      <div className="flex gap-3">
+        <button onClick={() => setStep(2)} className="flex-1 mt-6 py-3 rounded-[12px] text-[14px] font-semibold transition-all" style={{ border: '1px solid #2D1B69', color: '#A78BFA' }}>← Back</button>
+        <ContinueButton onClick={() => setStep(4)} disabled={answers.fields.length === 0} />
+      </div>
     </div>
   )
 }
@@ -528,7 +640,10 @@ function Step4({ answers, setAnswers, setStep }: {
           </button>
         ))}
       </div>
-      <ContinueButton onClick={() => setStep(5)} disabled={!answers.budget} />
+      <div className="flex gap-3">
+        <button onClick={() => setStep(3)} className="flex-1 mt-6 py-3 rounded-[12px] text-[14px] font-semibold transition-all" style={{ border: '1px solid #2D1B69', color: '#A78BFA' }}>← Back</button>
+        <ContinueButton onClick={() => setStep(5)} disabled={!answers.budget} />
+      </div>
     </div>
   )
 }
@@ -595,18 +710,21 @@ function Step5({ answers, setAnswers, setStep }: {
           {showPincodeError && <FieldError msg="Pincode must be exactly 6 digits." />}
         </div>
       </div>
-
-      <ContinueButton onClick={() => setStep(6)} disabled={!allValid} />
+      <div className="flex gap-3">
+        <button onClick={() => setStep(4)} className="flex-1 mt-6 py-3 rounded-[12px] text-[14px] font-semibold transition-all" style={{ border: '1px solid #2D1B69', color: '#A78BFA' }}>← Back</button>
+        <ContinueButton onClick={() => setStep(6)} disabled={!allValid} />
+      </div>
     </div>
   )
 }
 
 // ─── Step 6 — Entrance Exam ───────────────────────────────────────────────────
 
-function Step6({ answers, setAnswers, handleSubmit }: {
+function Step6({ answers, setAnswers, handleSubmit, setStep }: {
   answers: WizardAnswers
   setAnswers: React.Dispatch<React.SetStateAction<WizardAnswers>>
   handleSubmit: () => void
+  setStep: React.Dispatch<React.SetStateAction<number>>
 }) {
   return (
     <div>
@@ -618,11 +736,14 @@ function Step6({ answers, setAnswers, handleSubmit }: {
         onChange={v => setAnswers(a => ({ ...a, entrance: v }))}
         placeholder="e.g. JEE, NEET, CUET, CAT, CLAT, or type None"
       />
-      <ContinueButton
-        onClick={handleSubmit}
-        label="Get My Recommendations 🎓"
-        disabled={!answers.entrance.trim()}
-      />
+      <div className="flex gap-3">
+        <button onClick={() => setStep(5)} className="flex-1 mt-6 py-3 rounded-[12px] text-[14px] font-semibold transition-all" style={{ border: '1px solid #2D1B69', color: '#A78BFA' }}>← Back</button>
+        <ContinueButton
+          onClick={handleSubmit}
+          label="Get My Recommendations 🎓"
+          disabled={!answers.entrance.trim()}
+        />
+      </div>
     </div>
   )
 }

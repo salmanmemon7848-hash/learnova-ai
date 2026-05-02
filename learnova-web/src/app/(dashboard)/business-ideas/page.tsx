@@ -513,6 +513,7 @@ export default function BusinessIdeasPage() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
+  const [aiResult, setAiResult] = useState<any>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [savedIdeas, setSavedIdeas] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
@@ -556,16 +557,15 @@ export default function BusinessIdeasPage() {
 
   const generateIdeas = async (answersData: Record<number, string>, isMore: boolean) => {
   try {
-    // Add 30 second timeout so it never hangs forever
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 35000);
 
     const res = await fetch('/api/business-ideas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         answers: answersData,
-        existingIdeas: isMore ? ideas.map(i => i.name) : [],
+        existingIdeas: isMore ? ideas.map((i: any) => i.idea_name || i.name) : [],
         count: 5,
       }),
       signal: controller.signal,
@@ -573,33 +573,32 @@ export default function BusinessIdeasPage() {
 
     clearTimeout(timeout);
 
-    // Check if response is ok
-    if (!res.ok) {
-      throw new Error(`API returned ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`API returned ${res.status}`);
 
     const data = await res.json();
+    console.log('✅ API Response:', data);
 
-    console.log('✅ API Response:', data); // Debug log
+    // New API returns { result: { ideas, mentor_observation, ... } }
+    const parsed = data.result || data;
+    const newIdeas = parsed.ideas || data.ideas || [];
 
-    if (data.ideas && data.ideas.length > 0) {
+    if (newIdeas.length > 0) {
       if (isMore) {
-        setIdeas(prev => [...prev, ...data.ideas]);
+        setIdeas(prev => [...prev, ...newIdeas]);
       } else {
-        setIdeas(data.ideas);
-        setStage('results'); // ✅ This must be called
+        setIdeas(newIdeas);
+        setAiResult(parsed);
+        setStage('results');
       }
     } else {
-      // API returned but no ideas — show fallback
       console.error('No ideas in response:', data);
       if (!isMore) {
-        setIdeas(getFallbackIdeas()); // fallback ideas below
+        setIdeas(getFallbackIdeas());
         setStage('results');
       }
     }
   } catch (error: any) {
     console.error('❌ generateIdeas error:', error?.message || error);
-    // Always move to results even on error — show fallback ideas
     if (!isMore) {
       setIdeas(getFallbackIdeas());
       setStage('results');
@@ -620,7 +619,14 @@ export default function BusinessIdeasPage() {
     setAnswers({});
     setSelectedOption(null);
     setIdeas([]);
+    setAiResult(null);
     setSavedIdeas(new Set());
+  };
+
+  const handleRefineAnswers = () => {
+    setStage('questions');
+    setCurrentQuestion(questions.length - 1);
+    setSelectedOption(answers[questions[questions.length - 1].id] || null);
   };
 
   const toggleSave = (name: string) => {
@@ -822,23 +828,18 @@ export default function BusinessIdeasPage() {
     <div className="min-h-screen bg-[#0F0F10] text-white pb-[80px] lg:pb-0">
 
       {/* Hero Header */}
-      <div className="bg-gradient-to-b from-purple-900/20 to-transparent px-6 pt-8 pb-6 text-center mb-6">
+      <div className="bg-gradient-to-b from-purple-900/20 to-transparent px-6 pt-8 pb-6 text-center mb-4">
         <div className="text-5xl mb-3">🎉</div>
         <h1 className="text-3xl font-bold text-white mb-2">Your Business Ideas Are Ready!</h1>
         <p className="text-gray-400 text-sm max-w-md mx-auto">
-          5 startup ideas personally crafted by your AI business coach based on your profile
+          {ideas.length} startup ideas personally crafted by your AI business coach based on your profile
         </p>
-
-        {/* Profile Summary Tags */}
-        <div className="flex flex-wrap gap-2 justify-center mt-5 max-w-2xl mx-auto">
+        <div className="flex flex-wrap gap-2 justify-center mt-4 max-w-2xl mx-auto">
           {Object.entries(answers).map(([qId, val]) => {
             const q = questions.find(q => q.id === parseInt(qId));
             const opt = q?.options.find(o => o.value === val);
             return opt ? (
-              <span
-                key={qId}
-                className="bg-purple-500/10 text-purple-300 text-xs px-3 py-1.5 rounded-full border border-purple-500/20"
-              >
+              <span key={qId} className="bg-purple-500/10 text-purple-300 text-xs px-3 py-1.5 rounded-full border border-purple-500/20">
                 {opt.emoji} {opt.label}
               </span>
             ) : null;
@@ -846,50 +847,184 @@ export default function BusinessIdeasPage() {
         </div>
       </div>
 
-      {/* Ideas */}
-      <div className="max-w-3xl mx-auto px-6 space-y-6 mb-10">
-        {ideas.map((idea, i) => (
-          <IdeaCard
-            key={`${idea.name}-${i}`}
-            idea={idea}
-            index={i}
-            saved={savedIdeas.has(idea.name)}
-            onSave={() => toggleSave(idea.name)}
-            router={router}
-          />
-        ))}
-      </div>
+      <div className="max-w-3xl mx-auto px-6 space-y-5 mb-10">
 
-      {/* Bottom CTA */}
-      <div className="max-w-3xl mx-auto px-6 space-y-4">
+        {/* Mentor Observation */}
+        {aiResult?.mentor_observation && (
+          <div className="bg-[#1A1A1E] rounded-2xl border border-purple-500/30 p-6">
+            <h3 className="text-white font-bold text-lg mb-3">🧠 Your Mentor's Observation</h3>
+            <p className="text-gray-300 text-sm leading-relaxed mb-4">{aiResult.mentor_observation}</p>
+            {aiResult.honest_warning && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 text-sm text-yellow-300">
+                ⚠️ {aiResult.honest_warning}
+              </div>
+            )}
+          </div>
+        )}
 
+        {/* Recommended Banner */}
+        {aiResult?.why_recommended && (
+          <div className="bg-gradient-to-r from-purple-600/20 to-purple-800/10 border border-purple-500/40 rounded-2xl p-5">
+            <span className="text-xs font-bold text-purple-400 bg-purple-500/20 px-3 py-1 rounded-full">⭐ Recommended for You</span>
+            <p className="text-gray-200 text-sm mt-3 leading-relaxed">{aiResult.why_recommended}</p>
+          </div>
+        )}
+
+        {/* Idea Cards */}
+        {ideas.map((idea: any, i: number) => {
+          const ideaName = idea.idea_name || idea.name;
+          const isRecommended = aiResult?.recommended_idea === (idea.rank || i + 1);
+          const fitScore = idea.founder_fit_score;
+          const fitColor = fitScore >= 80 ? 'text-green-400' : fitScore >= 60 ? 'text-yellow-400' : 'text-red-400';
+
+          return (
+            <div
+              key={`${ideaName}-${i}`}
+              className={`bg-[#1A1A1E] rounded-2xl border overflow-hidden transition-all duration-300 ${
+                isRecommended ? 'border-purple-500/60' : 'border-gray-700/50 hover:border-purple-500/30'
+              }`}
+            >
+              <div className="h-1 bg-gradient-to-r from-purple-600 to-purple-400 w-full" />
+
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600/30 to-purple-800/30 border border-purple-500/30 rounded-xl flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
+                      #{idea.rank || i + 1}
+                    </div>
+                    <div>
+                      <h3 className="text-white font-bold text-lg leading-tight">{ideaName}</h3>
+                      {isRecommended && (
+                        <span className="text-xs text-purple-400 bg-purple-500/15 px-2 py-0.5 rounded-full mt-1 inline-block">⭐ Recommended</span>
+                      )}
+                    </div>
+                  </div>
+                  {fitScore && (
+                    <div className="flex-shrink-0 text-center bg-[#0F0F10] rounded-xl p-3 min-w-[64px]">
+                      <div className={`text-xl font-bold ${fitColor}`}>{fitScore}%</div>
+                      <div className="text-gray-500 text-xs">fit</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* One-liner */}
+                <p className="text-gray-400 text-sm italic mb-4">{idea.one_line || idea.description}</p>
+
+                {/* Meta grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                  {[
+                    { label: '🎯 Problem', value: idea.problem_solved },
+                    { label: '👤 Customer', value: idea.target_customer },
+                    { label: '💰 Cost', value: idea.startup_cost || idea.investment },
+                    { label: '📈 Revenue', value: idea.revenue_model || idea.revenue },
+                    { label: '⏱ First Revenue', value: idea.time_to_first_revenue || idea.timeToRevenue },
+                    { label: '📊 Market Size', value: idea.market_size_india },
+                  ].filter(m => m.value).map((m, j) => (
+                    <div key={j} className="bg-[#0F0F10] rounded-xl p-3">
+                      <p className="text-gray-500 text-xs mb-1">{m.label}</p>
+                      <p className="text-gray-200 text-xs font-medium leading-snug">{m.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sections */}
+                <div className="space-y-3 mb-4">
+                  {idea.why_now && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                      <p className="text-blue-400 text-xs font-semibold mb-1">⚡ Why Now in India</p>
+                      <p className="text-gray-300 text-sm leading-relaxed">{idea.why_now}</p>
+                    </div>
+                  )}
+                  {(idea.real_indian_example || idea.indianExamples) && (
+                    <div className="bg-[#0F0F10] rounded-xl p-4">
+                      <p className="text-white text-xs font-semibold mb-1">🇮🇳 Indian Success Story</p>
+                      <p className="text-gray-300 text-sm leading-relaxed">{idea.real_indian_example || idea.indianExamples}</p>
+                    </div>
+                  )}
+                  {idea.founder_fit_reason && (
+                    <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4">
+                      <p className="text-green-400 text-xs font-semibold mb-1">✅ Why You're a Good Fit</p>
+                      <p className="text-gray-300 text-sm leading-relaxed">{idea.founder_fit_reason}</p>
+                    </div>
+                  )}
+                  {(idea.biggest_risk || idea.risks) && (
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+                      <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Biggest Risk</p>
+                      <p className="text-gray-300 text-sm leading-relaxed">{idea.biggest_risk || idea.risks}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* First 3 Steps */}
+                {(idea.first_3_steps || idea.firstSteps)?.slice(0, 3).length > 0 && (
+                  <div className="bg-[#0F0F10] rounded-xl p-4 mb-4">
+                    <p className="text-white text-xs font-semibold mb-3">🚀 First 3 Steps to Start</p>
+                    <div className="space-y-2">
+                      {(idea.first_3_steps || idea.firstSteps).slice(0, 3).map((step: string, j: number) => (
+                        <div key={j} className="flex items-start gap-3">
+                          <span className="w-6 h-6 bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                            {j + 1}
+                          </span>
+                          <span className="text-gray-300 text-sm leading-relaxed">{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSave(ideaName)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
+                      savedIdeas.has(ideaName)
+                        ? 'bg-purple-600/30 text-purple-300 border-purple-500/50'
+                        : 'bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border-purple-500/20 hover:border-purple-500/40'
+                    }`}
+                  >
+                    {savedIdeas.has(ideaName) ? '✅ Saved' : '🔖 Save Idea'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/chat?prompt=Help me build a detailed business plan for: ${ideaName}. ${idea.one_line || idea.description}`)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-green-600/10 hover:bg-green-600/20 text-green-400 border border-green-500/20 hover:border-green-500/40 transition-all duration-200"
+                  >
+                    🤖 Build with AI
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Bottom CTAs */}
         <button
+          type="button"
           onClick={handleMoreIdeas}
           disabled={loadingMore}
           className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg transition-all duration-200 shadow-xl shadow-purple-500/20 hover:scale-[1.01] active:scale-100 flex items-center justify-center gap-3"
         >
           {loadingMore ? (
-            <>
-              <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Generating 5 More Ideas...
-            </>
-          ) : (
-            '⚡ Give Me 5 More Ideas'
-          )}
+            <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />Generating 5 More Ideas...</>
+          ) : '⚡ Give Me 5 More Ideas'}
         </button>
 
         <div className="grid grid-cols-2 gap-4">
           <button
+            type="button"
+            onClick={handleRefineAnswers}
+            className="bg-[#1A1A1E] hover:bg-[#222228] text-gray-300 hover:text-white border border-gray-700/50 hover:border-gray-600 py-3.5 rounded-xl font-semibold transition-all duration-200"
+          >
+            ← Refine My Answers
+          </button>
+          <button
+            type="button"
             onClick={handleRestart}
             className="bg-[#1A1A1E] hover:bg-[#222228] text-gray-300 hover:text-white border border-gray-700/50 hover:border-gray-600 py-3.5 rounded-xl font-semibold transition-all duration-200"
           >
             🔄 Retake Quiz
-          </button>
-          <button
-            onClick={() => router.push('/chat?prompt=I want to explore business ideas and get coaching on how to start')}
-            className="bg-green-600/15 hover:bg-green-600/25 text-green-400 border border-green-500/25 hover:border-green-500/50 py-3.5 rounded-xl font-semibold transition-all duration-200"
-          >
-            🤖 Chat with Coach
           </button>
         </div>
 

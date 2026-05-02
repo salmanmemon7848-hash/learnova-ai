@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://api.groq.com https://api.anthropic.com https://api.openai.com https://*.supabase.co https://*.supabase.in https://searxng.learnova-ai.com http://localhost:* https://web.whatsapp.com https://wa.me",
+              "connect-src 'self' https://api.groq.com https://api.anthropic.com https://api.openai.com https://*.supabase.co https://*.supabase.in https://searxng.learnova-ai.com https://learnova-searxng.onrender.com http://localhost:* https://web.whatsapp.com https://wa.me",
               "media-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",

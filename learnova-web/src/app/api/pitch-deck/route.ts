@@ -1,8 +1,14 @@
-import { chatWithHistory } from '@/lib/openai';
+﻿import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
-import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  LEARNOVA_FULL_CONTEXT,
+  FOUNDER_KNOWLEDGE,
+  getLanguageInstruction,
+  buildIndianSearchQuery,
+} from '@/lib/learnovaKnowledge';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,110 +18,127 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
     const body = await req.json();
-    const { answers } = body;
+    const { answers, stage, industry } = body;
 
-    const systemPrompt = `You are an expert startup consultant creating a 10-slide investor pitch deck.
+    const pitchContent = [
+      `Startup: ${answers.what || 'Not provided'}`,
+      `Problem: ${answers.problem || 'Not provided'}`,
+      `Target Customer: ${answers.customer || 'Not provided'}`,
+      `Revenue Model: ${answers.revenue || 'Not provided'}`,
+      `Competitors: ${answers.competitors || 'Not provided'}`,
+      `Differentiation: ${answers.different || 'Not provided'}`,
+      `Go-to-Market: ${answers.gomarket || 'Not provided'}`,
+      `Team: ${answers.team || 'Not provided'}`,
+      `Funding Ask: ${answers.raise || 'Not provided'}`,
+      `Use of Funds: ${answers.funds || 'Not provided'}`,
+    ].join('\n');
 
-Based on the user's answers, generate content for these 10 slides:
-1. Cover - Startup name and tagline
-2. Problem - The pain point being solved
-3. Solution - How the startup solves it
-4. Market Size - Target market and opportunity
-5. Business Model - How it makes money
-6. Traction - Current status (be honest: "Early stage, building MVP" if applicable)
-7. Competition - Main competitors and differentiation
-8. Team - Founding team
-9. Ask - Funding amount and use of funds
-10. Thank You - Contact information
+    const languageInstruction = getLanguageInstruction(answers.what || '');
 
-Return ONLY a JSON array of 10 slide objects with this exact structure:
-[
-  {
-    "title": "Slide Title",
-    "content": "Slide content (can be multiple lines separated by \\n)"
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+${FOUNDER_KNOWLEDGE}
+
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are Learnova's Pitch Deck AI â€” a senior startup advisor and investor who has evaluated 500+ pitches at Indian accelerators (Y Combinator India, Sequoia Surge, 100X.VC).
+
+You are brutally honest but constructive. You evaluate like a real investor would.
+
+Founder's pitch input:
+${pitchContent}
+
+Startup stage: ${stage || 'Not specified'}
+Industry: ${industry || 'Not specified'}
+
+Use web search results to check market data, competitor landscape, and current investor trends.
+
+Respond ONLY in this exact JSON with no extra text or markdown:
+
+{
+  "overall_score": 72,
+  "investor_first_impression": "string â€” what an investor thinks in first 30 seconds",
+  "fundability": "High",
+  "dimensions": {
+    "problem_clarity": { "score": 7, "feedback": "string", "improvement": "string" },
+    "solution_strength": { "score": 6, "feedback": "string", "improvement": "string" },
+    "market_understanding": { "score": 5, "feedback": "string", "improvement": "string" },
+    "business_model": { "score": 8, "feedback": "string", "improvement": "string" },
+    "team_credibility": { "score": 6, "feedback": "string", "improvement": "string" },
+    "traction": { "score": 4, "feedback": "string", "improvement": "string" }
   },
-  ...
-]
+  "strongest_slide": "string",
+  "weakest_slide": "string",
+  "red_flags": ["string", "string"],
+  "green_flags": ["string", "string"],
+  "investor_questions": ["string", "string", "string"],
+  "rewrite_suggestions": [
+    { "section": "string", "current_issue": "string", "suggested_rewrite": "string" }
+  ],
+  "market_reality_check": "string based on web search data",
+  "next_milestone": "string â€” what to achieve before next fundraise",
+  "final_verdict": "string â€” honest 2-3 sentence verdict"
+}
 
-Make the content:
-- Professional and investor-ready
-- Concise (bullet points, not paragraphs)
-- Specific to the user's startup
-- Realistic and honest about stage
-- Action-oriented
+Replace all placeholder strings with real, specific feedback for this pitch. fundability must be exactly one of: High, Medium, Low, Not Yet.`;
 
-Do not include any other text or explanations.`;
+    const userMessage = `Evaluate my startup pitch and provide detailed investor feedback.`;
 
-    const userMessage = `Create my pitch deck with these answers:
-- What: ${answers.what || 'Not provided'}
-- Problem: ${answers.problem || 'Not provided'}
-- Customer: ${answers.customer || 'Not provided'}
-- Revenue: ${answers.revenue || 'Not provided'}
-- Competitors: ${answers.competitors || 'Not provided'}
-- Different: ${answers.different || 'Not provided'}
-- Go-to-market: ${answers.gomarket || 'Not provided'}
-- Team: ${answers.team || 'Not provided'}
-- Raise: ${answers.raise || 'Not provided'}
-- Funds: ${answers.funds || 'Not provided'}`;
-
-    // Enrich system prompt with live market/competition data for this startup
-    const searchQuery = `${answers.what || 'startup'} India market competition investors pitch 2025`.trim()
-    const { finalSystemPrompt: enrichedSystemPrompt } = await askAIWithSearch({
-      userMessage: searchQuery,
-      systemPrompt,
-      needsSearch: true,
-    })
+    const searchContext = await getSearchContext(answers.what || 'startup', 'pitch-deck', { industry: industry || '' });
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+    const enrichedPrompt = searchContext
+      ? `${systemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${systemPrompt}\n\n${searchUsageInstruction}`;
 
     const response = await chatWithHistory(
       [{ role: 'user', content: userMessage }],
-      enrichedSystemPrompt
+      enrichedPrompt
     );
 
-    // Parse the response
-    let slides: any[] = [];
+    // Parse JSON with multiple strategies
+    let result: any = null;
+
     try {
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        slides = JSON.parse(jsonMatch[0]);
-      }
-    } catch (e) {
-      console.error('JSON parse error:', e);
+      const trimmed = response.trim();
+      if (trimmed.startsWith('{')) result = JSON.parse(trimmed);
+    } catch (_) {}
+
+    if (!result) {
+      try {
+        const match = response.match(/\{[\s\S]*\}/);
+        if (match) result = JSON.parse(match[0]);
+      } catch (_) {}
     }
 
-    if (slides.length === 0) {
-      // Fallback slides if parsing fails
-      slides = [
-        { title: answers.what || 'Your Startup', content: 'Pitch Deck\nInvestor Presentation' },
-        { title: 'Problem', content: answers.problem || 'The problem you are solving' },
-        { title: 'Solution', content: answers.what || 'Your innovative solution' },
-        { title: 'Market Size', content: 'Target Market: ' + (answers.customer || 'Your target customers') },
-        { title: 'Business Model', content: answers.revenue || 'How you make money' },
-        { title: 'Traction', content: 'Early stage, building MVP' },
-        { title: 'Competition', content: 'Competitors: ' + (answers.competitors || 'Market players') + '\n\nDifferentiator: ' + (answers.different || 'Your edge') },
-        { title: 'Team', content: answers.team || 'Founding team' },
-        { title: 'Ask', content: 'Seeking: ' + (answers.raise || 'Funding') + '\n\nUse: ' + (answers.funds || 'Fund allocation') },
-        { title: 'Thank You', content: 'Contact us to learn more' },
-      ];
+    if (!result) {
+      try {
+        const cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) result = JSON.parse(match[0]);
+      } catch (_) {}
     }
 
-    // ── Save to Supabase (non-blocking) ───────────────────────────────────────
-    const deckTitle = `Pitch Deck: ${answers.what || 'My Startup'}`;
+    if (!result) {
+      console.error('âŒ All parse strategies failed. Raw:', response.substring(0, 500));
+      return NextResponse.json({ error: 'Failed to parse AI evaluation. Please try again.' }, { status: 500 });
+    }
+
+    // Save to Supabase (non-blocking)
+    const deckTitle = `Pitch Evaluation: ${answers.what || 'My Startup'}`;
     try {
       await supabase.from('saved_files').insert({
         user_id: userId,
-        file_type: 'pitch_deck',
+        file_type: 'pitch_evaluation',
         title: deckTitle,
-        content: JSON.stringify(slides),
+        content: JSON.stringify(result),
       });
-
       await logActivity(supabase, userId, 'pitch_deck', deckTitle, {});
     } catch (saveErr) {
-      console.warn('[Pitch Deck] Failed to save to Supabase:', saveErr);
+      console.warn('[Pitch Deck] Save failed:', saveErr);
     }
 
-    return NextResponse.json({ slides });
+    return NextResponse.json({ result });
   } catch (error: any) {
-    console.error('❌ Pitch Deck Error:', error?.message || error);
-    return NextResponse.json({ error: 'Failed to generate pitch deck. Please try again.' }, { status: 500 });
+    console.error('âŒ Pitch Deck Error:', error?.message || error);
+    return NextResponse.json({ error: 'Failed to evaluate pitch. Please try again.' }, { status: 500 });
   }
 }

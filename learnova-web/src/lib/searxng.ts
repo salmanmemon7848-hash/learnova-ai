@@ -1,70 +1,183 @@
 /**
- * SearXNG Search Utility — Learnova AI
+ * SearXNG Search Utility — Learnova AI (Upgraded)
  *
- * Dedicated utility for your SearXNG instance.
- * URL is read from SEARXNG_URL environment variable.
- * Falls back to the hardcoded URL if env var is missing.
+ * Intelligent search with multi-query support, quality logging,
+ * and Render cold-start warmup ping.
  *
  * Never throws — returns [] silently on any failure.
  */
 
 const SEARXNG_URL =
-  process.env.SEARXNG_URL ||
-  'https://learnova-searxng.onrender.com/search';
+  process.env.SEARXNG_URL || 'https://learnova-searxng.onrender.com/search';
 
-export interface SearXNGResult {
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface SearchResult {
   title: string;
   url: string;
   content: string;
+  score?: number;
+  category?: string;
 }
 
+export interface SearchResponse {
+  results: SearchResult[];
+  query: string;
+  totalResults: number;
+  searchedAt: string;
+}
+
+// ── Core search function ───────────────────────────────────────────────────────
+
 /**
- * Fetch the top 5 results from your SearXNG instance.
- * Returns an empty array silently on any failure — never crashes the caller.
+ * Fetch results from SearXNG with an 8-second timeout.
+ * Returns empty array silently on any failure — never crashes the caller.
  */
-export async function searchWeb(query: string): Promise<SearXNGResult[]> {
+export async function searchWeb(
+  query: string,
+  maxResults: number = 5
+): Promise<SearchResult[]> {
   try {
-    const url = `${SEARXNG_URL}?q=${encodeURIComponent(query)}&format=json`;
+    const url = `${SEARXNG_URL}?q=${encodeURIComponent(query)}&format=json&language=en-IN`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Learnova AI',
-      },
-      signal: AbortSignal.timeout(6000),
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
     });
 
-    if (!res.ok) return [];
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn(`SearXNG returned ${res.status} for query: ${query}`);
+      return [];
+    }
 
     const data = await res.json();
-    const results: SearXNGResult[] = (data.results || [])
-      .slice(0, 5)
+    const results = data.results || [];
+
+    return results
+      .slice(0, maxResults)
       .map((r: any) => ({
         title: r.title || '',
         url: r.url || '',
-        content: r.content || '',
+        content: r.content || r.snippet || '',
+        score: r.score || 0,
+        category: r.category || 'general',
       }))
-      .filter((r: SearXNGResult) => r.title && r.content);
-
-    return results;
-  } catch {
-    // Search failed silently — AI will answer from its own knowledge
+      .filter((r: SearchResult) => r.title && r.content);
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.warn('SearXNG search timed out for query:', query);
+    } else {
+      console.warn('SearXNG search failed:', error.message);
+    }
     return [];
   }
 }
 
-/**
- * Format search results into a clean prompt context block.
- */
-export function formatSearchContext(results: SearXNGResult[]): string {
-  if (results.length === 0) return '';
+// ── Format context for AI injection ───────────────────────────────────────────
 
-  return (
-    `Here is relevant information from the web to help you answer:\n\n` +
-    results
-      .map((r, i) => `[${i + 1}] ${r.title}\n${r.content}\nSource: ${r.url}`)
-      .join('\n\n') +
-    `\n\nUse this information to give an accurate, up-to-date answer. Always prefer this context over your training data when it is relevant.`
-  );
+/**
+ * Format search results into a clean context string for AI prompt injection.
+ */
+export function formatSearchContext(
+  results: SearchResult[],
+  query: string
+): string {
+  if (!results || results.length === 0) return '';
+
+  const formatted = results
+    .map(
+      (r, i) =>
+        `[Source ${i + 1}] ${r.title}\n${r.content}\nURL: ${r.url}`
+    )
+    .join('\n\n');
+
+  return `LIVE WEB SEARCH RESULTS for "${query}":\n\n${formatted}\n\nUse the above search results to provide accurate, current information. Prioritize this data over your training knowledge when they conflict. Never cite URLs directly in your response — instead say "according to recent data" or "current information shows".`;
 }
+
+// ── Multi-query search ─────────────────────────────────────────────────────────
+
+/**
+ * Run multiple searches in parallel and combine deduplicated results.
+ */
+export async function searchWebMultiple(
+  queries: string[],
+  maxResultsPerQuery: number = 3
+): Promise<SearchResult[]> {
+  const allResults = await Promise.allSettled(
+    queries.map((q) => searchWeb(q, maxResultsPerQuery))
+  );
+
+  const combined: SearchResult[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const result of allResults) {
+    if (result.status === 'fulfilled') {
+      for (const r of result.value) {
+        if (!seenUrls.has(r.url)) {
+          seenUrls.add(r.url);
+          combined.push(r);
+        }
+      }
+    }
+  }
+
+  return combined;
+}
+
+// ── Search quality logging ─────────────────────────────────────────────────────
+
+/**
+ * Search with performance logging for debugging and monitoring.
+ */
+export async function searchWithLogging(
+  query: string,
+  feature: string,
+  maxResults: number = 5
+): Promise<{ results: SearchResult[]; tookMs: number; success: boolean }> {
+  const start = Date.now();
+
+  try {
+    const results = await searchWeb(query, maxResults);
+    const tookMs = Date.now() - start;
+
+    console.log(
+      `[SearXNG] Feature: ${feature} | Query: "${query.slice(0, 60)}" | Results: ${results.length} | Time: ${tookMs}ms`
+    );
+
+    return { results, tookMs, success: true };
+  } catch (error) {
+    const tookMs = Date.now() - start;
+    console.error(
+      `[SearXNG] FAILED | Feature: ${feature} | Query: "${query}" | Time: ${tookMs}ms | Error:`,
+      error
+    );
+    return { results: [], tookMs, success: false };
+  }
+}
+
+// ── Render cold-start warmup ───────────────────────────────────────────────────
+
+/**
+ * Ping SearXNG on module load to wake it up from Render free-tier sleep.
+ * Runs once per server process lifetime.
+ */
+let warmedUp = false;
+export async function warmupSearXNG(): Promise<void> {
+  if (warmedUp) return;
+  try {
+    const url = `${SEARXNG_URL}?q=ping&format=json`;
+    await fetch(url, { signal: AbortSignal.timeout(10000) });
+    warmedUp = true;
+    console.log('[SearXNG] Warmup ping sent successfully');
+  } catch {
+    console.warn('[SearXNG] Warmup ping failed — will retry on first search');
+  }
+}
+
+// Auto-warmup on module load
+warmupSearXNG();

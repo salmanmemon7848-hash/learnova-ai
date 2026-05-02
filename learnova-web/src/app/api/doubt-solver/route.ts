@@ -1,8 +1,74 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
-import { askAIWithSearch } from '@/lib/aiWithSearch';
+import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  LEARNOVA_FULL_CONTEXT,
+  STUDENT_KNOWLEDGE,
+  CAREER_GUIDE_KNOWLEDGE,
+  EDUFINDER_KNOWLEDGE,
+  AI_WRITER_KNOWLEDGE,
+  getLanguageInstruction,
+} from '@/lib/learnovaKnowledge';
+
+// ── Level-specific instructions ───────────────────────────────────────────────
+const levelInstructions: Record<string, string> = {
+  auto: `First detect the complexity of the question. If it seems like a basic school question, explain simply. If it seems like a competitive exam question, go deep with theory and edge cases. Mention which level you detected at the start.`,
+  basic: `The student is in Class 6–8. Use very simple language. Avoid jargon. Use relatable real-world Indian examples like cricket, chai, rickshaw, school. Keep sentences short.`,
+  medium: `The student is in Class 9–12. Use correct technical terms but explain them. Connect concepts to CBSE/ICSE syllabus. Use examples from daily Indian life and board exam patterns.`,
+  advanced: `The student is preparing for JEE/NEET/UPSC/CAT. Give deep theoretical understanding. Include edge cases, exceptions, and common exam traps. Reference standard books where relevant (HC Verma, NCERT, RD Sharma).`,
+};
+
+function buildSystemPrompt(level: string, languageInstruction: string): string {
+  const instruction = levelInstructions[level] ?? levelInstructions['auto'];
+
+  return `${LEARNOVA_FULL_CONTEXT}
+${STUDENT_KNOWLEDGE}
+
+LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
+
+You are Learnova's AI Doubt Solver — a world-class Indian tutor who explains concepts like a real teacher, not a search engine.
+
+Level context: ${instruction}
+
+CRITICAL: You must ALWAYS respond in this EXACT JSON structure — no extra text, no markdown outside the JSON:
+
+{
+  "concept_in_one_line": "string — explain the core concept in one simple sentence",
+  "detected_level": "string — Basic / Medium / Advanced",
+  "step_by_step": [
+    { "step": 1, "title": "string", "explanation": "string" },
+    { "step": 2, "title": "string", "explanation": "string" },
+    { "step": 3, "title": "string", "explanation": "string" }
+  ],
+  "simple_example": {
+    "title": "string",
+    "example": "string — use an Indian real-world example"
+  },
+  "medium_example": {
+    "title": "string",
+    "example": "string — slightly more complex, textbook-style"
+  },
+  "advanced_example": {
+    "title": "string",
+    "example": "string — exam-level application"
+  },
+  "why_it_works": "string — explain the reasoning and logic behind the answer, not just the answer",
+  "common_mistakes": ["string", "string"],
+  "memory_trick": "string — a short mnemonic or trick to remember this concept",
+  "exam_tip": "string — one specific tip for CBSE/JEE/NEET students",
+  "related_topics": ["string", "string", "string"]
+}
+
+Rules:
+- Always use ₹, Indian city names, Indian context in examples
+- Never write bullet points or markdown outside the JSON
+- Never give a one-line answer — always give full structured response
+- If web search results are provided, use them to make examples current and accurate
+- The step_by_step array must always have at least 3 steps
+- Never skip advanced_example even for basic questions — scale it appropriately`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,35 +77,23 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const userId = session.user.id;
-    const { question, questionText, subject, imageUrl } = await req.json();
+    const { question, questionText, subject, imageUrl, level = 'auto' } = await req.json();
     // Support both field names: frontend sends `questionText`, normalise to `question`
     const userQuestion = (question || questionText || '').trim();
     const userSubject = (subject || '').trim();
 
-    const baseSystemPrompt = `You are a concise and helpful AI tutor for Indian students preparing for CBSE, JEE, and NEET exams.
+    // ── Language detection ─────────────────────────────────────────────────────
+    const languageInstruction = getLanguageInstruction(userQuestion);
 
-When a student asks a question, answer in this exact format and nothing else:
+    const baseSystemPrompt = buildSystemPrompt(level, languageInstruction);
 
-**Answer:** [1-2 sentence direct answer]
+    // Fetch live web context for this question
+    const searchContext = await getSearchContext(userQuestion, 'doubt-solver', { subject: userSubject });
+    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
 
-**Why:** [2-3 sentences explaining the concept simply]
-
-**Remember:** [1 key point to remember for exams]
-
-Rules:
-- Never write more than 8 lines total
-- Never add sections like "NCERT Reference", "Common Mistakes", "Exam Relevance", "Step by Step" unless the student specifically asks
-- If the question is a calculation, show only the steps needed, no commentary
-- Use simple English that a Class 10-12 student understands
-- If the topic comes in as undefined or empty, ask the student: "Please type your question clearly and I will help you."
-- Never repeat the question back to the student`;
-
-    // Enrich system prompt with live web context for this question
-    const { finalSystemPrompt } = await askAIWithSearch({
-      userMessage: `${userSubject ? userSubject + ' ' : ''}${userQuestion}`,
-      systemPrompt: baseSystemPrompt,
-      needsSearch: true,
-    });
+    const finalSystemPrompt = searchContext
+      ? `${baseSystemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
+      : `${baseSystemPrompt}\n\n${searchUsageInstruction}`;
 
     if (!userQuestion) {
       return NextResponse.json({ solution: 'Please type your question clearly and I will help you.' });

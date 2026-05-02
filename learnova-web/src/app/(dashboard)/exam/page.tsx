@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Zap, ChevronLeft, ArrowLeft } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { getExamWhatsAppLink } from '@/lib/utils/streak'
 
 interface Question {
@@ -13,6 +13,9 @@ interface Question {
   explanation: string
   difficulty: 'Easy' | 'Medium' | 'Hard'
   chapter?: string
+  topic_tag?: string
+  why_wrong?: Record<string, string>
+  exam_relevance?: string
 }
 
 interface ExamScore {
@@ -32,6 +35,8 @@ export default function ExamSimulatorPage() {
   const [subject, setSubject] = useState('Physics')
   const [chapter, setChapter] = useState('')
   const [questionCount, setQuestionCount] = useState(10)
+  const [studentLevel, setStudentLevel] = useState<'beginner' | 'intermediate' | 'advanced' | 'adaptive'>('adaptive')
+  const [timerPerQuestion, setTimerPerQuestion] = useState<number>(60)
   
   // Exam state
   const [questions, setQuestions] = useState<Question[]>([])
@@ -43,6 +48,12 @@ export default function ExamSimulatorPage() {
   const [language, setLanguage] = useState<'english' | 'hindi'>('english')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [noAnswerWarning, setNoAnswerWarning] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(60)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  
+  // Results & Analysis state
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<any>(null)
   
   const sliderRef = useRef<HTMLInputElement>(null)
 
@@ -65,6 +76,34 @@ export default function ExamSimulatorPage() {
     'Custom': ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
   }
 
+  // ── Timer effect: reset + countdown on each new question ──────────────────
+  useEffect(() => {
+    if (step !== 'exam' || timerPerQuestion === 0) return
+    setTimeLeft(timerPerQuestion)
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!)
+          handleAutoNext()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIndex, step])
+
+  const handleAutoNext = () => {
+    setNoAnswerWarning(false)
+    if (currentQuestionIndex >= questions.length - 1) {
+      handleFinishExam()
+    } else {
+      setCurrentQuestionIndex(prev => prev + 1)
+    }
+  }
+
   const handleStartExam = async () => {
     setLoading(true)
     setError(null)
@@ -76,6 +115,7 @@ export default function ExamSimulatorPage() {
       chapter: chapter || undefined,
       questionCount,
       language,
+      studentLevel,
     }
 
     // Debug: log exactly what is being sent to the API
@@ -172,7 +212,6 @@ export default function ExamSimulatorPage() {
     scores.push(scoreData)
     localStorage.setItem('learnova_exam_scores', JSON.stringify(scores.slice(-20)))
 
-    // Save to Supabase (non-blocking fire-and-forget)
     const scorePercentage = Math.round((correctCount / questions.length) * 100)
     const timeTakenSeconds = startTime
       ? Math.floor((new Date().getTime() - startTime.getTime()) / 1000)
@@ -190,6 +229,28 @@ export default function ExamSimulatorPage() {
         timeTakenSeconds,
       }),
     }).catch(() => {/* non-critical */})
+
+    // Fetch deep analysis
+    const testData = questions.map(q => ({
+      question: q.text,
+      correct_answer: q.correctAnswer,
+      student_answer: userAnswers[q.number] || 'unanswered',
+      difficulty: q.difficulty,
+      topic: q.topic_tag || q.chapter
+    }))
+
+    setAnalyzing(true)
+    fetch('/api/exam/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ testData })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.result) setAnalysisResult(data.result)
+      })
+      .catch(err => console.error('Failed to get analysis:', err))
+      .finally(() => setAnalyzing(false))
   }
 
 
@@ -219,6 +280,7 @@ export default function ExamSimulatorPage() {
     setStartTime(null)
     setCurrentQuestionIndex(0)
     setNoAnswerWarning(false)
+    setAnalysisResult(null)
   }
 
   const handleNextQuestion = () => {
@@ -408,6 +470,67 @@ export default function ExamSimulatorPage() {
                 />
               </div>
             </div>
+
+            {/* Student Level */}
+            <div className="md:col-span-2">
+              <label className="block text-[12px] font-medium mb-2" style={{ color: '#C4B5FD' }}>
+                Difficulty Level
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                  { value: 'adaptive',     label: '🤖 Adaptive (AI decides)' },
+                  { value: 'beginner',     label: '🟢 Beginner' },
+                  { value: 'intermediate', label: '🟡 Intermediate' },
+                  { value: 'advanced',     label: '🔴 Advanced' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setStudentLevel(opt.value as any)}
+                    className="py-2 px-3 rounded-[10px] text-[12px] font-medium transition-all"
+                    style={{
+                      background: studentLevel === opt.value ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : '#0F0A1E',
+                      border: `1px solid ${studentLevel === opt.value ? '#7C3AED' : '#2D1B69'}`,
+                      color: studentLevel === opt.value ? 'white' : '#A78BFA',
+                      boxShadow: studentLevel === opt.value ? '0 4px 14px #7C3AED40' : 'none',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timer per Question */}
+            <div className="md:col-span-2">
+              <label className="block text-[12px] font-medium mb-2" style={{ color: '#C4B5FD' }}>
+                Time per Question
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {[
+                  { value: 30, label: '30 sec (Fast)' },
+                  { value: 60, label: '1 min (Normal)' },
+                  { value: 90, label: '90 sec (Relaxed)' },
+                  { value: 0,  label: 'No Timer' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTimerPerQuestion(opt.value)}
+                    className="py-2 px-3 rounded-[10px] text-[12px] font-medium transition-all"
+                    style={{
+                      background: timerPerQuestion === opt.value ? 'linear-gradient(135deg,#7C3AED,#4F46E5)' : '#0F0A1E',
+                      border: `1px solid ${timerPerQuestion === opt.value ? '#7C3AED' : '#2D1B69'}`,
+                      color: timerPerQuestion === opt.value ? 'white' : '#A78BFA',
+                      boxShadow: timerPerQuestion === opt.value ? '0 4px 14px #7C3AED40' : 'none',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
 
           {/* Error Message */}
@@ -483,7 +606,7 @@ export default function ExamSimulatorPage() {
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full rounded-full mb-6" style={{ height: '6px', background: '#2D1B69' }}>
+        <div className="w-full rounded-full mb-3" style={{ height: '6px', background: '#2D1B69' }}>
           <div
             className="rounded-full transition-all duration-500"
             style={{
@@ -495,7 +618,38 @@ export default function ExamSimulatorPage() {
           />
         </div>
 
+        {/* Per-Question Timer */}
+        {timerPerQuestion > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px]" style={{ color: '#9CA3AF' }}>Time remaining</span>
+              <span
+                className="text-[13px] font-bold tabular-nums"
+                style={{
+                  color: timeLeft > timerPerQuestion * 0.5 ? '#10b981'
+                       : timeLeft > timerPerQuestion * 0.25 ? '#f59e0b' : '#ef4444',
+                }}
+              >
+                {timeLeft}s
+              </span>
+            </div>
+            <div className="w-full rounded-full" style={{ height: '4px', background: '#1E1040' }}>
+              <div
+                className="rounded-full transition-all duration-1000"
+                style={{
+                  height: '4px',
+                  width: `${(timeLeft / timerPerQuestion) * 100}%`,
+                  background: timeLeft > timerPerQuestion * 0.5 ? '#10b981'
+                            : timeLeft > timerPerQuestion * 0.25 ? '#f59e0b' : '#ef4444',
+                  boxShadow: `0 0 6px ${timeLeft > timerPerQuestion * 0.5 ? '#10b981' : timeLeft > timerPerQuestion * 0.25 ? '#f59e0b' : '#ef4444'}60`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Question Card */}
+
         {currentQ && (
           <div
             className="rounded-[14px] p-6"
@@ -620,171 +774,150 @@ export default function ExamSimulatorPage() {
       <button
         onClick={() => router.push('/chat')}
         className="text-[13px] transition-colors hover:underline"
-        style={{ color: '#A78BFA' }}
+        style={{ color: '#A78BFA', marginBottom: '16px', display: 'inline-block' }}
       >
         ← Back to Chat
       </button>
 
-      <h1 className="text-[28px] font-semibold mt-4" style={{ color: '#F5F3FF' }}>
-        Test Results
-      </h1>
-
-      {/* Summary Card */}
-      <div
-        className="rounded-[16px] p-7 mt-6 text-center"
-        style={{
-          background: 'linear-gradient(135deg, #160D2E, #1E1040)',
-          border: '1px solid #2D1B69',
-        }}
-      >
-        {/* Score */}
-        <div
-          className="text-[52px] font-bold"
-          style={{
-            background: 'linear-gradient(135deg, #A78BFA, #7C3AED)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
-          {score} / {questions.length}
+      {analyzing ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mb-4 mx-auto" style={{ borderColor: 'var(--purple-primary)', borderTopColor: 'transparent' }} />
+          <h2 className="text-xl font-semibold text-white mb-2">Analyzing Your Performance...</h2>
+          <p className="text-sm" style={{ color: '#A78BFA' }}>Our AI is generating a personalized study plan and finding your weak areas.</p>
         </div>
-        <p className="text-[14px] mt-1" style={{ color: '#C4B5FD' }}>
-          Questions Correct
-        </p>
-
-        {/* Stat Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-5">
-          <div
-            className="text-[13px] px-4 py-2 rounded-[20px]"
-            style={{
-              background: '#0F0A1E',
-              border: '1px solid #2D1B69',
-              color: '#4ADE80',
-            }}
-          >
-            ✓ Correct · {score}
+      ) : analysisResult ? (
+        <div className="results-dashboard">
+          
+          {/* Score Hero Card */}
+          <div className="result-card score-hero text-center p-8 rounded-2xl" style={{ background: 'linear-gradient(135deg, #160D2E, #1E1040)', border: '1px solid #2D1B69' }}>
+            <div className="text-[64px] font-bold" style={{ background: 'linear-gradient(135deg, #A78BFA, #7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              {analysisResult.overall_score}%
+            </div>
+            <div className="inline-block mt-2 px-4 py-1.5 rounded-full text-sm font-semibold" style={{ background: '#7C3AED20', color: '#A78BFA', border: '1px solid #7C3AED50' }}>
+              {analysisResult.performance_level}
+            </div>
+            <div className="text-sm mt-4" style={{ color: '#9CA3AF' }}>
+              {analysisResult.correct}/{analysisResult.total_questions} correct · Time: {timeTaken}
+            </div>
+            <p className="mt-4 text-[15px]" style={{ color: '#C4B5FD' }}>{analysisResult.motivational_message}</p>
           </div>
-          <div
-            className="text-[13px] px-4 py-2 rounded-[20px]"
-            style={{
-              background: '#0F0A1E',
-              border: '1px solid #2D1B69',
-              color: '#F87171',
-            }}
-          >
-            ✗ Wrong · {wrong}
-          </div>
-          <div
-            className="text-[13px] px-4 py-2 rounded-[20px]"
-            style={{
-              background: '#0F0A1E',
-              border: '1px solid #2D1B69',
-              color: '#A78BFA',
-            }}
-          >
-            ⏱ Time · {timeTaken}
-          </div>
-        </div>
-      </div>
 
-      {/* WhatsApp Share Button */}
-      <div className="mt-4 flex justify-center">
-        <button
-          onClick={() => {
-            const link = getExamWhatsAppLink(score, questions.length, subject)
-            window.open(link, '_blank')
-          }}
-          className="px-4 py-2.5 rounded-lg text-[13px] font-medium cursor-pointer transition-all duration-150"
-          style={{
-            background: '#075E54',
-            color: 'white',
-            border: 'none',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = '#128C7E'}
-          onMouseLeave={(e) => e.currentTarget.style.background = '#075E54'}
-        >
-          Share Score on WhatsApp
-        </button>
-      </div>
+          {/* Topic-wise Analysis */}
+          <div className="result-card p-6 rounded-2xl mt-4" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+            <h3 className="text-lg font-semibold text-white mb-4">📊 Topic-wise Performance</h3>
+            {analysisResult.topic_analysis.map((t: any, i: number) => (
+              <div key={i} className="topic-row">
+                <div className="topic-info">
+                  <span className={`strength-dot ${t.strength}`} />
+                  <strong className="text-white text-[15px]">{t.topic}</strong>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="topic-bar-bg">
+                    <div
+                      className="topic-bar-fill"
+                      style={{ width: `${(t.correct/t.questions_asked)*100}%`,
+                        background: t.strength === 'strong' ? '#10b981'
+                          : t.strength === 'average' ? '#f59e0b' : '#ef4444'
+                      }}
+                    />
+                  </div>
+                  <span className="topic-score">{t.correct}/{t.questions_asked}</span>
+                </div>
+                <p className="topic-recommendation">{t.recommendation}</p>
+              </div>
+            ))}
+          </div>
 
-      {/* Question-by-Question List */}
-      <div className="mt-5">
-        <h3 className="text-[16px] font-semibold mb-3" style={{ color: '#F5F3FF' }}>
-          Question Breakdown
-        </h3>
-        {questions.map((q, idx) => (
-          <div
-            key={q.number}
-            className="flex items-center justify-between rounded-lg px-3.5 py-2.5 mb-1.5"
-            style={{ background: '#0F0A1E' }}
-          >
-            <span className="text-[13px] truncate flex-1 mr-3" style={{ color: '#C4B5FD' }}>
-              Q{idx + 1} — {q.text.slice(0, 50)}{q.text.length > 50 ? '...' : ''}
-            </span>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button
-                onClick={() => handleUpdateQuestionStatus(q.number, 'right')}
-                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
-                style={{
-                  background: questionStatus[q.number] === 'right' ? '#052E16' : 'transparent',
-                  color: '#4ADE80',
-                  border: `1px solid ${questionStatus[q.number] === 'right' ? '#166534' : '#2D1B69'}`,
-                }}
-              >
-                RIGHT
-              </button>
-              <button
-                onClick={() => handleUpdateQuestionStatus(q.number, 'wrong')}
-                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
-                style={{
-                  background: questionStatus[q.number] === 'wrong' ? '#450A0A' : 'transparent',
-                  color: '#F87171',
-                  border: `1px solid ${questionStatus[q.number] === 'wrong' ? '#7F1D1D' : '#2D1B69'}`,
-                }}
-              >
-                WRONG
-              </button>
-              <button
-                onClick={() => handleUpdateQuestionStatus(q.number, 'unanswered')}
-                className="text-[11px] px-2.5 py-1 rounded-[20px] transition-all"
-                style={{
-                  background: questionStatus[q.number] === 'unanswered' ? '#1E1B4B' : 'transparent',
-                  color: '#A78BFA',
-                  border: `1px solid ${questionStatus[q.number] === 'unanswered' ? '#4338CA' : '#2D1B69'}`,
-                }}
-              >
-                ?
-              </button>
+          {/* Two col — Strengths and Weaknesses */}
+          <div className="doubt-two-col mt-4">
+            <div className="result-card p-5 rounded-xl" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+              <h3 className="text-base font-semibold text-white mb-2">💪 Strongest Area</h3>
+              <p className="text-sm" style={{ color: '#C4B5FD' }}>{analysisResult.strongest_area}</p>
+            </div>
+            <div className="result-card p-5 rounded-xl" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+              <h3 className="text-base font-semibold text-white mb-2">🎯 Needs Most Work</h3>
+              <p className="text-sm" style={{ color: '#C4B5FD' }}>{analysisResult.weakest_area}</p>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
-        <button
-          onClick={handleSeeRevisionPlan}
-          className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:brightness-110"
-          style={{
-            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
-            color: 'white',
-            boxShadow: '0 4px 20px #7C3AED40',
-          }}
-        >
-          See weak areas & revision plan →
-        </button>
-        <button
-          onClick={handleTryAnother}
-          className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:bg-[#1E1B4B]"
-          style={{
-            border: '1px solid #4338CA',
-            color: '#A78BFA',
-          }}
-        >
-          Try another test
-        </button>
-      </div>
+          {/* Mistake Patterns */}
+          <div className="result-card p-6 rounded-2xl mt-4" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+            <h3 className="text-lg font-semibold text-white mb-4">⚠️ Mistake Patterns Detected</h3>
+            <div className="space-y-2">
+              {analysisResult.mistake_patterns.map((m: string, i: number) => (
+                <div key={i} className="text-sm p-3 rounded-lg" style={{ color: '#F87171', background: '#450A0A50', border: '1px solid #7F1D1D50' }}>
+                  ⚠️ {m}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Study Priority */}
+          <div className="result-card p-6 rounded-2xl mt-4" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+            <h3 className="text-lg font-semibold text-white mb-4">📚 Study Priority for Next Session</h3>
+            <div className="priority-list">
+              {analysisResult.study_priority.map((t: string, i: number) => (
+                <div key={i} className="priority-item">
+                  <span className="priority-num">{i+1}</span>
+                  {t}
+                </div>
+              ))}
+            </div>
+            <div className="next-step-box">
+              <strong style={{ color: '#A78BFA' }}>Next Step:</strong> {analysisResult.next_step}
+            </div>
+          </div>
+
+          {/* Question Review — expandable */}
+          <div className="result-card p-6 rounded-2xl mt-4" style={{ background: '#160D2E', border: '1px solid #2D1B69' }}>
+            <h3 className="text-lg font-semibold text-white mb-4">🔍 Question Review</h3>
+            {questions.map((q, i) => (
+              <div key={i} className={`question-review ${userAnswers[q.number] === q.correctAnswer ? 'correct' : 'wrong'}`}>
+                <div className="review-header">
+                  <span>{userAnswers[q.number] === q.correctAnswer ? '✅' : '❌'}</span>
+                  <span className="difficulty-tag">{q.difficulty}</span>
+                  {q.topic_tag && <span className="topic-tag-small">{q.topic_tag}</span>}
+                </div>
+                <p className="review-question">{q.text}</p>
+                <p className="your-answer">Your answer: {userAnswers[q.number] || 'Skipped'} — {q.options.find(o => o.label === userAnswers[q.number])?.text || ''}</p>
+                {userAnswers[q.number] !== q.correctAnswer && (
+                  <p className="correct-answer">Correct: {q.correctAnswer} — {q.options.find(o => o.label === q.correctAnswer)?.text}</p>
+                )}
+                <div className="explanation-box">{q.explanation}</div>
+                {userAnswers[q.number] !== q.correctAnswer && q.why_wrong && q.why_wrong[userAnswers[q.number]] && (
+                  <div className="why-wrong-box">
+                    Why your answer was wrong: {q.why_wrong[userAnswers[q.number]]}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+            <button
+              onClick={() => {
+                const link = getExamWhatsAppLink(score, questions.length, subject)
+                window.open(link, '_blank')
+              }}
+              className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:brightness-110"
+              style={{ background: '#075E54', color: 'white' }}
+            >
+              Share Score on WhatsApp
+            </button>
+            <button
+              onClick={handleTryAnother}
+              className="w-full sm:w-auto text-[14px] font-medium px-6 py-3 rounded-[10px] transition-all hover:bg-[#1E1B4B]"
+              style={{ border: '1px solid #4338CA', color: '#A78BFA' }}
+            >
+              Try another test
+            </button>
+          </div>
+
+        </div>
+      ) : (
+        <div className="text-center py-20" style={{ color: '#9CA3AF' }}>Failed to analyze results.</div>
+      )}
     </div>
   )
 }
