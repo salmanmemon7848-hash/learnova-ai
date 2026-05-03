@@ -1,4 +1,4 @@
-﻿import { chatWithHistory } from '@/lib/openai';
+﻿import { chatWithHistory, isGroqConfigured } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
@@ -10,8 +10,21 @@ import {
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge';
 
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
+    if (!isGroqConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
+        },
+        { status: 503 }
+      );
+    }
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -91,7 +104,10 @@ Replace all placeholder strings with real, specific feedback for this pitch. fun
 
     const response = await chatWithHistory(
       [{ role: 'user', content: userMessage }],
-      enrichedPrompt
+      enrichedPrompt,
+      undefined,
+      0.7,
+      4096
     );
 
     // Parse JSON with multiple strategies
@@ -138,7 +154,26 @@ Replace all placeholder strings with real, specific feedback for this pitch. fun
 
     return NextResponse.json({ result });
   } catch (error: any) {
-    console.error('âŒ Pitch Deck Error:', error?.message || error);
+    console.error('Pitch Deck Error:', error?.message || error);
+    const msg = typeof error?.message === 'string' ? error.message : '';
+
+    if (msg.includes('GROQ_API_KEY') || msg.includes('API key is missing or invalid')) {
+      return NextResponse.json(
+        {
+          error:
+            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
+        },
+        { status: 503 }
+      );
+    }
+
+    if (error?.name === 'AbortError' || msg.toLowerCase().includes('timeout')) {
+      return NextResponse.json(
+        { error: 'Pitch evaluation timed out. Please try again.' },
+        { status: 408 }
+      );
+    }
+
     return NextResponse.json({ error: 'Failed to evaluate pitch. Please try again.' }, { status: 500 });
   }
 }

@@ -1,10 +1,37 @@
 import Groq from 'groq-sdk';
 
-const apiKey = process.env.GROQ_API_KEY;
-if (!apiKey) throw new Error('GROQ_API_KEY is not set in .env.local');
-
-export const groqClient = new Groq({ apiKey });
 export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+
+let groqSingleton: Groq | null = null;
+
+function getGroq(): Groq {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error(
+      'GROQ_API_KEY is not configured. Add it under Vercel → Project → Settings → Environment Variables, then redeploy.'
+    );
+  }
+  if (!groqSingleton) {
+    groqSingleton = new Groq({ apiKey });
+  }
+  return groqSingleton;
+}
+
+/** Lazy client so API routes can load on Vercel even if env is missing until the handler runs. */
+export const groqClient = new Proxy({} as Groq, {
+  get(_target, prop) {
+    const client = getGroq();
+    const value = (client as unknown as Record<PropertyKey, unknown>)[prop];
+    if (typeof value === 'function') {
+      return (value as (...args: unknown[]) => unknown).bind(client);
+    }
+    return value;
+  },
+});
+
+export function isGroqConfigured(): boolean {
+  return Boolean(process.env.GROQ_API_KEY?.trim());
+}
 
 export async function generateText(prompt: string, systemPrompt?: string): Promise<string> {
   const messages: any[] = [];
@@ -27,12 +54,20 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
     return response.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error('Groq API error (generateText):', error?.message || error);
-    
-    // Return user-friendly error message
+
     if (error?.name === 'AbortError') {
       throw new Error('Request timed out. Please try again.');
     }
-    
+    if (typeof error?.message === 'string' && error.message.includes('GROQ_API_KEY')) {
+      throw error;
+    }
+    const status = error?.status ?? error?.response?.status;
+    if (status === 401 || status === 403) {
+      throw new Error(
+        'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.'
+      );
+    }
+
     throw new Error('AI is temporarily unavailable. Please try again in a moment.');
   }
 }
@@ -78,12 +113,20 @@ export async function chatWithHistory(
     return response.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error('Groq API error (chatWithHistory):', error?.message || error);
-    
-    // Return user-friendly error message
+
     if (error?.name === 'AbortError') {
       throw new Error('Request timed out. Please try again.');
     }
-    
+    if (typeof error?.message === 'string' && error.message.includes('GROQ_API_KEY')) {
+      throw error;
+    }
+    const status = error?.status ?? error?.response?.status;
+    if (status === 401 || status === 403) {
+      throw new Error(
+        'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.'
+      );
+    }
+
     throw new Error('AI is temporarily unavailable. Please try again in a moment.');
   }
 }

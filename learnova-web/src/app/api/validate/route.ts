@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk'
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
+import { isGroqConfigured } from '@/lib/openai'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   LEARNOVA_FULL_CONTEXT,
@@ -7,12 +8,33 @@ import {
   getLanguageInstruction,
 } from '@/lib/learnovaKnowledge'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+export const runtime = 'nodejs'
+export const maxDuration = 60
+
+let validateGroq: Groq | null = null
+function getGroq(): Groq {
+  const key = process.env.GROQ_API_KEY?.trim()
+  if (!key) {
+    throw new Error('GROQ_API_KEY is not configured')
+  }
+  if (!validateGroq) {
+    validateGroq = new Groq({ apiKey: key })
+  }
+  return validateGroq
+}
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isGroqConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
+        },
+        { status: 503 }
+      )
+    }
+
     const { idea, targetMarket, budget, industry } = await req.json()
 
     // Validate input
@@ -80,7 +102,7 @@ Industry: ${industry || 'Not specified'}
 
 Please analyse this thoroughly using your India expertise.`
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -95,15 +117,37 @@ Please analyse this thoroughly using your India expertise.`
     return NextResponse.json({ result })
   } catch (error: any) {
     console.error('❌ Validate Error:', error?.message || error)
-    
-    // Handle timeout errors
-    if (error?.name === 'AbortError' || error?.message?.includes('timeout')) {
+
+    const msg = typeof error?.message === 'string' ? error.message : ''
+
+    if (error?.name === 'AbortError' || msg.toLowerCase().includes('timeout')) {
       return NextResponse.json(
         { error: 'Request timed out. Please try again with a simpler idea description.' },
         { status: 408 }
       )
     }
-    
+
+    if (msg.includes('GROQ_API_KEY') || msg.includes('API key is missing or invalid')) {
+      return NextResponse.json(
+        {
+          error:
+            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
+        },
+        { status: 503 }
+      )
+    }
+
+    const status = error?.status ?? error?.response?.status
+    if (status === 401 || status === 403) {
+      return NextResponse.json(
+        {
+          error:
+            'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.',
+        },
+        { status: 503 }
+      )
+    }
+
     return NextResponse.json(
       { error: 'AI validation service is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }

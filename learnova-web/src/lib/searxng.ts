@@ -179,5 +179,5 @@ export async function warmupSearXNG(): Promise<void> {
   }
 }
 
-// Auto-warmup on module load
-warmupSearXNG();
+// Optional: call warmupSearXNG() from a cron or first-search path if needed.
+// Avoid firing fetch on every serverless cold start (adds noise and can race with the first user request).
