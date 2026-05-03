@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Zap } from 'lucide-react'
 import { getExamWhatsAppLink } from '@/lib/utils/streak'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 interface Question {
   number: number
@@ -54,6 +55,7 @@ export default function ExamSimulatorPage() {
   // Results & Analysis state
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any>(null)
+  const [rateWarning, setRateWarning] = useState('')
   
   const sliderRef = useRef<HTMLInputElement>(null)
 
@@ -105,6 +107,12 @@ export default function ExamSimulatorPage() {
   }
 
   const handleStartExam = async () => {
+    const packed = `${examType} ${subject} ${chapter}`.trim()
+    const inputError = validateInput(packed, 'exam')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     setLoading(true)
     setError(null)
     setStartTime(new Date())
@@ -135,11 +143,15 @@ export default function ExamSimulatorPage() {
 
       if (!response.ok) {
         // Show error in-place — do NOT reset to setup; keep form values intact
-        const message = data.error || 'Failed to generate questions. Please try again.'
+        const message = response.status === 429 || data?.error === 'rate_limit_exceeded'
+          ? buildRateLimitMessage(data)
+          : (data.error || 'Failed to generate questions. Please try again.')
         console.error('[EXAM PAGE] API error response:', message)
         setError(message)
         return
       }
+      const warning = response.headers.get('X-RateLimit-Warning')
+      if (warning) setRateWarning(warning)
 
       if (!Array.isArray(data.questions) || data.questions.length === 0) {
         // Validation failed: log what we got and surface a clear message
@@ -541,6 +553,11 @@ export default function ExamSimulatorPage() {
             >
               <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#F87171]" />
               {error}
+            </div>
+          )}
+          {rateWarning && (
+            <div className="mt-2 p-3 rounded-[10px] text-[13px] flex items-center gap-2" style={{ background: '#451a03', color: '#fbbf24', border: '1px solid #92400e' }}>
+              {rateWarning}
             </div>
           )}
 

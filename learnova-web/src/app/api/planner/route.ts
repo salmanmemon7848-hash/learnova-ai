@@ -1,5 +1,6 @@
-﻿import { groqClient } from '@/lib/openai';
+﻿import { getAIResponse } from '@/lib/aiRouter';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +21,10 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'planner', ipAddress);
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
 
@@ -165,32 +170,25 @@ Return this exact JSON structure:
 - Strong subjects: ${Array.isArray(strongSubjects) ? strongSubjects.join(', ') : strongSubjects || 'None specified'}
 - Include breaks: ${includeBreaks}`;
 
-    // â”€â”€ D: Groq API call with full error handling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ D: AI router call with automatic Groq -> Gemini fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     let rawText = '';
     try {
-      console.log('Calling Groq API...');
-      const groqResponse = await groqClient.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 8000,
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-      });
-
-      console.log('Groq response received, finish_reason:', groqResponse.choices[0]?.finish_reason);
-      rawText = groqResponse.choices[0]?.message?.content || '';
+      console.log('Calling AI router...');
+      rawText = await getAIResponse(
+        [{ role: 'user', content: userMessage }],
+        systemPrompt,
+        { maxTokens: 8000, temperature: 0.7, feature: 'planner' }
+      );
 
       if (!rawText) {
-        console.error('Groq returned empty content');
+        console.error('AI router returned empty content');
         return NextResponse.json(
           { error: 'AI returned an empty response. Please try again.' },
           { status: 500 }
         );
       }
     } catch (groqError: any) {
-      console.error('Groq API call failed:', groqError?.message || groqError);
+      console.error('AI router call failed:', groqError?.message || groqError);
       return NextResponse.json(
         { error: 'AI service unavailable. Please try again in a moment.' },
         { status: 503 }
@@ -254,7 +252,7 @@ Return this exact JSON structure:
       console.warn('[Planner] Failed to save to Supabase:', saveErr);
     }
 
-    return NextResponse.json(planData);
+    return NextResponse.json(planData, { headers: responseHeaders });
   } catch (error: any) {
     console.error('âŒ Planner Error:', error?.message || error);
     return NextResponse.json(

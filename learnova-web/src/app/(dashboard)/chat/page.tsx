@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { updateStreak, loadStreak, getMilestoneMessage, getStreakWhatsAppLink, StreakData } from '@/lib/utils/streak'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -169,6 +170,7 @@ function ChatContent() {
   const [language, setLanguage] = useState<'english' | 'hindi'>('english')
   const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, longestStreak: 0, lastActiveDate: '', milestonesShown: [] })
   const [milestone, setMilestone] = useState<number | null>(null)
+  const [limitWarning, setLimitWarning] = useState('')
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -288,6 +290,11 @@ function ChatContent() {
   const handleSendMessage = async (text?: string) => {
     const messageText = text || input.trim()
     if (!messageText || loading) return
+    const inputError = validateInput(messageText, 'chat')
+    if (inputError) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: inputError, id: Date.now().toString() }])
+      return
+    }
 
     const userMessage: Message = {
       role: 'user',
@@ -332,8 +339,13 @@ function ChatContent() {
 
       if (!response.ok) {
         const error = await response.json()
+        if (response.status === 429 || error?.error === 'rate_limit_exceeded') {
+          throw new Error(buildRateLimitMessage(error))
+        }
         throw new Error(error.error || 'Failed to send message')
       }
+      const warning = response.headers.get('X-RateLimit-Warning')
+      if (warning) setLimitWarning(warning)
 
       const data = await response.json()
       const assistantMessage: Message = {
@@ -635,6 +647,11 @@ function ChatContent() {
           }}
         >
           <div className="max-w-[720px] mx-auto">
+            {limitWarning && (
+              <div style={{ marginBottom: 10, background: '#451a03', border: '1px solid #92400e', color: '#fbbf24', borderRadius: 10, padding: '8px 12px', fontSize: 12 }}>
+                {limitWarning}
+              </div>
+            )}
             {/* Milestone Toast Banner */}
             {milestone && (
               <div

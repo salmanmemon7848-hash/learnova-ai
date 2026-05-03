@@ -6,6 +6,7 @@ import { Search, Copy, Check, ArrowLeft } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getBusinessWhatsAppLink } from '@/lib/utils/streak'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 export default function ValidatePage() {
   const router = useRouter()
@@ -18,16 +19,24 @@ export default function ValidatePage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
 
   const targetMarkets = ['Metro City', 'Tier 1', 'Tier 2', 'Tier 3', 'Pan-India']
   const budgets = ['Under ₹50K', '₹50K–5L', '₹5L–50L', '₹50L+']
   const industries = ['EdTech', 'FinTech', 'D2C', 'SaaS', 'Food & Beverage', 'Healthcare', 'Offline Retail', 'Other']
 
   const handleValidate = async () => {
-    if (!formData.idea.trim()) return
+    const inputError = validateInput(formData.idea, 'validate')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     
     setLoading(true)
     setResult('')
+    setError('')
+    setWarning('')
 
     try {
       const response = await fetch('/api/validate', {
@@ -39,13 +48,15 @@ export default function ValidatePage() {
       const data = await response.json()
       
       if (response.ok && data.result) {
+        const headerWarning = response.headers.get('X-RateLimit-Warning')
+        if (headerWarning) setWarning(headerWarning)
         setResult(data.result)
       } else {
-        alert(data.error || 'Failed to validate idea')
+        setError(response.status === 429 || data?.error === 'rate_limit_exceeded' ? buildRateLimitMessage(data) : (data.error || 'Failed to validate idea'))
       }
     } catch (error: any) {
       console.error('Validation failed:', error)
-      alert('Failed to validate idea. Please try again.')
+      setError('Failed to validate idea. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -271,6 +282,8 @@ export default function ValidatePage() {
       </div>
 
       {/* Result Card */}
+      {error && <div className="rounded-[12px] p-3 mt-4 text-[13px]" style={{ background: '#450A0A', color: '#F87171', border: '1px solid #7F1D1D' }}>{error}</div>}
+      {warning && <div className="rounded-[12px] p-3 mt-4 text-[13px]" style={{ background: '#451A03', color: '#FBBF24', border: '1px solid #92400E' }}>{warning}</div>}
       {result && (
         <div
           className="rounded-[16px] p-7 mt-6"

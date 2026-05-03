@@ -1,5 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
+import { getAIResponse } from '@/lib/aiRouter';
 import {
   LEARNOVA_FULL_CONTEXT,
   EDUFINDER_KNOWLEDGE,
@@ -12,6 +15,16 @@ import {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'edufinder', ipAddress);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    }
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
+
     const body = await req.json();
     const { userType, eduLevel, fields, budget, userCity, userState, userPincode, entrance } = body;
 
@@ -123,31 +136,12 @@ Respond ONLY in this exact JSON â€” no markdown, no extra text:
   "final_advice": "string â€” one paragraph of honest personalized guidance"
 }`;
 
-    // â”€â”€ Step D: Call Groq API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 3000,
-        messages: [
-          { role: 'user', content: systemPrompt },
-        ],
-      }),
-    });
-
-    if (!groqResponse.ok) {
-      const errText = await groqResponse.text();
-      console.error('[EduFinder] Groq API error:', errText);
-      return NextResponse.json({ error: 'AI service is temporarily unavailable. Please try again.' }, { status: 502 });
-    }
-
-    const groqData = await groqResponse.json();
-    const rawContent = groqData?.choices?.[0]?.message?.content || '';
+    // â”€â”€ Step D: Call AI router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const rawContent = await getAIResponse(
+      [{ role: 'user', content: 'Generate EduFinder recommendations in the requested JSON format.' }],
+      systemPrompt,
+      { maxTokens: 3000, feature: 'edufinder' }
+    );
 
     if (!rawContent) {
       return NextResponse.json({ error: 'No recommendations received from AI. Please try again.' }, { status: 500 });
@@ -167,11 +161,11 @@ Respond ONLY in this exact JSON â€” no markdown, no extra text:
     console.log('[EduFinder] âœ… Recommendations generated successfully');
 
     if (recommendations) {
-      return NextResponse.json({ recommendations, structured: true });
+      return NextResponse.json({ recommendations, structured: true }, { headers: responseHeaders });
     }
 
     // Fallback: return raw text
-    return NextResponse.json({ recommendations: rawContent, structured: false });
+    return NextResponse.json({ recommendations: rawContent, structured: false }, { headers: responseHeaders });
 
   } catch (error: any) {
     console.error('[EduFinder] Route error:', error?.message || error);

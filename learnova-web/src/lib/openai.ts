@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import { GROQ_PRIMARY_MODEL, groqChatCompletion } from './groqCompletion';
+import { getAIResponse } from './aiRouter';
 
 export const DEFAULT_MODEL = GROQ_PRIMARY_MODEL;
 
@@ -79,36 +80,28 @@ export async function chatWithHistory(
   temperatureOverride?: number,
   maxTokensOverride?: number
 ): Promise<string> {
-  const formatted: any[] = [];
-  if (systemPrompt) formatted.push({ role: 'system', content: systemPrompt });
-  formatted.push(...messages.map((m) => ({
-    role: m.role === 'assistant' ? 'assistant' : 'user',
-    content: m.content,
-  })));
-
   try {
-    let response;
-    try {
-      response = await groqChatCompletion(getGroq(), {
-        model: modelOverride || DEFAULT_MODEL,
-        messages: formatted,
-        max_tokens: maxTokensOverride ?? 2048,
-        temperature: temperatureOverride ?? 0.7,
-      });
-    } catch (primaryError) {
-      if (!modelOverride) throw primaryError;
-      console.warn(`Model override "${modelOverride}" failed, falling back to ${DEFAULT_MODEL}`);
-      response = await groqChatCompletion(getGroq(), {
-        model: DEFAULT_MODEL,
-        messages: formatted,
-        max_tokens: maxTokensOverride ?? 2048,
-        temperature: temperatureOverride ?? 0.7,
-      });
-    }
+    console.log('[chatWithHistory] Called — messages:', messages.length);
 
-    return response.choices[0]?.message?.content || '';
+    const filteredMessages = messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      })) as { role: 'user' | 'assistant'; content: string }[];
+
+    return await getAIResponse(
+      filteredMessages as any,
+      systemPrompt || '',
+      {
+        maxTokens: maxTokensOverride ?? 2048,
+        temperature: temperatureOverride ?? 0.7,
+        timeoutMs: 12000,
+        feature: modelOverride ? `chatWithHistory:${modelOverride}` : 'chatWithHistory',
+      }
+    );
   } catch (error: any) {
-    console.error('Groq API error (chatWithHistory):', error?.message || error);
+    console.error('[chatWithHistory] Both providers failed:', error?.message || error);
 
     if (error?.name === 'AbortError') {
       throw new Error('Request timed out. Please try again.');

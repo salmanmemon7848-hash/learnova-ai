@@ -1,36 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Groq from 'groq-sdk'
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
-
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile'
-const FALLBACK_MODEL = 'llama-3.1-8b-instant'
-
-async function callGroqWithFallback(
-  messages: { role: 'system' | 'user'; content: string }[],
-  options: { temperature: number; max_tokens: number }
-) {
-  const tryModel = async (model: string) =>
-    groq.chat.completions.create({
-      messages,
-      model,
-      temperature: options.temperature,
-      max_tokens: options.max_tokens,
-    })
-
-  try {
-    return await tryModel(PRIMARY_MODEL)
-  } catch (err: any) {
-    const status = err?.status ?? err?.statusCode ?? 0
-    const isRetryable = status === 429 || status === 500 || status === 503 || status === 0
-    if (isRetryable) {
-      return await tryModel(FALLBACK_MODEL)
-    }
-    throw err
-  }
-}
+import { getAIResponse } from '@/lib/aiRouter'
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,12 +35,11 @@ Respond ONLY in this JSON — no markdown, no extra text:
   "motivational_message": "string — personalized for Indian student"
 }`
 
-    const completion = await callGroqWithFallback(
-      [{ role: 'system', content: systemPrompt }],
-      { temperature: 0.3, max_tokens: 3000 }
+    const rawText = await getAIResponse(
+      [{ role: 'user', content: 'Analyze the provided test data and return the required JSON.' }],
+      systemPrompt,
+      { temperature: 0.3, maxTokens: 3000, feature: 'exam-analyze' }
     )
-
-    const rawText = completion.choices[0]?.message?.content || ''
 
     let cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
     const objMatch = cleaned.match(/(\{[\s\S]*\})/)

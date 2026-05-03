@@ -1,5 +1,6 @@
 ﻿import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +19,12 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'chat', ipAddress);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    }
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const body = await req.json();
     const { message, messages, mode, toneMode, language, depthLevel, conversationId, persona } = body;
@@ -108,14 +115,14 @@ ${searchUsageInstruction}`;
     const responseText = await chatWithHistory(messagesArray, systemPrompt);
 
     // Return response with metadata
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: responseText, 
       role: 'assistant',
       metadata: {
         usedWebSearch,
         searchResultsCount: usedWebSearch ? searchContext.split('\n\n').length : 0,
       }
-    });
+    }, { headers: responseHeaders });
   } catch (error: any) {
     console.error('âŒ Chat Error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to process your message. Please try again.' }, { status: 500 });

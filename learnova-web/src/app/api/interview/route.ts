@@ -1,6 +1,7 @@
 import { chatWithHistory } from '@/lib/openai';
 import { generateInterviewQuestions } from '@/lib/groqInterviewService';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,6 +28,15 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { action, interviewType, schoolClass, role, language, question, answer, messages, numberOfQuestions, experienceLevel } = body;
+    let responseHeaders: Record<string, string> = {};
+    if (action === 'voice_turn' || action === 'generate_questions') {
+      const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+      const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'interview', ipAddress);
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+      }
+      responseHeaders = buildRateLimitHeaders(rateLimitResult);
+    }
     const INTERVIEW_MODEL = 'llama-3.3-70b-versatile';
     const normalizeAPILanguage = (lang: string): 'english' | 'hindi' | 'hinglish' => {
       const val = (lang || '').toLowerCase().trim();
@@ -300,11 +310,11 @@ Before responding, check your next question against every prior assistant line i
       try {
         const response = await chatWithHistory(trimmedHistory, systemPrompt, INTERVIEW_MODEL, 0.2, 1200);
         const safeVoiceText = ensureVoiceLanguage(response, nextSlot, previouslyAsked);
-        return NextResponse.json({ text: safeVoiceText });
+        return NextResponse.json({ text: safeVoiceText }, { headers: responseHeaders });
       } catch (aiError: any) {
         return NextResponse.json({
           text: pickUnusedVoiceQuestion(normalizedLang, nextSlot, previouslyAsked),
-        }, { status: 200 });
+        }, { status: 200, headers: responseHeaders });
       }
     }
 
@@ -498,7 +508,7 @@ Return exactly this JSON structure (fill all fields with real assessment based o
         numberOfQuestions: totalQuestions,
         language: selectedLanguage,
       });
-      return NextResponse.json({ questions, language: selectedLanguage, total: questions.length });
+      return NextResponse.json({ questions, language: selectedLanguage, total: questions.length }, { headers: responseHeaders });
     }
 
     if (action === 'evaluate_answer') {

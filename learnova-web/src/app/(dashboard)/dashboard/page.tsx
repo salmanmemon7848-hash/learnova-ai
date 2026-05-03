@@ -141,6 +141,7 @@ export default function DashboardPage() {
   const [expandedDoubt, setExpandedDoubt] = useState<string | null>(null)
   const [modalFile, setModalFile] = useState<{ title: string; content: string } | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [usageSummary, setUsageSummary] = useState<Record<string, any>>({})
 
   const userName = user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'
 
@@ -162,6 +163,12 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => { fetchDashboard() }, [fetchDashboard])
+  useEffect(() => {
+    fetch('/api/usage')
+      .then((r) => r.json())
+      .then((data) => setUsageSummary(data.usage || {}))
+      .catch(() => setUsageSummary({}))
+  }, [])
 
   const handleDeleteFile = async (id: string) => {
     if (!confirm('Delete this saved file? This cannot be undone.')) return
@@ -229,6 +236,7 @@ export default function DashboardPage() {
             <StatCard emoji="✅" label="Avg Test Score" value={data.avgTestScore > 0 ? `${data.avgTestScore}%` : '—'} sub={`${data.practiceTests.length} tests taken`} />
             <StatCard emoji="🎤" label="Interviews Done" value={data.interviewSessions.length} sub={data.interviewSessions.length > 0 ? `Last: ${timeAgo(data.interviewSessions[0].created_at)}` : 'None yet'} />
           </div>
+          <UsageSection usageSummary={usageSummary} />
 
           {/* ── Section 2: Recent Activity Feed ──────────────────────────────── */}
           <div style={{ background: '#13151e', border: '1px solid #2a2d3a', borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
@@ -499,6 +507,49 @@ function EmptyState({ emoji, message }: { emoji: string; message: string }) {
     <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
       <p style={{ fontSize: 32, margin: 0 }}>{emoji}</p>
       <p style={{ marginTop: 8, fontSize: 13 }}>{message}</p>
+    </div>
+  )
+}
+
+function UsageSection({ usageSummary }: { usageSummary: Record<string, any> }) {
+  const dailyFeatures = ['chat', 'doubt-solver', 'career-guide', 'edufinder']
+  const monthlyFeatures = ['exam', 'planner', 'interview', 'writer', 'business-ideas', 'validate', 'pitch-deck']
+  const cardStyle = { padding: '12px 14px', background: '#0f1117', border: '1px solid #2a2d3a', borderRadius: 10 } as const
+  return (
+    <div className="usage-section" style={{ marginTop: 32, marginBottom: 24 }}>
+      <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16, color: '#e2e8f0' }}>📊 My Usage</h3>
+      <p style={{ fontSize: '0.8rem', opacity: 0.5, marginBottom: 8 }}>DAILY — resets midnight IST</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 20 }}>
+        {dailyFeatures.map((feature) => {
+          const u = usageSummary[feature]; if (!u) return null
+          const isFull = u.remaining === 0; const isWarning = u.percentUsed >= 80 && !isFull
+          return <UsageCard key={feature} u={u} isFull={isFull} isWarning={isWarning} note={isFull ? `Resets in ${u.timeUntilReset}` : `${u.remaining} remaining today`} style={cardStyle} />
+        })}
+      </div>
+      <p style={{ fontSize: '0.8rem', opacity: 0.5, marginBottom: 8 }}>MONTHLY — resets 1st of month</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+        {monthlyFeatures.map((feature) => {
+          const u = usageSummary[feature]; if (!u) return null
+          const isFull = u.remaining === 0; const isWarning = u.percentUsed >= 80 && !isFull
+          return <UsageCard key={feature} u={u} isFull={isFull} isWarning={isWarning} note={isFull ? `Resets in ${u.timeUntilReset}` : `${u.remaining} left this month`} style={cardStyle} />
+        })}
+      </div>
+    </div>
+  )
+}
+
+function UsageCard({ u, isFull, isWarning, note, style }: { u: any; isFull: boolean; isWarning: boolean; note: string; style: any }) {
+  const color = isFull ? '#ef4444' : isWarning ? '#f59e0b' : '#10b981'
+  return (
+    <div className="result-card" style={style}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#e2e8f0' }}>{u.displayName}</span>
+        <span style={{ fontSize: '0.75rem', color }}>{u.remaining}/{u.limit}</span>
+      </div>
+      <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
+        <div style={{ height: '100%', width: `${u.percentUsed}%`, borderRadius: 4, background: color, transition: 'width 0.4s ease' }} />
+      </div>
+      <p style={{ fontSize: '0.7rem', opacity: 0.45, margin: 0 }}>{note}</p>
     </div>
   )
 }

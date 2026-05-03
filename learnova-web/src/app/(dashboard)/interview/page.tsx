@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRole } from '@/contexts/RoleContext'
 import { validateLanguage } from '@/lib/languageConfig'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 type Step = 'setup' | 'voice-interview' | 'chat-interview' | 'voice-results' | 'chat-results'
 type InterviewMode = 'voice' | 'chat'
@@ -77,6 +78,7 @@ export default function InterviewPage() {
   const [showFeedback, setShowFeedback] = useState(false)
   const [voiceResultsTab, setVoiceResultsTab] = useState<VoiceResultsTab>('overview')
   const [voiceResultsExpandedQ, setVoiceResultsExpandedQ] = useState<number | null>(null)
+  const [rateWarning, setRateWarning] = useState('')
 
   const TOTAL_QUESTIONS = 8
 
@@ -299,10 +301,14 @@ export default function InterviewPage() {
 
       // Check if response is OK before parsing JSON
       if (!res.ok) {
-        const rawText = await res.text()
-        console.error('[API] Non-OK status:', res.status, rawText.slice(0, 200))
+        const errJson = await res.json().catch(() => ({}))
+        if (res.status === 429 || errJson?.error === 'rate_limit_exceeded') {
+          setVoiceError(buildRateLimitMessage(errJson))
+        }
         return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
       }
+      const warning = res.headers.get('X-RateLimit-Warning')
+      if (warning) setRateWarning(warning)
 
       // Check content-type before parsing as JSON
       const contentType = res.headers.get('content-type')
@@ -673,6 +679,8 @@ export default function InterviewPage() {
     setAnswers({})
     setIsComplete(false)
     try {
+      const validationError = validateInput(`${interviewType} ${schoolClass}`.trim(), 'interview')
+      if (validationError) throw new Error(validationError)
       const langToSend = normalizeLanguage(language);
       console.log('[API] generate_questions — language:', langToSend);
       const res = await fetch('/api/interview/generate', {
@@ -687,6 +695,10 @@ export default function InterviewPage() {
         }),
       })
       const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
+        throw new Error(data?.error || 'Failed to start interview.')
+      }
 
       const expectedLanguage = toLanguageLabel(langToSend);
       const parsed = Array.isArray(data.questions) ? data.questions : [];
@@ -701,8 +713,10 @@ export default function InterviewPage() {
         throw new Error('No valid interview questions generated');
       }
       setChatQuestions(safeQuestions)
+      const warning = res.headers.get('X-RateLimit-Warning')
+      if (warning) setRateWarning(warning)
       setStep('chat-interview')
-    } catch { setError('Failed to start interview.') }
+    } catch (e: any) { setError(e?.message || 'Failed to start interview.') }
     finally { setLoading(false) }
   }
 
@@ -716,6 +730,11 @@ export default function InterviewPage() {
 
   const submitChatAnswer = async () => {
     if (!userAnswer.trim() || !currentChatQuestion) return
+    const inputError = validateInput(userAnswer, 'interview')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     setLoading(true)
     try {
       const langToSend = normalizeLanguage(language);
@@ -726,9 +745,15 @@ export default function InterviewPage() {
         body: JSON.stringify({ action: 'evaluate_answer', question: currentChatQuestion.question, answer: userAnswer, language: langToSend }),
       })
       const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
+        throw new Error(data?.error || 'Failed to evaluate answer.')
+      }
       setChatAnswers(prev => [...prev, { question: currentChatQuestion.question, answer: userAnswer, score: data.score || 0, feedback: data.feedback || '', improvement: data.improvement || '' }])
+      const warning = res.headers.get('X-RateLimit-Warning')
+      if (warning) setRateWarning(warning)
       setShowFeedback(true)
-    } catch { setError('Failed to evaluate answer.') }
+    } catch (e: any) { setError(e?.message || 'Failed to evaluate answer.') }
     finally { setLoading(false) }
   }
 
@@ -863,6 +888,7 @@ export default function InterviewPage() {
           </div>
         )}
         {error && <div style={{ background: '#450A0A', border: '1px solid #7F1D1D', borderRadius: 10, padding: '10px 14px', color: '#F87171', fontSize: 13, marginBottom: 16 }}>{error}</div>}
+        {rateWarning && <div style={{ background: '#451A03', border: '1px solid #92400E', borderRadius: 10, padding: '10px 14px', color: '#FBBF24', fontSize: 13, marginBottom: 16 }}>{rateWarning}</div>}
 
         <button onClick={startInterview} disabled={!interviewType || loading}
           style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 16, fontWeight: 600, cursor: !interviewType || loading ? 'not-allowed' : 'pointer', opacity: !interviewType ? 0.5 : 1, boxShadow: '0 8px 32px #7C3AED40' }}>

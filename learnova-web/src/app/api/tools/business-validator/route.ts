@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { groqChatCompletion, GROQ_PRIMARY_MODEL } from '@/lib/groqCompletion'
-import { getGroqInternalClient, isGroqConfigured } from '@/lib/openai'
+import { getAIResponse } from '@/lib/aiRouter'
 import { parseBizValidatorReport } from '@/lib/businessValidatorReport'
 
 export const runtime = 'nodejs'
@@ -34,16 +33,6 @@ Include 4-6 objects in actionPlan. Use realistic strings and numbers.`
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isGroqConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Settings → Environment Variables, then redeploy.',
-        },
-        { status: 503 }
-      )
-    }
-
     const body = await req.json()
     const ideaName = String(body.ideaName ?? '').trim()
     const description = String(body.description ?? '').trim()
@@ -60,18 +49,18 @@ export async function POST(req: NextRequest) {
 Description: ${description}
 Target Audience: ${targetAudience || 'Not specified'}`
 
-    const completion = await groqChatCompletion(getGroqInternalClient(), {
-      model: GROQ_PRIMARY_MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-      temperature: 0.35,
-      max_tokens: 3_000,
-      timeoutMs: process.env.VERCEL ? 12_000 : 45_000,
-    })
-
-    const raw = completion.choices[0]?.message?.content?.trim() || ''
+    const raw = (
+      await getAIResponse(
+        [{ role: 'user', content: userContent }],
+        SYSTEM_PROMPT,
+        {
+          temperature: 0.35,
+          maxTokens: 3000,
+          timeoutMs: process.env.VERCEL ? 12_000 : 45_000,
+          feature: 'business-validator',
+        }
+      )
+    ).trim()
     const report = parseBizValidatorReport(raw)
 
     if (!report) {

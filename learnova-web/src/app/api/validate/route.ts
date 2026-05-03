@@ -1,6 +1,7 @@
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
-import { groqChatCompletion, GROQ_PRIMARY_MODEL } from '@/lib/groqCompletion'
-import { getGroqInternalClient, isGroqConfigured } from '@/lib/openai'
+import { getAIResponse } from '@/lib/aiRouter'
+import { createClient } from '@/lib/supabase/server'
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   LEARNOVA_FULL_CONTEXT,
@@ -13,15 +14,13 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isGroqConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
-        },
-        { status: 503 }
-      )
-    }
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'validate', ipAddress)
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 })
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult)
 
     const { idea, targetMarket, budget, industry } = await req.json()
 
@@ -90,19 +89,13 @@ Industry: ${industry || 'Not specified'}
 
 Please analyse this thoroughly using your India expertise.`
 
-    const completion = await groqChatCompletion(getGroqInternalClient(), {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      model: GROQ_PRIMARY_MODEL,
-      temperature: 0.7,
-      max_tokens: 3000,
-    })
+    const result = await getAIResponse(
+      [{ role: 'user', content: userPrompt }],
+      systemPrompt,
+      { temperature: 0.7, maxTokens: 3000, feature: 'validate' }
+    )
 
-    const result = completion.choices[0]?.message?.content || ''
-
-    return NextResponse.json({ result })
+    return NextResponse.json({ result }, { headers: responseHeaders })
   } catch (error: any) {
     console.error('❌ Validate Error:', error?.message || error)
 

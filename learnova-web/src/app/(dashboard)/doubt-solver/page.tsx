@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import ImageUploader from '@/components/features/DoubtSolver/ImageUploader'
 import { Camera, Sparkles, BookOpen, Target, Lightbulb, Save } from 'lucide-react'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DoubtResult {
@@ -54,10 +55,16 @@ export default function DoubtSolverPage() {
   const [error, setError] = useState<string>('')
   const [language, setLanguage] = useState<'en' | 'hi' | 'hinglish'>('en')
   const [level, setLevel] = useState<Level>('auto')
+  const [warning, setWarning] = useState('')
 
   const handleSubmit = async () => {
     if (!selectedImage && !questionText.trim()) {
       setError('Please upload an image or type your question')
+      return
+    }
+    const inputError = validateInput(questionText || 'image-input', 'doubt-solver')
+    if (!selectedImage && inputError) {
+      setError(inputError)
       return
     }
 
@@ -80,8 +87,13 @@ export default function DoubtSolverPage() {
 
       if (!response.ok) {
         const errData = await response.json()
+        if (response.status === 429 || errData?.error === 'rate_limit_exceeded') {
+          throw new Error(buildRateLimitMessage(errData))
+        }
         throw new Error(errData.error || 'Failed to solve doubt')
       }
+      const limitWarning = response.headers.get('X-RateLimit-Warning')
+      if (limitWarning) setWarning(limitWarning)
 
       const data = await response.json()
       const parsed = parseDoubtResult(data.solution)
@@ -207,6 +219,11 @@ export default function DoubtSolverPage() {
           {error && (
             <div className="bg-red-900/20 border-2 border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
               {error}
+            </div>
+          )}
+          {warning && (
+            <div className="rounded-xl p-4 text-yellow-300 text-sm" style={{ background: '#451a03', border: '1px solid #92400e' }}>
+              {warning}
             </div>
           )}
         </div>

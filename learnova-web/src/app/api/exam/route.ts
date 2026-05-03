@@ -1,6 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import Groq from 'groq-sdk'
+import { getAIResponse } from '@/lib/aiRouter'
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
+import { createClient } from '@/lib/supabase/server'
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import {
   LEARNOVA_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
@@ -11,47 +13,6 @@ import {
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
-
-// Primary model â€” fast and capable. Fallback if rate-limited or unavailable.
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile'
-const FALLBACK_MODEL = 'llama-3.1-8b-instant'
-
-/**
- * Call Groq with automatic model fallback.
- * If the primary model returns a 429 (rate limit) or 503/500 (service error),
- * we immediately retry with the fallback model instead of returning an error.
- */
-async function callGroqWithFallback(
-  messages: { role: 'system' | 'user'; content: string }[],
-  options: { temperature: number; max_tokens: number }
-) {
-  const tryModel = async (model: string) =>
-    groq.chat.completions.create({
-      messages,
-      model,
-      temperature: options.temperature,
-      max_tokens: options.max_tokens,
-    })
-
-  try {
-    console.log(`[EXAM API] Trying primary model: ${PRIMARY_MODEL}`)
-    return await tryModel(PRIMARY_MODEL)
-  } catch (err: any) {
-    const status = err?.status ?? err?.statusCode ?? 0
-    const isRetryable = status === 429 || status === 500 || status === 503 || status === 0
-    if (isRetryable) {
-      console.warn(
-        `[EXAM API] Primary model failed (status ${status}). Falling back to ${FALLBACK_MODEL}â€¦`
-      )
-      return await tryModel(FALLBACK_MODEL)
-    }
-    // Non-retryable error â€” rethrow so the outer catch handles it
-    throw err
-  }
-}
 
 // â”€â”€ Adaptive difficulty instructions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const adaptiveInstructions: Record<string, string> = {
@@ -63,6 +24,14 @@ const adaptiveInstructions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'exam', ipAddress)
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 })
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult)
+
     const body = await req.json()
     const { examType, subject, chapter, questionCount, language, studentLevel = 'adaptive' } = body
 
@@ -151,15 +120,13 @@ Do not include anything outside the JSON object in your response.`
 
     console.log('[EXAM API] Prompt sent to AI:', { systemPrompt, userPrompt })
 
-    const completion = await callGroqWithFallback(
+    const rawText = await getAIResponse(
       [
-        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      { temperature: 0.7, max_tokens: 6000 }
+      systemPrompt,
+      { temperature: 0.7, maxTokens: 6000, feature: 'exam-generate' }
     )
-
-    const rawText = completion.choices[0]?.message?.content || ''
     console.log('[EXAM API] Raw AI response:', rawText)
 
     // â”€â”€ Parse & validate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -174,7 +141,7 @@ Do not include anything outside the JSON object in your response.`
     }
 
     console.log(`[EXAM API] Successfully parsed ${questions.length} questions.`)
-    return NextResponse.json({ questions })
+    return NextResponse.json({ questions }, { headers: responseHeaders })
   } catch (error: any) {
     console.error('[EXAM API] Generation error:', error)
 

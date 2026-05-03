@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient';
 
 // ============================================
 // 8 POWERFUL MCQ QUESTIONS
@@ -518,6 +519,8 @@ export default function BusinessIdeasPage() {
   const [savedIdeas, setSavedIdeas] = useState<Set<string>>(new Set());
   const [animating, setAnimating] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
+  const [rateWarning, setRateWarning] = useState('');
+  const [rateError, setRateError] = useState('');
 
   // Loading timeout tracker
   useEffect(() => {
@@ -543,6 +546,12 @@ export default function BusinessIdeasPage() {
         setAnimating(false);
       }, 250);
     } else {
+      const packed = Object.values(newAnswers).join(' ');
+      const inputError = validateInput(packed, 'business-ideas');
+      if (inputError) {
+        setRateError(inputError);
+        return;
+      }
       setStage('loading');
       await generateIdeas(newAnswers, false);
     }
@@ -557,6 +566,7 @@ export default function BusinessIdeasPage() {
 
   const generateIdeas = async (answersData: Record<number, string>, isMore: boolean) => {
   try {
+    setRateError('');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 35000);
 
@@ -573,9 +583,17 @@ export default function BusinessIdeasPage() {
 
     clearTimeout(timeout);
 
-    if (!res.ok) throw new Error(`API returned ${res.status}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      if (res.status === 429 || errData?.error === 'rate_limit_exceeded') {
+        throw new Error(buildRateLimitMessage(errData));
+      }
+      throw new Error(errData?.error || `API returned ${res.status}`);
+    }
 
     const data = await res.json();
+    const warning = res.headers.get('X-RateLimit-Warning');
+    if (warning) setRateWarning(warning);
     console.log('✅ API Response:', data);
 
     // New API returns { result: { ideas, mentor_observation, ... } }
@@ -599,6 +617,9 @@ export default function BusinessIdeasPage() {
     }
   } catch (error: any) {
     console.error('❌ generateIdeas error:', error?.message || error);
+    if (String(error?.message || '').toLowerCase().includes('limit')) {
+      setRateError(error.message);
+    }
     if (!isMore) {
       setIdeas(getFallbackIdeas());
       setStage('results');
@@ -848,6 +869,8 @@ export default function BusinessIdeasPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-6 space-y-5 mb-10">
+        {rateError && <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">{rateError}</div>}
+        {rateWarning && <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4 text-yellow-300 text-sm">{rateWarning}</div>}
 
         {/* Mentor Observation */}
         {aiResult?.mentor_observation && (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { GraduationCap, RotateCcw, Loader2 } from 'lucide-react'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,6 +229,7 @@ export default function EduFinderPage() {
   const [results, setResults] = useState<any>(null)
   const [structured, setStructured] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
   const resetWizard = () => {
     setStep(1)
@@ -241,8 +243,15 @@ export default function EduFinderPage() {
   }
 
   const handleSubmit = async () => {
+    const packed = `${answers.userCity} ${answers.userState} ${answers.entrance} ${(answers.fields || []).join(' ')}`
+    const inputError = validateInput(packed, 'edufinder')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     setLoading(true)
     setError(null)
+    setWarning(null)
     try {
       const res = await fetch('/api/edufinder', {
         method: 'POST',
@@ -250,7 +259,12 @@ export default function EduFinderPage() {
         body: JSON.stringify(answers),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.')
+      if (!res.ok) {
+        if (res.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
+        throw new Error(data.error || 'Something went wrong.')
+      }
+      const headerWarning = res.headers.get('X-RateLimit-Warning')
+      if (headerWarning) setWarning(headerWarning)
       setResults(data.recommendations)
       setStructured(data.structured === true)
     } catch (err: any) {
@@ -464,6 +478,7 @@ export default function EduFinderPage() {
             Start over
           </button>
         </div>
+        {warning && <div className="mt-3 p-3 rounded-[10px] text-[13px]" style={{ background: '#451a03', color: '#fbbf24', border: '1px solid #92400e' }}>{warning}</div>}
       </div>
     )
   }

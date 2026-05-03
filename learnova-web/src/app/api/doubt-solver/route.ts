@@ -1,5 +1,6 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -75,6 +76,12 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'doubt-solver', ipAddress);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    }
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
     const { question, questionText, subject, imageUrl, level = 'auto' } = await req.json();
@@ -125,7 +132,7 @@ export async function POST(req: NextRequest) {
       console.warn('[Doubt Solver] Failed to save to Supabase:', saveErr);
     }
 
-    return NextResponse.json({ solution });
+    return NextResponse.json({ solution }, { headers: responseHeaders });
   } catch (error: any) {
     console.error('❌ Doubt Solver Error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to solve doubt.' }, { status: 500 });

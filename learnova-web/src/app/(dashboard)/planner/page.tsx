@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 const examSubjects: Record<string, string[]> = {
   school: ['Mathematics','Science','Social Studies','English','Hindi',
@@ -38,6 +39,7 @@ export default function PlannerPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [planError, setPlanError] = useState('')
+  const [warning, setWarning] = useState('')
   
   const [formData, setFormData] = useState({
     targetExam: '',
@@ -92,8 +94,15 @@ export default function PlannerPage() {
   }
 
   const handleGeneratePlan = async () => {
+    const packed = `${formData.examType || formData.targetExam} ${formData.weakSubjects.join(' ')} ${formData.strongSubjects.join(' ')}`
+    const inputError = validateInput(packed, 'planner')
+    if (inputError) {
+      setPlanError(inputError)
+      return
+    }
     setLoading(true)
     setPlanError('')
+    setWarning('')
     try {
       const response = await fetch('/api/planner', {
         method: 'POST',
@@ -104,11 +113,15 @@ export default function PlannerPage() {
       const data = await response.json()
 
       if (response.ok) {
+        const headerWarning = response.headers.get('X-RateLimit-Warning')
+        if (headerWarning) setWarning(headerWarning)
         sessionStorage.setItem('generatedPlan', JSON.stringify(data))
         sessionStorage.setItem('planMeta', JSON.stringify(formData))
         router.push('/planner/results')
       } else {
-        const errorMessage = data?.error || 'Failed to generate plan. Please check all fields and try again.'
+        const errorMessage = response.status === 429 || data?.error === 'rate_limit_exceeded'
+          ? buildRateLimitMessage(data)
+          : (data?.error || 'Failed to generate plan. Please check all fields and try again.')
         setPlanError(errorMessage)
         console.error('Planner error:', errorMessage)
       }
@@ -492,6 +505,11 @@ export default function PlannerPage() {
                 lineHeight: 1.5,
               }}>
                 ⚠️ {planError}
+              </div>
+            )}
+            {warning && (
+              <div style={{ background: '#451A03', border: '1px solid #92400E', borderRadius: 10, padding: '12px 16px', color: '#FBBF24', fontSize: 13, lineHeight: 1.5 }}>
+                ⚠️ {warning}
               </div>
             )}
 

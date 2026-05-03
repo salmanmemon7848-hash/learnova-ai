@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 export default function WriterPage() {
   const { user } = useAuth()
@@ -11,9 +12,18 @@ export default function WriterPage() {
   const [topic, setTopic] = useState('')
   const [tone, setTone] = useState('professional')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
 
   const generateContent = async () => {
+    const inputError = validateInput(topic, 'writer')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     setLoading(true)
+    setError('')
+    setWarning('')
     try {
       const response = await fetch('/api/writer', {
         method: 'POST',
@@ -23,7 +33,12 @@ export default function WriterPage() {
 
       const data = await response.json()
       
-      if (data.error) throw new Error(data.error)
+      if (!response.ok || data.error) {
+        if (response.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
+        throw new Error(data.error || 'Failed to generate content.')
+      }
+      const headerWarning = response.headers.get('X-RateLimit-Warning')
+      if (headerWarning) setWarning(headerWarning)
 
       // Save to sessionStorage and redirect to results page
       sessionStorage.setItem('writerResult', JSON.stringify(data.content))
@@ -32,7 +47,7 @@ export default function WriterPage() {
 
     } catch (err: any) {
       console.error(err)
-      alert('Failed to generate content. Please try again.')
+      setError(err?.message || 'Failed to generate content. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -109,6 +124,8 @@ export default function WriterPage() {
           >
             {loading ? 'Generating...' : 'Generate Content'}
           </button>
+          {error && <div style={{ background: '#450A0A', color: '#F87171', border: '1px solid #7F1D1D', borderRadius: 8, padding: '10px 12px', fontSize: 13 }}>{error}</div>}
+          {warning && <div style={{ background: '#451A03', color: '#FBBF24', border: '1px solid #92400E', borderRadius: 8, padding: '10px 12px', fontSize: 13 }}>{warning}</div>}
         </div>
       </div>
     </div>

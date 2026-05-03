@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 
 const STAGES = ['Idea', 'MVP', 'Early Revenue', 'Scaling']
 const INDUSTRIES = [
@@ -40,6 +41,8 @@ export default function PitchDeckPage() {
   
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
 
   const resetAll = () => {
     setStep('setup')
@@ -62,8 +65,16 @@ export default function PitchDeckPage() {
 
 
   const handleGenerate = async () => {
+    const packed = Object.values(answers).join(' ')
+    const inputError = validateInput(packed, 'pitch-deck')
+    if (inputError) {
+      setError(inputError)
+      return
+    }
     setLoading(true)
     setStep('generating')
+    setError('')
+    setWarning('')
     try {
       const response = await fetch('/api/pitch-deck', {
         method: 'POST',
@@ -72,15 +83,17 @@ export default function PitchDeckPage() {
       })
       const data = await response.json()
       if (response.ok && data.result) {
+        const headerWarning = response.headers.get('X-RateLimit-Warning')
+        if (headerWarning) setWarning(headerWarning)
         setResult(data.result)
         setStep('evaluation')
       } else {
-        alert(`Error: ${data.error || 'Failed to evaluate pitch'}`)
+        setError(response.status === 429 || data?.error === 'rate_limit_exceeded' ? buildRateLimitMessage(data) : (data.error || 'Failed to evaluate pitch'))
         setStep('wizard')
       }
     } catch (error) {
       console.error('Pitch evaluation failed:', error)
-      alert('Failed to evaluate pitch. Please try again.')
+      setError('Failed to evaluate pitch. Please try again.')
       setStep('wizard')
     } finally {
       setLoading(false)
@@ -101,6 +114,8 @@ export default function PitchDeckPage() {
         </div>
 
         <div className="rounded-xl p-8" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+          {error && <div className="mb-4 text-sm" style={{ background: '#450A0A', border: '1px solid #7F1D1D', color: '#F87171', borderRadius: 8, padding: '10px 12px' }}>{error}</div>}
+          {warning && <div className="mb-4 text-sm" style={{ background: '#451A03', border: '1px solid #92400E', color: '#FBBF24', borderRadius: 8, padding: '10px 12px' }}>{warning}</div>}
           {/* Stage Selection */}
           <div className="mb-7">
             <label className="block text-sm font-semibold mb-3" style={{ color: 'var(--foreground-secondary)' }}>

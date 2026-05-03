@@ -1,11 +1,7 @@
 ﻿import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
-import {
-  GROQ_FALLBACK_MODEL,
-  GROQ_PRIMARY_MODEL,
-  groqChatCompletion,
-} from '@/lib/groqCompletion';
-import { getGroqInternalClient, isGroqConfigured } from '@/lib/openai';
+import { getAIResponse } from '@/lib/aiRouter';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getLanguageInstruction } from '@/lib/learnovaKnowledge';
@@ -107,21 +103,15 @@ function groqErrorToMessage(error: unknown): string {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isGroqConfigured()) {
-      return NextResponse.json(
-        {
-          error:
-            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
-        },
-        { status: 503 }
-      );
-    }
-
     const supabase = await createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'pitch-deck', ipAddress);
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
     const body = await req.json();
@@ -170,21 +160,18 @@ export async function POST(req: NextRequest) {
           ? 9_000
           : 55_000;
 
-    const useFastPitchPath = onVercel && process.env.PITCH_USE_FULL_MODEL !== '1';
-
-    const completion = await groqChatCompletion(getGroqInternalClient(), {
-      model: useFastPitchPath ? GROQ_FALLBACK_MODEL : GROQ_PRIMARY_MODEL,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: 0.45,
-      max_tokens: 3_500,
-      timeoutMs,
-      retryFallback: !useFastPitchPath,
-    });
-
-    const responseText = completion.choices[0]?.message?.content?.trim() || '';
+    const responseText = (
+      await getAIResponse(
+        [{ role: 'user', content: userMessage }],
+        systemPrompt,
+        {
+          temperature: 0.45,
+          maxTokens: 3500,
+          timeoutMs,
+          feature: 'pitch-deck',
+        }
+      )
+    ).trim();
     const result = tryParsePitchJson(responseText);
 
     if (!result || typeof result !== 'object') {
@@ -208,7 +195,7 @@ export async function POST(req: NextRequest) {
       console.warn('[Pitch Deck] Save failed:', saveErr);
     }
 
-    return NextResponse.json({ result });
+    return NextResponse.json({ result }, { headers: responseHeaders });
   } catch (error: unknown) {
     const detail = groqErrorToMessage(error);
     console.error('[Pitch Deck]', detail, error);

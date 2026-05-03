@@ -1,5 +1,6 @@
 ﻿import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { BUSINESS_IDEA_PROMPT } from '@/lib/systemPrompts';
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,6 +18,10 @@ export async function POST(req: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'business-ideas', ipAddress);
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const body = await req.json();
     const { conversationContext, answers, existingIdeas, count } = body;
@@ -181,7 +186,7 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
     }
 
     console.log(`âœ… Successfully parsed ${result.ideas.length} ideas`);
-    return NextResponse.json({ result });
+    return NextResponse.json({ result }, { headers: responseHeaders });
 
   } catch (error: any) {
     console.error('âŒ Business Ideas Route Error:', error?.message || error);
