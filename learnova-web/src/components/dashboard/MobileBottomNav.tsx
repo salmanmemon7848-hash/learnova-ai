@@ -15,7 +15,7 @@ const studentItems = [
 
 const founderItems = [
   { icon: MessageSquare, label: 'Chat',      href: '/chat' },
-  { icon: CheckCircle,   label: 'Validate',  href: '/validate' },
+  { icon: CheckCircle,   label: 'Validate',  href: '/tools/business-validator' },
   { icon: Lightbulb,     label: 'Ideas',     href: '/business-ideas' },
   { icon: Settings,      label: 'Settings',  href: '/settings' },
 ]

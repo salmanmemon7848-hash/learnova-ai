@@ -402,7 +402,7 @@ function ChatContent() {
   const tools = [
     { icon: Globe, label: 'Chat', path: '/chat' },
     { icon: BookOpen, label: 'Exam Simulator', path: '/exam' },
-    { icon: Lightbulb, label: 'Business Validator', path: '/validate' },
+    { icon: Lightbulb, label: 'Business Validator', path: '/tools/business-validator' },
     { icon: Calendar, label: 'Study Planner', path: '/planner' },
   ]
 

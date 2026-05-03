@@ -50,7 +50,7 @@ const founderNav = [
   { icon: LayoutDashboard, label: 'Home',               href: '/dashboard',       prominent: false },
   { icon: MessageSquare,   label: 'AI Chat',             href: '/chat',            prominent: false },
   { icon: Users,           label: 'Mock Interview',      href: '/interview',       prominent: false },
-  { icon: CheckCircle,     label: 'Business Validator',  href: '/validate',        prominent: true  },
+  { icon: CheckCircle,     label: 'Business Validator',  href: '/tools/business-validator',        prominent: true  },
   { icon: FileText,        label: 'Pitch Deck',          href: '/pitch-deck',      prominent: false },
   { icon: Lightbulb,       label: 'Business Ideas',      href: '/business-ideas',  prominent: false },
   { icon: CreditCard,      label: 'Pricing',             href: '/pricing',         prominent: false },
