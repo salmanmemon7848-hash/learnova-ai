@@ -51,10 +51,7 @@ FINAL CHECK BEFORE OUTPUTTING:
 If both answers are not YES — rewrite the question before outputting.
 `;
 
-const getSystemPrompt = (
-  language: string,
-  langConfig: GroqLanguageConfig
-) => {
+const getSystemPrompt = (language: string) => {
   if (language === 'Hinglish') {
     return `
 You are a mock interview conductor for Learnova AI.
