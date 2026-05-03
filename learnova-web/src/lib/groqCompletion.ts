@@ -55,6 +55,10 @@ type ChatBody = {
   model?: string;
   temperature?: number;
   max_tokens?: number;
+  /** Wall-clock limit for this request (defaults from getGroqRequestTimeoutMs). */
+  timeoutMs?: number;
+  /** When false, do not retry with the fallback model (use for tight serverless budgets). */
+  retryFallback?: boolean;
 };
 
 /**
@@ -67,12 +71,15 @@ export async function groqChatCompletion(
 ): Promise<Groq.Chat.Completions.ChatCompletion> {
   const primary = body.model?.trim() || GROQ_PRIMARY_MODEL;
   const fallback = GROQ_FALLBACK_MODEL;
-  const ms = getGroqRequestTimeoutMs();
+  const ms = body.timeoutMs ?? getGroqRequestTimeoutMs();
+  const allowFallback = body.retryFallback !== false;
+
+  const { timeoutMs: _t, retryFallback: _r, ...apiBody } = body;
 
   const run = (model: string) =>
     withTimeout(
       client.chat.completions.create({
-        ...body,
+        ...apiBody,
         model,
         stream: false,
       }),
@@ -82,7 +89,7 @@ export async function groqChatCompletion(
   try {
     return await run(primary);
   } catch (first) {
-    if (fallback !== primary && groqErrorIsRetryable(first)) {
+    if (allowFallback && fallback !== primary && groqErrorIsRetryable(first)) {
       console.warn('[Groq] Primary model failed; retrying with fallback', {
         primary,
         fallback,
