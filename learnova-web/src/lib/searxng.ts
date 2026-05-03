@@ -10,6 +10,9 @@
 const SEARXNG_URL =
   process.env.SEARXNG_URL || 'https://learnova-searxng.onrender.com/search';
 
+const SEARCH_FETCH_TIMEOUT_MS =
+  Number(process.env.SEARXNG_TIMEOUT_MS) || (process.env.VERCEL ? 3500 : 8000);
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface SearchResult {
@@ -41,7 +44,7 @@ export async function searchWeb(
     const url = `${SEARXNG_URL}?q=${encodeURIComponent(query)}&format=json&language=en-IN`;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), SEARCH_FETCH_TIMEOUT_MS);
 
     const res = await fetch(url, {
       signal: controller.signal,

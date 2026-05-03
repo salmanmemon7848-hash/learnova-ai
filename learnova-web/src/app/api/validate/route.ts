@@ -1,6 +1,6 @@
-import Groq from 'groq-sdk'
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
-import { isGroqConfigured } from '@/lib/openai'
+import { groqChatCompletion, GROQ_PRIMARY_MODEL } from '@/lib/groqCompletion'
+import { getGroqInternalClient, isGroqConfigured } from '@/lib/openai'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   LEARNOVA_FULL_CONTEXT,
@@ -10,18 +10,6 @@ import {
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
-
-let validateGroq: Groq | null = null
-function getGroq(): Groq {
-  const key = process.env.GROQ_API_KEY?.trim()
-  if (!key) {
-    throw new Error('GROQ_API_KEY is not configured')
-  }
-  if (!validateGroq) {
-    validateGroq = new Groq({ apiKey: key })
-  }
-  return validateGroq
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -102,12 +90,12 @@ Industry: ${industry || 'Not specified'}
 
 Please analyse this thoroughly using your India expertise.`
 
-    const completion = await getGroq().chat.completions.create({
+    const completion = await groqChatCompletion(getGroqInternalClient(), {
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_PRIMARY_MODEL,
       temperature: 0.7,
       max_tokens: 3000,
     })

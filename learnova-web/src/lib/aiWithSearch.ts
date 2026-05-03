@@ -160,17 +160,12 @@ export function buildSmartQuery(
 
 // ── Main function — used by every API route ────────────────────────────────────
 
-/**
- * Decide, fetch, and format web search context for any AI feature.
- * Returns empty string if search is not needed or fails — never throws.
- */
-export async function getSearchContext(
+async function getSearchContextImpl(
   userMessage: string,
   feature: string,
   context?: Record<string, string>
 ): Promise<string> {
   try {
-    // Step 1: Decide if search is needed
     const needsSearch = shouldSearch(userMessage);
 
     if (!needsSearch) {
@@ -184,10 +179,8 @@ export async function getSearchContext(
       `[Search] Triggered for feature: ${feature}, query: "${userMessage.slice(0, 50)}..."`
     );
 
-    // Step 2: Build smart queries
     const queries = buildSmartQuery(userMessage, feature, context);
 
-    // Step 3: Fetch results
     const results = await searchWebMultiple(queries, 3);
 
     if (!results || results.length === 0) {
@@ -197,12 +190,31 @@ export async function getSearchContext(
 
     console.log(`[Search] Got ${results.length} results`);
 
-    // Step 4: Format and return
     return formatSearchContext(results, queries[0]);
   } catch (error) {
     console.warn('[Search] getSearchContext failed silently:', error);
     return '';
   }
+}
+
+/**
+ * Decide, fetch, and format web search context for any AI feature.
+ * Returns empty string if search is not needed or fails — never throws.
+ * On Vercel, caps total wait so SearXNG cold starts don't eat the whole function budget.
+ */
+export async function getSearchContext(
+  userMessage: string,
+  feature: string,
+  context?: Record<string, string>
+): Promise<string> {
+  const budgetMs =
+    Number(process.env.AI_SEARCH_BUDGET_MS) ||
+    (process.env.VERCEL ? 2_800 : 18_000);
+
+  return Promise.race([
+    getSearchContextImpl(userMessage, feature, context),
+    new Promise<string>((resolve) => setTimeout(() => resolve(''), budgetMs)),
+  ]);
 }
 
 // ── Search usage instruction builder ──────────────────────────────────────────

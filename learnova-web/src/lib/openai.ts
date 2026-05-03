@@ -1,8 +1,13 @@
 import Groq from 'groq-sdk';
+import { GROQ_PRIMARY_MODEL, groqChatCompletion } from './groqCompletion';
 
-export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+export const DEFAULT_MODEL = GROQ_PRIMARY_MODEL;
 
 let groqSingleton: Groq | null = null;
+
+export function getGroqInternalClient(): Groq {
+  return getGroq();
+}
 
 function getGroq(): Groq {
   const apiKey = process.env.GROQ_API_KEY?.trim();
@@ -39,18 +44,13 @@ export async function generateText(prompt: string, systemPrompt?: string): Promi
   messages.push({ role: 'user', content: prompt });
 
   try {
-    // Add 30 second timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-
-    const response = await groqClient.chat.completions.create({
+    const response = await groqChatCompletion(getGroq(), {
       model: DEFAULT_MODEL,
       messages,
       max_tokens: 2048,
       temperature: 0.7,
     });
 
-    clearTimeout(timeout);
     return response.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error('Groq API error (generateText):', error?.message || error);
@@ -86,30 +86,26 @@ export async function chatWithHistory(
     content: m.content,
   })));
 
-  const runChat = async (model: string) => {
-    return groqClient.chat.completions.create({
-      model,
-      messages: formatted,
-      max_tokens: maxTokensOverride ?? 2048,
-      temperature: temperatureOverride ?? 0.7,
-    });
-  };
-
   try {
-    // Add 30 second timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-
     let response;
     try {
-      response = await runChat(modelOverride || DEFAULT_MODEL);
+      response = await groqChatCompletion(getGroq(), {
+        model: modelOverride || DEFAULT_MODEL,
+        messages: formatted,
+        max_tokens: maxTokensOverride ?? 2048,
+        temperature: temperatureOverride ?? 0.7,
+      });
     } catch (primaryError) {
       if (!modelOverride) throw primaryError;
       console.warn(`Model override "${modelOverride}" failed, falling back to ${DEFAULT_MODEL}`);
-      response = await runChat(DEFAULT_MODEL);
+      response = await groqChatCompletion(getGroq(), {
+        model: DEFAULT_MODEL,
+        messages: formatted,
+        max_tokens: maxTokensOverride ?? 2048,
+        temperature: temperatureOverride ?? 0.7,
+      });
     }
 
-    clearTimeout(timeout);
     return response.choices[0]?.message?.content || '';
   } catch (error: any) {
     console.error('Groq API error (chatWithHistory):', error?.message || error);
