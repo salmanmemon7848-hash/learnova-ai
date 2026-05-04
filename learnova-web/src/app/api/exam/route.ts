@@ -12,6 +12,12 @@ import {
   getLanguageInstruction,
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge'
+import {
+  sanitizeEnum,
+  sanitizeJsonPostBody,
+  sanitizeNumber,
+  sanitizeString,
+} from '@/lib/validation'
 
 
 // â”€â”€ Adaptive difficulty instructions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -24,6 +30,38 @@ const adaptiveInstructions: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'examType',
+      'subject',
+      'chapter',
+      'questionCount',
+      'numQuestions',
+      'language',
+      'studentLevel',
+      'timerPerQuestion',
+    ])
+    if (!parsed.ok) return parsed.response
+
+    const body = parsed.body
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const examType = sanitizeString(body.examType, 120)
+    const subject = sanitizeString(body.subject, 200)
+    const chapter = sanitizeString(body.chapter, 300)
+    const language = sanitizeString(body.language, 32)
+    const studentLevel = sanitizeEnum(body.studentLevel, ['beginner', 'intermediate', 'advanced', 'adaptive'], 'adaptive')
+    const questionCountRaw = body.questionCount ?? body.numQuestions
+    const numQuestions = sanitizeNumber(questionCountRaw, 1, 100, 10)
+    void sanitizeNumber(body.timerPerQuestion, 5, 3600, 60)
+
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -32,11 +70,7 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 })
     const responseHeaders = buildRateLimitHeaders(rateLimitResult)
 
-    const body = await req.json()
-    const { examType, subject, chapter, questionCount, language, studentLevel = 'adaptive' } = body
-
     // â”€â”€ Build adaptive system prompt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    const numQuestions = questionCount || 10
     const topicClause  = chapter ? ` focusing on chapter/topic: ${chapter}` : ''
     const langClause   =
       language === 'hindi'

@@ -5,6 +5,12 @@ import { getAIResponse } from '@/lib/aiRouter';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getLanguageInstruction } from '@/lib/learnovaKnowledge';
+import {
+  sanitizeJsonPostBody,
+  sanitizeString,
+  sanitizeStringRecord,
+  validateLanguage,
+} from '@/lib/validation';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -103,6 +109,29 @@ function groqErrorToMessage(error: unknown): string {
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['answers', 'stage', 'industry', 'content', 'language']);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const answers =
+      b.answers && typeof b.answers === 'object' && !Array.isArray(b.answers)
+        ? sanitizeStringRecord(b.answers, 24, 64, 8000)
+        : {};
+    void sanitizeString(b.content, 50000);
+    const stage = sanitizeString(b.stage, 120);
+    const industry = sanitizeString(b.industry, 200);
+    void validateLanguage(b.language);
+
     const supabase = await createClient();
     const {
       data: { session },
@@ -114,8 +143,6 @@ export async function POST(req: NextRequest) {
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
-    const body = await req.json();
-    const { answers, stage, industry } = body;
 
     const pitchContent = [
       `Startup: ${answers.what || 'Not provided'}`,

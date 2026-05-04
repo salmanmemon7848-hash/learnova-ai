@@ -13,11 +13,54 @@ import {
   getLanguageInstruction,
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge';
+import {
+  sanitizeArray,
+  sanitizeJsonPostBody,
+  sanitizeString,
+  validateBoolean,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   console.log('Planner API called');
 
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+      console.log('Request body received:', JSON.stringify(rawBody));
+    } catch (parseErr) {
+      console.error('Failed to parse request body:', parseErr);
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'targetExam',
+      'schoolClass',
+      'examDate',
+      'studyHours',
+      'dailyHours',
+      'weakSubjects',
+      'strongSubjects',
+      'currentLevel',
+      'includeBreaks',
+      'examType',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const targetExam = sanitizeString(b.targetExam, 120);
+    const schoolClass = sanitizeString(b.schoolClass, 80);
+    const examDate = sanitizeString(b.examDate, 48);
+    const studyHours = sanitizeString(b.studyHours, 16) || sanitizeString(b.dailyHours, 16) || '6';
+    const weakSubjects = sanitizeArray(b.weakSubjects, 40, 120);
+    const strongSubjects = sanitizeArray(b.strongSubjects, 40, 120);
+    const currentLevel = sanitizeString(b.currentLevel, 40);
+    const includeBreaks = validateBoolean(b.includeBreaks, true);
+    const examType = sanitizeString(b.examType, 120);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -27,28 +70,6 @@ export async function POST(req: NextRequest) {
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
-
-    // â”€â”€ A: Parse request body with full logging & fallbacks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    let body: any = {};
-    try {
-      body = await req.json();
-      console.log('Request body received:', JSON.stringify(body));
-    } catch (parseErr) {
-      console.error('Failed to parse request body:', parseErr);
-      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
-    }
-
-    const {
-      targetExam = '',
-      schoolClass = '',
-      examDate = '',
-      studyHours = '6',
-      weakSubjects = [],
-      strongSubjects = [],
-      currentLevel = 'intermediate',
-      includeBreaks = true,
-      examType = '',
-    } = body;
 
     console.log('Parsed values:', { targetExam, examDate, studyHours, weakSubjects, examType });
 

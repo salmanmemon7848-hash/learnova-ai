@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIResponse } from '@/lib/aiRouter'
+import { sanitizeJsonPostBody } from '@/lib/validation'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { testData } = body
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['testData'], 50000)
+    if (!parsed.ok) return parsed.response
+
+    let testDataSerialized = ''
+    try {
+      testDataSerialized = JSON.stringify(parsed.body.testData)
+    } catch {
+      return NextResponse.json({ error: 'Invalid test data' }, { status: 400 })
+    }
+
+    // SECURITY: Bound serialized test payload size after canonicalization.
+    // OWASP Reference: A05:2021 Security Misconfiguration
+    if (testDataSerialized.length > 45000) {
+      return NextResponse.json({ error: 'Test data too large' }, { status: 413 })
+    }
 
     const systemPrompt = `You are Learnova's adaptive exam analyzer for Indian students.
 
 Analyze this student's practice test performance.
-Questions and answers: ${JSON.stringify(testData)}
+Questions and answers: ${testDataSerialized}
 
 Respond ONLY in this JSON — no markdown, no extra text:
 {
@@ -47,8 +68,8 @@ Respond ONLY in this JSON — no markdown, no extra text:
       cleaned = objMatch[1].trim()
     }
 
-    let parsed = JSON.parse(cleaned)
-    return NextResponse.json({ result: parsed })
+    const analysisResult = JSON.parse(cleaned)
+    return NextResponse.json({ result: analysisResult })
   } catch (error: any) {
     console.error('[EXAM ANALYZE API] Error:', error)
     return NextResponse.json(

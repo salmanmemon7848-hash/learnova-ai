@@ -8,12 +8,48 @@ import {
   FOUNDER_KNOWLEDGE,
   getLanguageInstruction,
 } from '@/lib/learnovaKnowledge'
+import {
+  sanitizeJsonPostBody,
+  sanitizeMessages,
+  sanitizeString,
+  validateLanguage,
+} from '@/lib/validation'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'idea',
+      'industry',
+      'stage',
+      'messages',
+      'language',
+      'targetMarket',
+      'budget',
+    ])
+    if (!parsed.ok) return parsed.response
+
+    const b = parsed.body
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const idea = sanitizeString(b.idea, 8000)
+    const industry = sanitizeString(b.industry, 200)
+    const stage = sanitizeString(b.stage, 120)
+    void sanitizeMessages(b.messages)
+    void validateLanguage(b.language)
+    const targetMarket = sanitizeString(b.targetMarket, 500)
+    const budget = sanitizeString(b.budget, 200)
+
     const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,14 +58,12 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 })
     const responseHeaders = buildRateLimitHeaders(rateLimitResult)
 
-    const { idea, targetMarket, budget, industry } = await req.json()
-
     // Validate input
     if (!idea || !idea.trim()) {
       return NextResponse.json({ error: 'Business idea is required' }, { status: 400 })
     }
 
-    const languageInstruction = getLanguageInstruction(idea);
+    const languageInstruction = getLanguageInstruction(`${idea} ${stage}`);
 
     const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}

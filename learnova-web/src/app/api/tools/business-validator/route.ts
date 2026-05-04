@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIResponse } from '@/lib/aiRouter'
 import { parseBizValidatorReport } from '@/lib/businessValidatorReport'
+import { sanitizeJsonPostBody, sanitizeString } from '@/lib/validation'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -33,10 +34,23 @@ Include 4-6 objects in actionPlan. Use realistic strings and numbers.`
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const ideaName = String(body.ideaName ?? '').trim()
-    const description = String(body.description ?? '').trim()
-    const targetAudience = String(body.targetAudience ?? '').trim()
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['ideaName', 'description', 'targetAudience'], 25000)
+    if (!parsed.ok) return parsed.response
+
+    const b = parsed.body
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const ideaName = sanitizeString(b.ideaName, 400).trim()
+    const description = sanitizeString(b.description, 12000).trim()
+    const targetAudience = sanitizeString(b.targetAudience, 2000).trim()
 
     if (!ideaName || !description) {
       return NextResponse.json(

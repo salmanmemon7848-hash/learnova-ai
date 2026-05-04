@@ -15,6 +15,7 @@
 import { SYSTEM_PROMPTS } from '@/lib/systemPrompts';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeJsonPostBody, sanitizeMessages, sanitizeString } from '@/lib/validation';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -23,6 +24,26 @@ interface ChatMessage {
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['feature', 'messages']);
+    if (!parsed.ok) return parsed.response;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const feature = sanitizeString(parsed.body.feature, 64);
+    const messagesSanitized = sanitizeMessages(parsed.body.messages)
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })) as ChatMessage[];
+
     // ── Auth guard ────────────────────────────────────────────────────────────
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
@@ -30,11 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // ── Parse body ────────────────────────────────────────────────────────────
-    const { feature, messages } = (await req.json()) as {
-      feature: string;
-      messages: ChatMessage[];
-    };
+    const messages = messagesSanitized;
 
     if (!feature || !SYSTEM_PROMPTS[feature]) {
       return NextResponse.json(
@@ -54,12 +71,18 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = SYSTEM_PROMPTS[feature];
 
+    // SECURITY: Server-only Anthropic key — never expose to the client.
+    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+    if (!anthropicKey) {
+      return NextResponse.json({ error: 'AI service is not configured.' }, { status: 503 });
+    }
+
     // ── Call Anthropic (Claude) ───────────────────────────────────────────────
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+        'x-api-key': anthropicKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({

@@ -3,6 +3,7 @@ import { getAIResponse } from '@/lib/aiRouter';
 import { chatWithGemini } from '@/lib/gemini';
 
 export async function GET() {
+  // SECURITY: Internal health probe — fixed prompts only; no user input surface.
   const results: Record<string, any> = {};
 
   try {

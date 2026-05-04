@@ -3,6 +3,7 @@ import { getUserUsageSummary } from '@/lib/rateLimit';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  // SECURITY: No client-supplied input — usage summary for authenticated user only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();

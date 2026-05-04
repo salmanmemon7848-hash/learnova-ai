@@ -1,15 +1,46 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  sanitizeEnum,
+  sanitizeJsonPostBody,
+  sanitizeNumber,
+  sanitizeString,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'examType',
+      'schoolClass',
+      'subject',
+      'chapter',
+      'difficulty',
+      'questionCount',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const examType = sanitizeString(b.examType, 80);
+    const schoolClass = sanitizeString(b.schoolClass, 80);
+    const subject = sanitizeString(b.subject, 200);
+    const chapter = sanitizeString(b.chapter, 300);
+    const difficulty = sanitizeEnum(b.difficulty, ['easy', 'medium', 'hard'], 'medium');
+    const count = sanitizeNumber(b.questionCount, 1, 50, 5);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { examType, schoolClass, subject, chapter, difficulty, questionCount } = await req.json();
-    const count = questionCount || 5;
 
     // Build context based on exam type
     const contextLine = examType === 'school'

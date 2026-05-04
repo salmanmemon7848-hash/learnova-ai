@@ -10,11 +10,51 @@ import {
   getLanguageInstruction,
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge';
+import { sanitizeArray, sanitizeJsonPostBody, sanitizeString, validateLanguage } from '@/lib/validation';
 
 // â”€â”€â”€ POST handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'userType',
+      'educationLevel',
+      'eduLevel',
+      'fields',
+      'budget',
+      'location',
+      'userCity',
+      'userState',
+      'userPincode',
+      'entranceExam',
+      'entrance',
+      'language',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const userType = sanitizeString(b.userType, 120);
+    const eduLevel = sanitizeString(b.eduLevel || b.educationLevel, 120);
+    const fields = sanitizeArray(b.fields, 40, 120);
+    const budget = sanitizeString(b.budget, 200);
+    const locationFallback = sanitizeString(b.location, 300);
+    const userCity = sanitizeString(b.userCity, 120);
+    const userState = sanitizeString(b.userState, 120);
+    const userPincode = sanitizeString(b.userPincode, 32);
+    const entrance = sanitizeString(b.entrance || b.entranceExam, 120);
+    void userPincode;
+    void validateLanguage(b.language);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,11 +65,8 @@ export async function POST(req: NextRequest) {
     }
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
-    const body = await req.json();
-    const { userType, eduLevel, fields, budget, userCity, userState, userPincode, entrance } = body;
-
     const fieldStr = Array.isArray(fields) && fields.length > 0 ? fields.join(' ') : 'general';
-    const location = [userCity, userState].filter(Boolean).join(', ');
+    const location = [userCity, userState].filter(Boolean).join(', ') || locationFallback;
 
     // â”€â”€ Language detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const languageInstruction = getLanguageInstruction(fieldStr);

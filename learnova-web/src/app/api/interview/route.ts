@@ -12,22 +12,57 @@ import {
   CAREER_GUIDE_KNOWLEDGE,
 } from '@/lib/learnovaKnowledge';
 import { LANGUAGE_CONFIGS, getLanguageInstruction, normalizeLanguage, validateLanguage } from '@/lib/languageConfig';
+import {
+  sanitizeJsonPostBody,
+  sanitizeMessages,
+  sanitizeNumber,
+  sanitizeString,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
-    let body: any = {};
+    let rawBody: unknown = {};
     try {
-      body = await req.json();
+      rawBody = await req.json();
     } catch (parseError) {
       console.error('[Interview] Failed to parse request body:', parseError);
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'action',
+      'interviewType',
+      'schoolClass',
+      'role',
+      'language',
+      'question',
+      'answer',
+      'messages',
+      'mode',
+      'numberOfQuestions',
+      'experienceLevel',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const body = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const action = sanitizeString(body.action, 64);
+    const interviewType = sanitizeString(body.interviewType, 120);
+    const schoolClass = sanitizeString(body.schoolClass, 80);
+    const role = sanitizeString(body.role, 200);
+    const language = sanitizeString(body.language, 48);
+    const question = sanitizeString(body.question, 8000);
+    const answer = sanitizeString(body.answer, 8000);
+    const messages = sanitizeMessages(body.messages);
+    const mode = sanitizeString(body.mode, 64);
+    const numberOfQuestions = sanitizeNumber(body.numberOfQuestions, 1, 50, 8);
+    const experienceLevel = sanitizeString(body.experienceLevel, 120);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { action, interviewType, schoolClass, role, language, question, answer, messages, numberOfQuestions, experienceLevel } = body;
     let responseHeaders: Record<string, string> = {};
     if (action === 'voice_turn' || action === 'generate_questions') {
       const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';

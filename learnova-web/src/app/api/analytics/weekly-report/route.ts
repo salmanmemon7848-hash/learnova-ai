@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
 import { getWeeklyStats } from '@/lib/analytics/weakAreaEngine'
+import { sanitizeNumber } from '@/lib/validation'
 
 // Prevent static generation - this route requires runtime database access
 export const dynamic = 'force-dynamic'
@@ -25,7 +26,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const weekOffset = parseInt(searchParams.get('week') || '0')
+    // SECURITY: Clamp numeric query input to prevent abuse.
+    // OWASP Reference: A05:2021 Security Misconfiguration
+    const weekOffset = sanitizeNumber(searchParams.get('week'), 0, 520, 0)
     
     // Calculate date range for the requested week
     const now = new Date()

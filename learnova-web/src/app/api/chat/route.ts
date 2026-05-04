@@ -13,9 +13,57 @@ import {
   AI_WRITER_KNOWLEDGE,
   getLanguageInstruction,
 } from '@/lib/learnovaKnowledge';
+import {
+  sanitizeJsonPostBody,
+  sanitizeMessages,
+  sanitizeString,
+  validateLanguage,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'message',
+      'messages',
+      'mode',
+      'toneMode',
+      'language',
+      'depthLevel',
+      'conversationId',
+      'persona',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const body = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const message = sanitizeString(body.message, 20000);
+    let messagesArray = sanitizeMessages(body.messages);
+    const toneMode = sanitizeString(body.toneMode, 64);
+    const mode = sanitizeString(body.mode, 64);
+    const language = validateLanguage(body.language);
+    const persona = sanitizeString(body.persona, 32);
+
+    let latestUserMessage = '';
+
+    if (messagesArray.length > 0) {
+      const userMessages = messagesArray.filter((m) => m.role === 'user');
+      latestUserMessage = userMessages[userMessages.length - 1]?.content || '';
+    } else if (message) {
+      messagesArray = [{ role: 'user', content: message }];
+      latestUserMessage = message;
+    } else {
+      return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
+    }
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,27 +73,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
     }
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
-
-    const body = await req.json();
-    const { message, messages, mode, toneMode, language, depthLevel, conversationId, persona } = body;
-    
-    // Support both single message and messages array format
-    let messagesArray: { role: string; content: string }[] = [];
-    let latestUserMessage = '';
-    
-    if (messages && Array.isArray(messages)) {
-      // Already in array format
-      messagesArray = messages;
-      // Get the latest user message for search decision
-      const userMessages = messages.filter((m: any) => m.role === 'user');
-      latestUserMessage = userMessages[userMessages.length - 1]?.content || '';
-    } else if (message) {
-      // Convert single message to array format
-      messagesArray = [{ role: 'user', content: message }];
-      latestUserMessage = message;
-    } else {
-      return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
-    }
 
     // Intelligent web search via getSearchContext
     const searchContext = await getSearchContext(

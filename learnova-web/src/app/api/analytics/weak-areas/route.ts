@@ -9,6 +9,7 @@ import {
   getReadinessScore,
   updateUserLevel,
 } from '@/lib/analytics/weakAreaEngine'
+import { sanitizeString } from '@/lib/validation'
 
 // Prevent static generation - this route requires runtime database access
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const type = searchParams.get('type')
+    // SECURITY: Sanitize query parameters used for branching logic.
+    // OWASP Reference: A03:2021 Injection
+    const type = sanitizeString(searchParams.get('type'), 32)
 
     // Get different types of analytics
     if (type === 'dna') {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { sanitizeJsonPostBody, sanitizeString } from '@/lib/validation'
 
 // Prevent static generation
 export const dynamic = 'force-dynamic'
@@ -8,7 +9,24 @@ export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password } = await req.json()
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['name', 'email', 'password'], 20000)
+    if (!parsed.ok) return parsed.response
+
+    const b = parsed.body
+
+    // SECURITY: Sanitize structured signup fields (password bounded separately — do not HTML-strip secrets).
+    // OWASP Reference: A03:2021 Injection
+    const name = sanitizeString(b.name, 200)
+    const email = sanitizeString(b.email, 320).trim()
+    const password =
+      typeof b.password === 'string' ? b.password.slice(0, 256).replace(/\x00/g, '') : ''
 
     // Validate input
     if (!email || !password) {
@@ -26,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email) || !email.includes('@')) {
       return NextResponse.json(
         { error: 'Please enter a valid email address' },
         { status: 400 }

@@ -148,9 +148,16 @@ export async function checkAndIncrementUsage(
       const timeUntilReset = getTimeUntilReset(periodEnd);
       const resetLabel = config.resetType === 'daily' ? 'today' : 'this month';
       if (currentCount >= effectiveLimit * 1.5 && ipAddress) {
-        await supabase.from('user_abuse_flags').upsert({
-          user_id: userId, ip_address: ipAddress, flag_type: 'limit_exceeded', flagged_at: now.toISOString(),
-        }, { onConflict: 'user_id' }).catch(() => {});
+        try {
+          await supabase.from('user_abuse_flags').upsert({
+            user_id: userId,
+            ip_address: ipAddress,
+            flag_type: 'limit_exceeded',
+            flagged_at: now.toISOString(),
+          }, { onConflict: 'user_id' });
+        } catch {
+          /* non-fatal */
+        }
       }
       return {
         allowed: false, blocked: true, currentCount, limit: effectiveLimit, remaining: 0, resetType: config.resetType,

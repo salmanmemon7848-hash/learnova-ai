@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/prisma'
+import {
+  sanitizeArray,
+  sanitizeJsonPostBody,
+  sanitizeString,
+} from '@/lib/validation'
 
 // Prevent static generation
 export const dynamic = 'force-dynamic'
@@ -24,8 +29,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const folder = searchParams.get('folder')
-    const subject = searchParams.get('subject')
+    // SECURITY: Sanitize query parameters before Prisma filters.
+    // OWASP Reference: A03:2021 Injection
+    const folder = sanitizeString(searchParams.get('folder'), 120)
+    const subject = sanitizeString(searchParams.get('subject'), 120)
 
     const where: any = { userId: user.id }
     if (folder) where.folder = folder
@@ -46,6 +53,38 @@ export async function GET(req: NextRequest) {
 // POST - Create a new study note
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'title',
+      'content',
+      'subject',
+      'topic',
+      'folder',
+      'sourceType',
+      'sourceId',
+      'tags',
+    ])
+    if (!parsed.ok) return parsed.response
+
+    const b = parsed.body
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const title = sanitizeString(b.title, 500)
+    const content = sanitizeString(b.content, 100000)
+    const subject = sanitizeString(b.subject, 200)
+    const topic = sanitizeString(b.topic, 300)
+    const folder = sanitizeString(b.folder, 120) || 'General'
+    const sourceType = sanitizeString(b.sourceType, 64)
+    const sourceId = sanitizeString(b.sourceId, 128)
+    const tags = sanitizeArray(b.tags, 50, 80)
+
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -58,9 +97,6 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    const body = await req.json()
-    const { title, content, subject, topic, folder = 'General', sourceType, sourceId, tags = [] } = body
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Title and content are required' }, { status: 400 })
@@ -90,6 +126,39 @@ export async function POST(req: NextRequest) {
 // PUT - Update a study note
 export async function PUT(req: NextRequest) {
   try {
+    let rawBody: unknown = {}
+    try {
+      rawBody = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'id',
+      'title',
+      'content',
+      'subject',
+      'topic',
+      'folder',
+      'tags',
+    ])
+    if (!parsed.ok) return parsed.response
+
+    const b = parsed.body
+    const tagsProvided = 'tags' in b
+    const subjectProvided = 'subject' in b
+    const topicProvided = 'topic' in b
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const id = sanitizeString(b.id, 128)
+    const title = sanitizeString(b.title, 500)
+    const content = sanitizeString(b.content, 100000)
+    const subject = sanitizeString(b.subject, 200)
+    const topic = sanitizeString(b.topic, 300)
+    const folder = sanitizeString(b.folder, 120)
+    const tags = sanitizeArray(b.tags, 50, 80)
+
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -102,9 +171,6 @@ export async function PUT(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-
-    const body = await req.json()
-    const { id, title, content, subject, topic, folder, tags } = body
 
     if (!id) {
       return NextResponse.json({ error: 'Note ID is required' }, { status: 400 })
@@ -124,10 +190,10 @@ export async function PUT(req: NextRequest) {
       data: {
         title: title || existingNote.title,
         content: content || existingNote.content,
-        subject: subject !== undefined ? subject : existingNote.subject,
-        topic: topic !== undefined ? topic : existingNote.topic,
+        subject: subjectProvided ? subject : existingNote.subject,
+        topic: topicProvided ? topic : existingNote.topic,
         folder: folder || existingNote.folder,
-        tags: tags || existingNote.tags,
+        tags: tagsProvided ? tags : existingNote.tags,
       },
     })
 
@@ -155,7 +221,9 @@ export async function DELETE(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const id = searchParams.get('id')
+    // SECURITY: Sanitize identifier from query string.
+    // OWASP Reference: A03:2021 Injection
+    const id = sanitizeString(searchParams.get('id'), 128)
 
     if (!id) {
       return NextResponse.json({ error: 'Note ID is required' }, { status: 400 })

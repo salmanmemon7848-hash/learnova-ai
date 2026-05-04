@@ -1,6 +1,8 @@
 // Google AI Studio (Gemini) API utility — used as fallback when Groq fails
 
-const GEMINI_API_KEY = process.env.GOOGLE_AI_STUDIO_API_KEY;
+// SECURITY: Server-only Gemini key — never NEXT_PUBLIC_ (browser bundle).
+const GEMINI_API_KEY =
+  process.env.GOOGLE_AI_API_KEY?.trim() || process.env.GOOGLE_AI_STUDIO_API_KEY?.trim();
 const GEMINI_MODEL = 'gemini-1.5-flash';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -42,7 +44,7 @@ export async function chatWithGemini(
   timeoutMs: number = 15000
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
-    throw new Error('GOOGLE_AI_STUDIO_API_KEY is not set');
+    throw new Error('GOOGLE_AI_API_KEY (or GOOGLE_AI_STUDIO_API_KEY) is not set');
   }
 
   const { system, history } = toGeminiMessages(messages, systemPrompt);

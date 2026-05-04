@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  // SECURITY: No client-supplied input — session-scoped dashboard read only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();

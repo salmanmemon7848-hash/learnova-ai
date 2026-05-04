@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  // SECURITY: No client-supplied input — progress aggregate for authenticated user only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
@@ -74,6 +75,7 @@ export async function GET() {
 
 // Reset progress
 export async function DELETE() {
+  // SECURITY: No client-supplied body — deletes progress rows for session user only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();

@@ -2,11 +2,34 @@ import { chatWithHistory } from '@/lib/openai';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+  sanitizeJsonPostBody,
+  sanitizeMessages,
+  sanitizeString,
+  validateLanguage,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { message } = body;
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['message', 'messages', 'language', 'mode']);
+    if (!parsed.ok) return parsed.response;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const msgs = sanitizeMessages(parsed.body.messages);
+    const single = sanitizeString(parsed.body.message, 12000);
+    void validateLanguage(parsed.body.language);
+    void sanitizeString(parsed.body.mode, 64);
+
+    const message =
+      msgs.length > 0 ? msgs.filter((m) => m.role === 'user').pop()?.content || '' : single;
 
     if (!message) {
       return NextResponse.json({ error: 'No message provided' }, { status: 400 });

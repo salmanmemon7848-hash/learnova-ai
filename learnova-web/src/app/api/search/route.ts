@@ -10,10 +10,23 @@
 
 import { searchWeb } from '@/lib/searxng';
 import { NextRequest } from 'next/server';
+import { sanitizeJsonPostBody, sanitizeString } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
-    const { query } = await req.json();
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['query'], 8000);
+    if (!parsed.ok) return parsed.response;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const query = sanitizeString(parsed.body.query, 2000);
 
     if (!query || typeof query !== 'string') {
       return Response.json({ error: 'query is required' }, { status: 400 });

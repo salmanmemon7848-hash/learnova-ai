@@ -253,30 +253,48 @@ export default function InterviewPage() {
   }
 
   // ── Whisper transcription ─────────────────────────────────────────────────
-  const sendToWhisper = async (audioBlob: Blob, lang?: LangKey): Promise<string> => {
-    const currentLang = lang || normalizedLanguageRef.current || 'english';
-    const profile = languageProfiles[currentLang] || languageProfiles.english;
-    const formData = new FormData()
-    formData.append('file', audioBlob, 'audio.webm')
-    formData.append('language', profile.whisperLanguage) // 'hi' for Hindi/Hinglish, 'en' for English
-    formData.append('prompt', profile.whisperPrompt)
+  const sendToWhisper = async (
+    audioBlob: Blob,
+    lang: 'english' | 'hindi' | 'hinglish' = 'english'
+  ): Promise<string> => {
+    const profile = languageProfiles[lang] || languageProfiles.english;
 
-    console.log('[Whisper] Transcribing with language hint:', profile.whisperLanguage);
-    console.log('[Whisper] Prompt:', profile.whisperPrompt.slice(0, 60));
+    console.log('[Whisper] Sending to secure proxy — language:', profile.whisperLanguage);
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('language', profile.whisperLanguage);
+    formData.append('prompt', profile.whisperPrompt);
 
     try {
-      const res = await fetch('/api/interview/transcribe', {
+      // SECURITY: Now calls /api/transcribe (our server)
+      // instead of api.groq.com directly (which exposed the key)
+      const res = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
-      })
-      const data = await res.json()
-      console.log('[Whisper] Transcription result:', data.text?.slice(0, 100));
-      if (data.text) return data.text
-    } catch (err) {
-      console.error('[Whisper] Transcription error:', err)
+        // No Authorization header needed here — server handles it
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error('[Whisper] Proxy error:', res.status, data.error);
+        return '';
+      }
+
+      const data = await res.json();
+
+      if (data.empty) {
+        console.warn('[Whisper] Empty transcription — nothing was heard');
+        return '';
+      }
+
+      console.log('[Whisper] Transcription received:', data.text?.slice(0, 100));
+      return data.text || '';
+    } catch (error: any) {
+      console.error('[Whisper] Fetch failed:', error.message);
+      return '';
     }
-    return ''
-  }
+  };
 
   // ── Get next question from API — never throws (FIX 3) ────────────────────
   const getNextQuestion = async (fullHistory: Message[]): Promise<string> => {

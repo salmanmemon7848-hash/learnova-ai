@@ -2,9 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAIResponse } from '@/lib/aiRouter';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
+import {
+  sanitizeJsonPostBody,
+  sanitizeMessages,
+  sanitizeString,
+  validateLanguage,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['query', 'prompt', 'language', 'messages']);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const prompt = sanitizeString(b.prompt || b.query, 8000);
+    void sanitizeMessages(b.messages);
+    void validateLanguage(b.language);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,9 +38,7 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
-    const body = await req.json();
-    const { prompt } = body;
-    if (!prompt || typeof prompt !== 'string') {
+    if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 

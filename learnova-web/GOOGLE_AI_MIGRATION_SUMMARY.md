@@ -42,7 +42,7 @@ Open your `.env.local` file and add:
 
 ```env
 # Google AI Studio (Gemini)
-GOOGLE_AI_API_KEY=AIzaSyDgM-NWRvLHmUx_oLFxgUKv_v7A4EES5fg
+GOOGLE_AI_API_KEY=your_key_here
 ```
 
 **⚠️ IMPORTANT:** 

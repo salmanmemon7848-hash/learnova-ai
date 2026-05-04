@@ -43,7 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
-    router.push('/auth')
+    // After explicit sign-out, always send users to the landing page.
+    router.push('/')
   }
 
   const value = {

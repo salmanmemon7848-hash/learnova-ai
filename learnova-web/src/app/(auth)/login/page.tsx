@@ -38,16 +38,37 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // SECURITY: Application-level brute-force check before Supabase password auth.
+      // OWASP Reference: A07:2021 Identification and Authentication Failures
+      const checkRes = await fetch('/api/auth/login-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const checkJson = await checkRes.json().catch(() => ({}))
+      if (checkRes.status === 429 || checkJson?.allowed === false) {
+        setError(checkJson?.message || 'Too many login attempts. Please wait before trying again.')
+        setLoading(false)
+        return
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
 
       if (signInError) {
-        if (
+        const invalidCreds =
           signInError.message.includes('Invalid login credentials') ||
           signInError.message.includes('invalid_credentials')
-        ) {
+        // SECURITY: Record failed attempt for IP-based lockout tracking (server-side).
+        // OWASP Reference: A07:2021 Identification and Authentication Failures
+        if (invalidCreds) {
+          void fetch('/api/auth/failed-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim() }),
+          })
           setError('Invalid credentials, please try again.')
         } else if (signInError.message.includes('Email not confirmed')) {
           setError('Please verify your email address before logging in.')

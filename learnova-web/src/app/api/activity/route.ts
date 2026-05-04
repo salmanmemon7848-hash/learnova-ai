@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeJsonPostBody, sanitizeString } from '@/lib/validation';
 
 // GET — fetch recent activities
 export async function GET() {
+  // SECURITY: No client-supplied input — activity feed for authenticated user only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
@@ -10,16 +12,19 @@ export async function GET() {
 
     const userId = session.user.id;
 
+    // Keep recent activity strictly within the last 24 hours.
+    const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
     // Fetch from all activity sources in parallel
     const [exams, conversations, notes, doubts] = await Promise.all([
       supabase.from('ExamAttempt').select('id, subject, topic, score, totalQuestions, createdAt')
-        .eq('userId', userId).order('createdAt', { ascending: false }).limit(5),
+        .eq('userId', userId).gte('createdAt', sinceIso).order('createdAt', { ascending: false }).limit(10),
       supabase.from('Conversation').select('id, updatedAt')
-        .eq('userId', userId).order('updatedAt', { ascending: false }).limit(5),
+        .eq('userId', userId).gte('updatedAt', sinceIso).order('updatedAt', { ascending: false }).limit(10),
       supabase.from('StudyNote').select('id, title, subject, createdAt')
-        .eq('userId', userId).order('createdAt', { ascending: false }).limit(5),
+        .eq('userId', userId).gte('createdAt', sinceIso).order('createdAt', { ascending: false }).limit(10),
       supabase.from('DoubtSolver').select('id, subject, createdAt')
-        .eq('userId', userId).order('createdAt', { ascending: false }).limit(5),
+        .eq('userId', userId).gte('createdAt', sinceIso).order('createdAt', { ascending: false }).limit(10),
     ]);
 
     // Combine and format all activities
@@ -57,10 +62,17 @@ export async function GET() {
       time: d.createdAt,
     }));
 
-    // Sort by time, most recent first
-    activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    // Final guard: hide anything outside the rolling 24-hour window.
+    const cutoffMs = Date.now() - 24 * 60 * 60 * 1000;
+    const recentActivities = activities.filter((a) => {
+      const ts = new Date(a.time).getTime();
+      return Number.isFinite(ts) && ts >= cutoffMs;
+    });
 
-    return NextResponse.json({ activities: activities.slice(0, 10) });
+    // Sort by time, most recent first
+    recentActivities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    return NextResponse.json({ activities: recentActivities.slice(0, 10) });
 
   } catch (error: any) {
     console.error('❌ Activity Error:', error?.message);
@@ -71,11 +83,27 @@ export async function GET() {
 // POST — log a new activity manually
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, ['type', 'title', 'detail'], 12000);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const type = sanitizeString(b.type, 64);
+    void sanitizeString(b.title, 500);
+    void sanitizeString(b.detail, 2000);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { type, title, detail } = await req.json();
 
     await supabase.from('StudyStreak').insert({
       userId: session.user.id,
@@ -92,6 +120,7 @@ export async function POST(req: NextRequest) {
 
 // DELETE — reset all activity
 export async function DELETE() {
+  // SECURITY: No client-supplied body — resets activity for session user only.
   try {
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();

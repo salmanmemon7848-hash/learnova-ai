@@ -37,7 +37,7 @@ Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_fr
 
 ### **PROBLEM: API Quota Exceeded (429 Error)**
 
-Your Google AI API key (`AIzaSyBw4aGV8Gjik60waXA7sy3K987izhIGDY0`) has hit the **free tier limit**.
+Your Google AI API key (`[REDACTED — set GOOGLE_AI_API_KEY in .env.local]`) has hit the **free tier limit**.
 
 **Free Tier Limits:**
 - 60 requests per minute

@@ -10,9 +10,40 @@ import {
   getLanguageInstruction,
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge';
+import { sanitizeJsonPostBody, sanitizeString, validateLanguage } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'contentType',
+      'type',
+      'topic',
+      'tone',
+      'details',
+      'length',
+      'context',
+      'language',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const contentType = sanitizeString(b.contentType || b.type, 80);
+    const topic = sanitizeString(b.topic, 500);
+    const tone = sanitizeString(b.tone, 80);
+    const details = sanitizeString(b.details || b.context, 8000);
+    void validateLanguage(b.language);
+    void sanitizeString(b.length, 32);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -22,7 +53,6 @@ export async function POST(req: NextRequest) {
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
-    const { contentType, topic, tone, details } = await req.json();
 
     // â”€â”€ Language detection & India-specific search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const languageInstruction = getLanguageInstruction(topic);

@@ -10,9 +10,53 @@ import {
   getLanguageInstruction,
   buildIndianSearchQuery,
 } from '@/lib/learnovaKnowledge';
+import {
+  sanitizeArray,
+  sanitizeJsonPostBody,
+  sanitizeNumber,
+  sanitizeString,
+  sanitizeStringRecord,
+  validateLanguage,
+} from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'conversationContext',
+      'answers',
+      'existingIdeas',
+      'count',
+      'language',
+      'messages',
+      'context',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const b = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    let conversationContext: unknown = b.conversationContext ?? b.context;
+    if (conversationContext && typeof conversationContext === 'object' && !Array.isArray(conversationContext)) {
+      conversationContext = sanitizeStringRecord(conversationContext, 80, 120, 2000);
+    } else if (typeof conversationContext === 'string') {
+      conversationContext = sanitizeString(conversationContext, 20000);
+    }
+    const answers =
+      b.answers && typeof b.answers === 'object' && !Array.isArray(b.answers)
+        ? sanitizeStringRecord(b.answers, 24, 24, 256)
+        : {};
+    const existingIdeas = sanitizeArray(b.existingIdeas, 50, 400);
+    const count = sanitizeNumber(b.count, 1, 15, 5);
+    void validateLanguage(b.language);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
@@ -22,9 +66,6 @@ export async function POST(req: NextRequest) {
     const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'business-ideas', ipAddress);
     if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
-
-    const body = await req.json();
-    const { conversationContext, answers, existingIdeas, count } = body;
 
     console.log('ðŸ“¥ Business Ideas API called');
 

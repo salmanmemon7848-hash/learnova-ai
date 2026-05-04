@@ -6,26 +6,45 @@ import { prisma } from '@/lib/prisma'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+const STRIPE_MAX_BODY_BYTES = 512_000
+
 // Lazy initialize Stripe only when needed (not at build time)
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key_for_build', {
+  // SECURITY: Never hardcode secret keys — load only from environment.
+  const key = process.env.STRIPE_SECRET_KEY?.trim()
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is not configured')
+  }
+  return new Stripe(key, {
     // @ts-ignore - API version mismatch between Stripe package and dashboard
     apiVersion: '2024-12-18.acacia',
   })
 }
 
 export async function POST(req: Request) {
+  // SECURITY: Limit raw body size before signature verification (DoS mitigation).
+  // OWASP Reference: A05:2021 Security Misconfiguration
   const body = await req.text()
-  const signature = req.headers.get('stripe-signature')!
+  if (body.length > STRIPE_MAX_BODY_BYTES) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
+  // SECURITY: Require Stripe signature header for webhook authenticity.
+  // OWASP Reference: A07:2021 Identification and Authentication Failures
+  const signature = req.headers.get('stripe-signature')
+  if (!signature || typeof signature !== 'string') {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+  }
 
   let event: Stripe.Event
 
   try {
-    event = getStripe().webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim()
+    if (!webhookSecret) {
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 })
+    }
+
+    event = getStripe().webhooks.constructEvent(body, signature, webhookSecret)
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }

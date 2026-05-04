@@ -12,6 +12,11 @@ import {
   AI_WRITER_KNOWLEDGE,
   getLanguageInstruction,
 } from '@/lib/learnovaKnowledge';
+import {
+  sanitizeEnum,
+  sanitizeJsonPostBody,
+  sanitizeString,
+} from '@/lib/validation';
 
 // ── Level-specific instructions ───────────────────────────────────────────────
 const levelInstructions: Record<string, string> = {
@@ -73,6 +78,35 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
+    let rawBody: unknown = {};
+    try {
+      rawBody = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = sanitizeJsonPostBody(rawBody, [
+      'question',
+      'questionText',
+      'subject',
+      'imageUrl',
+      'level',
+      'language',
+      'messages',
+    ]);
+    if (!parsed.ok) return parsed.response;
+
+    const body = parsed.body;
+
+    // SECURITY: Sanitize user input to prevent XSS and injection attacks
+    // OWASP Reference: A03:2021 Injection
+    const question = sanitizeString(body.question, 500);
+    const questionText = sanitizeString(body.questionText, 500);
+    const userSubject = sanitizeString(body.subject, 100);
+    const level = sanitizeEnum(body.level, ['auto', 'basic', 'medium', 'advanced'], 'auto');
+
+    const userQuestion = (question || questionText || '').trim();
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -84,10 +118,6 @@ export async function POST(req: NextRequest) {
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const userId = session.user.id;
-    const { question, questionText, subject, imageUrl, level = 'auto' } = await req.json();
-    // Support both field names: frontend sends `questionText`, normalise to `question`
-    const userQuestion = (question || questionText || '').trim();
-    const userSubject = (subject || '').trim();
 
     // ── Language detection ─────────────────────────────────────────────────────
     const languageInstruction = getLanguageInstruction(userQuestion);

@@ -1,15 +1,25 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeString } from '@/lib/validation';
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: rawId } = await params;
+
+    // SECURITY: Sanitize route parameter before database queries.
+    // OWASP Reference: A03:2021 Injection
+    const id = sanitizeString(rawId, 128);
+
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    if (!id) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    }
 
     const { error } = await supabase
       .from('saved_files')
