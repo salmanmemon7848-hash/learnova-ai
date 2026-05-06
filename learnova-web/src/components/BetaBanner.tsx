@@ -42,7 +42,7 @@ export default function BetaBanner() {
         <div className="flex items-center gap-2 flex-1 pr-4">
           <MessageSquare className="w-4 h-4 flex-shrink-0" />
           <p className="leading-tight">
-            <strong>Learnova is in public beta.</strong>{' '}
+            <strong>Thinkior is in public beta.</strong>{' '}
             <span className="hidden sm:inline">You may encounter bugs. Your feedback helps us improve.</span>
             <span className="sm:hidden">Help us improve with your feedback.</span>
             {' '}

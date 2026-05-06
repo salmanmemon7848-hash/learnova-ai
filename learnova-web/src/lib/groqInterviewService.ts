@@ -54,7 +54,7 @@ If both answers are not YES — rewrite the question before outputting.
 const getSystemPrompt = (language: string) => {
   if (language === 'Hinglish') {
     return `
-You are a mock interview conductor for Learnova AI.
+You are a mock interview conductor for Thinkior AI.
 
 🔴 CRITICAL RULE — SCRIPT: You must use ENGLISH/ROMAN ALPHABET ONLY.
 Do NOT use Devanagari script (क ख ग) under ANY circumstance.
@@ -72,7 +72,7 @@ Any response containing Devanagari characters is a complete failure.
 
   if (language === 'Hindi') {
     return `
-You are a mock interview conductor for Learnova AI.
+You are a mock interview conductor for Thinkior AI.
 
 🔴 CRITICAL RULE: Write EVERYTHING in Hindi using Devanagari script only.
 Example: "आप अपने अनुभव के बारे में बताइए।"
@@ -82,7 +82,7 @@ Do NOT write Hinglish — write pure Devanagari Hindi only.
   }
 
   return `
-You are a mock interview conductor for Learnova AI.
+You are a mock interview conductor for Thinkior AI.
 Write everything in clear professional English only.
   `;
 };
@@ -264,7 +264,7 @@ function parseAndValidateQuestions(
         languageValid = langConfig.validationRegex.test(q.question!);
         if (!languageValid) {
           console.warn(
-            `[Learnova] ⚠️ Question ${i + 1} failed ${language} validation:`,
+            `[Thinkior] ⚠️ Question ${i + 1} failed ${language} validation:`,
             q.question!.substring(0, 80)
           );
         }

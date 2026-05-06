@@ -13,7 +13,7 @@ export default function BetaDisclaimerPage() {
           
           <div className="p-4 rounded-lg border-l-4" style={{ backgroundColor: 'var(--warning-light)', borderColor: 'var(--warning)' }}>
             <p className="font-semibold" style={{ color: 'var(--foreground)' }}>
-              Important: Learnova AI is currently in beta testing phase.
+              Important: Thinkior AI is currently in beta testing phase.
             </p>
           </div>
 
@@ -22,7 +22,7 @@ export default function BetaDisclaimerPage() {
               What "Beta" Means
             </h2>
             <p>
-              Learnova AI is a work in progress. We are actively developing, testing, and improving the 
+              Thinkior AI is a work in progress. We are actively developing, testing, and improving the 
               platform. While we strive to provide a high-quality experience, you should expect:
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -39,7 +39,7 @@ export default function BetaDisclaimerPage() {
               AI-Generated Content Accuracy
             </h2>
             <p>
-              Learnova AI uses artificial intelligence to generate:
+              Thinkior AI uses artificial intelligence to generate:
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
               <li>Study plans and recommendations</li>
@@ -65,7 +65,7 @@ export default function BetaDisclaimerPage() {
               Free to Use
             </h2>
             <p>
-              During the beta phase, Learnova AI is completely free to use. We may introduce paid features 
+              During the beta phase, Thinkior AI is completely free to use. We may introduce paid features 
               in the future, but:
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -110,7 +110,7 @@ export default function BetaDisclaimerPage() {
               <li>Tell us what works and what doesn't</li>
             </ul>
             <p className="mt-2">
-              Your feedback directly shapes the future of Learnova AI.
+              Your feedback directly shapes the future of Thinkior AI.
               <br />
               Contact:{' '}
               <a href="mailto:feedback@learnova.ai" className="text-blue-600 hover:underline">
@@ -140,12 +140,12 @@ export default function BetaDisclaimerPage() {
               Building in Public
             </h2>
             <p>
-              Learnova AI was built by Salman Memon from Gariyaband, Chhattisgarh, India. This is an 
+              Thinkior AI was built by Salman Memon from Gariyaband, Chhattisgarh, India. This is an 
               independent project built with passion for Indian students and entrepreneurs. I'm building 
               this platform in public and sharing the journey openly.
             </p>
             <p className="mt-2">
-              Thank you for being an early user and helping shape Learnova AI into something great.
+              Thank you for being an early user and helping shape Thinkior AI into something great.
             </p>
           </section>
         </div>

@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { getAIResponse } from '@/lib/aiRouter';
@@ -23,7 +23,7 @@ function buildCompactPitchPrompt(
   searchContext: string,
   searchUsageInstruction: string
 ): string {
-  const base = `You are Learnova's Pitch Deck AI — a senior Indian startup investor advisor.
+  const base = `You are Thinkior's Pitch Deck AI — a senior Indian startup investor advisor.
 Be direct and constructive. Use ₹ and Indian market context. Write narrative fields in the language implied below.
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}

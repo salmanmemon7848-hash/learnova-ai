@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Test data too large' }, { status: 413 })
     }
 
-    const systemPrompt = `You are Learnova's adaptive exam analyzer for Indian students.
+    const systemPrompt = `You are Thinkior's adaptive exam analyzer for Indian students.
 
 Analyze this student's practice test performance.
 Questions and answers: ${testDataSerialized}

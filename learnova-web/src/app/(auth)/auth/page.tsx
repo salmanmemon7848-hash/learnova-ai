@@ -144,10 +144,11 @@ export default function AuthPage() {
     if (role) {
       document.cookie = `learnova_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
     }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })
@@ -164,7 +165,7 @@ export default function AuthPage() {
         style={{ backgroundColor: '#534AB7' }}
       >
         <div className="max-w-sm text-center">
-          <h1 className="text-[26px] font-semibold text-white mb-3">Learnova AI</h1>
+          <h1 className="text-[26px] font-semibold text-white mb-3">Thinkior AI</h1>
           <p className="text-base text-white mb-8" style={{ opacity: 0.85 }}>
             The AI that studies with you and builds with you
           </p>
@@ -196,7 +197,7 @@ export default function AuthPage() {
               {tab === 'signin' ? 'Welcome back' : 'Create your account'}
             </h2>
             <p className="text-sm" style={{ color: '#5A5A72' }}>
-              {tab === 'signin' ? 'Sign in to continue to Learnova' : 'Start learning and building with Learnova'}
+              {tab === 'signin' ? 'Sign in to continue to Thinkior' : 'Start learning and building with Thinkior'}
             </p>
           </div>
 

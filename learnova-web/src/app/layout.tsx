@@ -25,33 +25,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learnova AI - The AI built for India's students and builders",
+  title: "Thinkior AI - The AI built for India's students and builders",
   description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Currently in beta, free to use.",
   keywords: ["AI tutor", "exam prep", "business validator", "AI writer", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
   authors: [{ name: "Salman Memon" }],
-  creator: "Learnova AI",
-  publisher: "Learnova AI",
+  creator: "Thinkior AI",
+  publisher: "Thinkior AI",
   metadataBase: new URL("https://learnova.ai"),
   manifest: '/manifest.json',
   themeColor: '#4f46e5',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Learnova AI',
+    title: 'Thinkior AI',
   },
   icons: {
     apple: '/icons/icon-192.png',
   },
   openGraph: {
-    title: "Learnova AI - The AI built for India's students and builders",
+    title: "Thinkior AI - The AI built for India's students and builders",
     description: "Prepare for competitive exams or validate your startup idea with AI. Built for India, currently in beta.",
     type: "website",
     locale: "en_US",
-    siteName: "Learnova AI",
+    siteName: "Thinkior AI",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Learnova AI",
+    title: "Thinkior AI",
     description: "The AI built for India's students and builders",
   },
 };
@@ -71,7 +71,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Learnova AI" />
+        <meta name="apple-mobile-web-app-title" content="Thinkior AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className="min-h-full flex flex-col font-body">

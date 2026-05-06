@@ -1,5 +1,5 @@
 /**
- * AI with Search — Learnova AI (Upgraded)
+ * AI with Search — Thinkior AI (Upgraded)
  *
  * Intelligent search decision engine. Used by every API route.
  * Decides whether to search, builds smart feature-specific queries,

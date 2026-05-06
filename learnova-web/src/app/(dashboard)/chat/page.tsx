@@ -84,7 +84,7 @@ const MessageBubble = React.memo(({ message, onCopy, isCopied }: {
                 border: '1px solid #4338CA',
               }}
             >
-              Learnova
+              Thinkior
             </span>
             <button
               onClick={() => onCopy(message.content, message.id)}
@@ -236,9 +236,9 @@ function ChatContent() {
     let prompt = ''
     
     if (persona === 'student') {
-      prompt = "You are Learnova, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient."
+      prompt = "You are Thinkior, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient."
     } else if (persona === 'founder') {
-      prompt = "You are Learnova, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context."
+      prompt = "You are Thinkior, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context."
     }
 
     if (language === 'hindi') {
@@ -627,7 +627,7 @@ function ChatContent() {
                     />
                   </div>
                   <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
-                    Learnova is thinking...
+                    Thinkior is thinking...
                   </span>
                 </div>
               </div>
@@ -768,7 +768,7 @@ function ChatContent() {
                     handleSendMessage()
                   }
                 }}
-                placeholder={language === 'hindi' ? 'Learnova से कुछ भी पूछें...' : 'Ask Learnova anything...'}
+                placeholder={language === 'hindi' ? 'Thinkior से कुछ भी पूछें...' : 'Ask Thinkior anything...'}
                 className="flex-1 text-[14px] leading-relaxed bg-transparent border-none outline-none resize-none"
                 style={{
                   color: '#F5F3FF',

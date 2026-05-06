@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = getBasePrompt('class', 'english') + `
 
 IMPORTANT: This is a demo interaction. Provide a helpful, concise response that showcases your capabilities.
-Keep responses under 300 words for the demo. Be engaging and show the value of Learnova AI.`;
+Keep responses under 300 words for the demo. Be engaging and show the value of Thinkior AI.`;
 
     // Call AI with the message
     const messages = [{ role: 'user', content: message }];

@@ -19,18 +19,18 @@ export default function TermsPage() {
               1. Acceptance of Terms
             </h2>
             <p>
-              By accessing or using Learnova AI ("the Service"), you agree to be bound by these Terms of Service. 
+              By accessing or using Thinkior AI ("the Service"), you agree to be bound by these Terms of Service. 
               If you do not agree to these terms, do not use the Service.
             </p>
           </section>
 
-          {/* What Learnova Is */}
+          {/* What Thinkior Is */}
           <section>
             <h2 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              2. What Learnova Is
+              2. What Thinkior Is
             </h2>
             <p>
-              Learnova AI is an AI-powered educational and business tool built for Indian students preparing for 
+              Thinkior AI is an AI-powered educational and business tool built for Indian students preparing for 
               competitive exams (UPSC, JEE, NEET, CAT) and young entrepreneurs validating startup ideas.
             </p>
             <p className="mt-3">
@@ -54,7 +54,7 @@ export default function TermsPage() {
             </h2>
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--warning-light)', borderLeft: '4px solid var(--warning)' }}>
               <p className="font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
-                Learnova is currently in public beta.
+                Thinkior is currently in public beta.
               </p>
               <ul className="space-y-1 text-sm">
                 <li>• Features may change, break, or be removed without notice</li>
@@ -65,7 +65,7 @@ export default function TermsPage() {
               </ul>
             </div>
             <p className="mt-4">
-              By using Learnova during beta, you acknowledge these limitations and accept that the Service 
+              By using Thinkior during beta, you acknowledge these limitations and accept that the Service 
               is provided "as-is" without guarantees of reliability or accuracy.
             </p>
           </section>
@@ -75,7 +75,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
               4. Acceptable Use
             </h2>
-            <p className="mb-3">You may use Learnova for:</p>
+            <p className="mb-3">You may use Thinkior for:</p>
             <ul className="list-disc ml-6 mb-4 space-y-1">
               <li>Studying and exam preparation</li>
               <li>Business idea validation and planning</li>
@@ -107,8 +107,8 @@ export default function TermsPage() {
               </p>
             </div>
             <p className="mt-4">
-              Learnova uses artificial intelligence to generate:
-            </p>
+               Thinkior uses artificial intelligence to generate:
+             </p>
             <ul className="list-disc ml-6 mt-2 mb-4 space-y-1">
               <li>Study plans and recommendations</li>
               <li>Exam questions and explanations</li>
@@ -136,29 +136,16 @@ export default function TermsPage() {
           {/* Intellectual Property */}
           <section>
             <h2 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              6. Intellectual Property
+              6. Ownership and Intellectual Property
             </h2>
-            
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>Your Content</h3>
-            <p className="mb-4">
-              Content you create using Learnova (study plans, business analyses, pitch decks, etc.) belongs to you. 
-              You are free to use, modify, and distribute your own creations.
+            <p className="mb-3">
+              Content you create using Thinkior (study plans, business analyses, pitch decks, etc.) belongs to you. 
+              However, the Service itself and its underlying technology are protected:
             </p>
-
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>Our Content</h3>
-            <p>
-              The following remain our intellectual property:
-            </p>
-            <ul className="list-disc ml-6 mt-2 space-y-1">
-              <li>Learnova's code, algorithms, and technical infrastructure</li>
-              <li>Learnova's branding, logo, design, and visual identity</li>
-              <li>The structure and organization of the Service</li>
-              <li>AI prompts and system instructions we've developed</li>
+            <ul className="list-disc ml-6 space-y-2">
+              <li>Thinkior's code, algorithms, and technical infrastructure</li>
+              <li>Thinkior's branding, logo, design, and visual identity</li>
             </ul>
-            <p className="mt-3">
-              You may not reproduce, distribute, or create derivative works of our proprietary systems 
-              without explicit written permission.
-            </p>
           </section>
 
           {/* Account Termination */}
@@ -187,7 +174,7 @@ export default function TermsPage() {
               8. Limitation of Liability
             </h2>
             <p className="mb-3">
-              Learnova AI is provided "AS-IS" during the beta phase. To the maximum extent permitted by law:
+              Thinkior AI is provided "AS-IS" during the beta phase. To the maximum extent permitted by law:
             </p>
             <ul className="list-disc ml-6 mb-4 space-y-1">
               <li>We make no warranties, express or implied, about the Service's reliability, accuracy, or fitness for a particular purpose</li>
@@ -197,7 +184,7 @@ export default function TermsPage() {
               <li>Our total liability shall not exceed the amount you have paid us (which, during beta, is ₹0)</li>
             </ul>
             <p style={{ color: 'var(--foreground-muted)' }}>
-              You use Learnova at your own risk. We strongly encourage you to verify important information independently.
+              You use Thinkior at your own risk. We strongly encourage you to verify important information independently.
             </p>
           </section>
 
@@ -242,8 +229,8 @@ export default function TermsPage() {
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <p className="mb-1"><strong>Email:</strong>{' '}
                 <a href="mailto:legal@learnova.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                  legal@learnova.ai
-                </a>
+                   legal@learnova.ai
+                 </a>
               </p>
               <p><strong>Location:</strong> Gariyaband, Chhattisgarh, India</p>
             </div>

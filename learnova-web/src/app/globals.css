@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ===== LEARNOVA AI DESIGN TOKENS ===== */
+/* ===== THINKIOR AI DESIGN TOKENS ===== */
 :root {
   --bg-app:       #080412;
   --bg-surface:   #0F0A1E;
@@ -476,7 +476,7 @@ html, body {
 }
 
 /* ==========================================
-   LEARNOVA AI - COMPONENT STYLES
+   THINKIOR AI - COMPONENT STYLES
    ========================================== */
 
 /* Performance: Reduce animation duration for faster UX */

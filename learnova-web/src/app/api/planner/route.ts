@@ -1,4 +1,4 @@
-﻿import { getAIResponse } from '@/lib/aiRouter';
+import { getAIResponse } from '@/lib/aiRouter';
 import { createClient } from '@/lib/supabase/server';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -116,7 +116,7 @@ ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Learnova's Study Planner AI for Indian students.
+You are Thinkior's Study Planner AI for Indian students.
 
 CRITICAL: You must respond with ONLY a valid JSON object. No introduction, no explanation, no markdown code blocks. Start your response with { and end with }. Nothing else.
 

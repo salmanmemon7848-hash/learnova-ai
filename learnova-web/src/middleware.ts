@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  // Pages that are always public — no auth check needed
+  // 1. Pages that are always public — no auth check needed
   const isPublicPage =
     pathname === '/' ||
     pathname === '/login' ||
@@ -17,13 +17,11 @@ export async function middleware(request: NextRequest) {
     pathname === '/beta-disclaimer' ||
     pathname.startsWith('/auth/')
 
-  if (isPublicPage) {
-    return NextResponse.next()
-  }
-
-  // For protected pages, check Supabase session properly
+  // 2. Initialize Supabase client correctly for Middleware
   let response = NextResponse.next({
-    request: { headers: request.headers },
+    request: {
+      headers: request.headers,
+    },
   })
 
   const supabase = createServerClient(
@@ -31,36 +29,38 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options) {
-          request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({
-            request: { headers: request.headers },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set(name, value, options)
           })
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options) {
-          request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
-          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // 3. Refresh session if expired (required for Server Components)
+  // Use getUser() for security, it validates the session with Supabase
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Not authenticated → send to /auth
-  if (!session) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+  // 4. Protection Logic
+  if (!user && !isPublicPage) {
+    console.log(`🛡️ Middleware: No session for ${pathname}, redirecting to /auth`);
+    const url = new URL('/auth', request.url)
+    url.searchParams.set('next', pathname)
+    return NextResponse.redirect(url)
   }
 
-  // Authenticated user trying to access old login/signup → send to dashboard
-  if (session && (pathname === '/login' || pathname === '/signup')) {
+  if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/auth')) {
+    console.log(`🛡️ Middleware: Session exists for ${pathname}, redirecting to /dashboard`);
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

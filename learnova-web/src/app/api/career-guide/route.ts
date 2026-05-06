@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const message = await getAIResponse(
       [{ role: 'user', content: prompt }],
-      'You are Learnova career guide for Indian students. Give concise practical guidance.',
+      'You are Thinkior career guide for Indian students. Give concise practical guidance.',
       { feature: 'career-guide', maxTokens: 1200 }
     );
 

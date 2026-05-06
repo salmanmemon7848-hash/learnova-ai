@@ -1,5 +1,5 @@
 /**
- * SearXNG Search Utility — Learnova AI (Upgraded)
+ * SearXNG Search Utility — Thinkior AI (Upgraded)
  *
  * Intelligent search with multi-query support, quality logging,
  * and Render cold-start warmup ping.

@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getAIResponse } from '@/lib/aiRouter'
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
 import { createClient } from '@/lib/supabase/server'
@@ -88,7 +88,7 @@ ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Learnova's adaptive exam engine for Indian students.
+You are Thinkior's adaptive exam engine for Indian students.
 
 Student level: ${levelInstruction}
 Subject: ${subject}

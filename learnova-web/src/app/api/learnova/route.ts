@@ -1,5 +1,5 @@
 /**
- * /api/learnova — Unified Learnova AI endpoint
+ * /api/learnova — Unified Thinkior AI endpoint
  *
  * Accepts: { feature: string, messages: ChatMessage[] }
  * Returns: { reply: string }

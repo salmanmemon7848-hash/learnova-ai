@@ -1,6 +1,6 @@
-# Learnova AI - Your Intelligent Companion
+# Thinkior AI - Your Intelligent Companion
 
-Learnova is a full-stack Next.js application that serves as an AI-powered companion for students and business builders. It provides personalized learning, exam preparation, business validation, content generation, and smart planning.
+Thinkior is a full-stack Next.js application that serves as an AI-powered companion for students and business builders. It provides personalized learning, exam preparation, business validation, content generation, and smart planning.
 
 ## Features
 

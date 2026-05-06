@@ -6,9 +6,10 @@ import type { UserRole } from '@/contexts/RoleContext'
 
 export default async function Dashboard({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
+    console.log('🛡️ Dashboard Layout: No user found, redirecting to /auth');
     redirect('/auth')
   }
 
@@ -16,7 +17,7 @@ export default async function Dashboard({ children }: { children: React.ReactNod
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single()
 
   const role = (profile?.role as UserRole) || null

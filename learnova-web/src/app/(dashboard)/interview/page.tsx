@@ -919,7 +919,7 @@ export default function InterviewPage() {
   if (step === 'voice-interview') {
     const phaseLabel = {
       idle: 'Tap the button to start answering',
-      'ai-speaking': 'Learnova is speaking...',
+      'ai-speaking': 'Thinkior is speaking...',
       listening: 'Listening… tap to stop',
       processing: 'Understanding your answer...',
       thinking: 'Thinking of next question...',

@@ -22,7 +22,7 @@ export default function AboutPage() {
           {/* Founder Story */}
           <section>
             <h2 className="text-3xl font-bold mb-6 font-heading" style={{ color: 'var(--foreground)' }}>
-              The Story Behind Learnova
+              The Story Behind Thinkior
             </h2>
             <div className="prose" style={{ color: 'var(--foreground-secondary)' }}>
               <p className="text-lg mb-4">
@@ -32,7 +32,7 @@ export default function AboutPage() {
               </p>
               
               <p className="mb-4">
-                I built Learnova AI because I lived the problem myself. Growing up in a small town, I saw 
+                I built Thinkior AI because I lived the problem myself. Growing up in a small town, I saw 
                 students around me struggling with:
               </p>
 
@@ -61,7 +61,7 @@ export default function AboutPage() {
               My Mission
             </h3>
             <p className="text-lg mb-4" style={{ color: 'var(--foreground-secondary)' }}>
-              Learnova is not just another AI wrapper. It's built from the ground up for:
+              Thinkior is not just another AI wrapper. It's built from the ground up for:
             </p>
             <ul className="space-y-3">
               {[
@@ -86,7 +86,7 @@ export default function AboutPage() {
           {/* About the Product */}
           <section>
             <h3 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              What Makes Learnova Different
+              What Makes Thinkior Different
             </h3>
             <div className="grid md:grid-cols-2 gap-6">
               {[
@@ -130,7 +130,7 @@ export default function AboutPage() {
               Transparency & Beta Status
             </h3>
             <p className="mb-4" style={{ color: 'var(--foreground-secondary)' }}>
-              I'm being upfront: Learnova is in <strong>public beta</strong>. This means:
+              I'm being upfront: Thinkior is in <strong>public beta</strong>. This means:
             </p>
             <ul className="list-disc ml-6 mb-4 space-y-1" style={{ color: 'var(--foreground-secondary)' }}>
               <li>Features may change, break, or be removed</li>
@@ -187,7 +187,7 @@ export default function AboutPage() {
           {/* CTA */}
           <section className="text-center py-8">
             <h3 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              Try Learnova Yourself
+              Try Thinkior Yourself
             </h3>
             <p className="mb-6" style={{ color: 'var(--foreground-muted)' }}>
               Free during beta. No credit card required.

@@ -1,4 +1,4 @@
-﻿import { generateText } from '@/lib/openai';
+import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -117,7 +117,7 @@ ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Learnova's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
+You are Thinkior's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
 
 Everything you know about this founder:
 ${JSON.stringify(ctx, null, 2)}

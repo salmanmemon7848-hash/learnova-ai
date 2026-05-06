@@ -22,8 +22,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
+    console.log('🔐 AuthContext: Initializing...');
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔐 AuthContext: Initial session fetched', session ? '✅ User found' : '❌ No user');
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -32,10 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log(`🔐 AuthContext: Auth state changed [${event}]`, session ? '✅ User found' : '❌ No user');
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      if (event === 'SIGNED_IN') {
+        // Optional: refresh page or trigger redirect if needed
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -75,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        <p style={{ fontSize: '14px', color: '#C4B5FD' }}>Loading Learnova...</p>
+        <p style={{ fontSize: '14px', color: '#C4B5FD' }}>Loading Thinkior...</p>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }

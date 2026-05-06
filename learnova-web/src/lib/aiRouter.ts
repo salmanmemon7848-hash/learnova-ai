@@ -8,7 +8,7 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || '10000', 10);
 
 /*
-LEARNOVA AI ROUTER — FALLBACK RULES:
+THINKIOR AI ROUTER — FALLBACK RULES:
 
 Groq is used FIRST because:
 - Faster response times (avg 1-3 seconds)

@@ -96,10 +96,13 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     try {
+      // Get the correct redirect URL based on environment
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -127,7 +130,7 @@ export default function LoginPage() {
         <div className="max-w-sm text-center">
           {/* Logo */}
           <h1 className="text-[26px] font-semibold text-white mb-3">
-            Learnova
+            Thinkior
           </h1>
           
           {/* Tagline */}
@@ -174,7 +177,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold mb-2" style={{ color: '#0F0F1A' }}>
-              Welcome to Learnova
+              Welcome to Thinkior
             </h2>
             <p className="text-sm" style={{ color: '#5A5A72' }}>
               Sign in to start learning and building

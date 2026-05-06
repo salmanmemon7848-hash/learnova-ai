@@ -1,4 +1,4 @@
-﻿import { chatWithHistory } from '@/lib/openai';
+import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
@@ -106,7 +106,7 @@ ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Learnova, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient.
+You are Thinkior, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient.
 
 ${basePrompt}`;
     } else if (persona === 'founder') {
@@ -115,9 +115,9 @@ ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Learnova, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context.
+You are Thinkior, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context.
 
-${basePrompt}`;
+${basePrompt}`; 
     } else {
       systemPrompt = `${LEARNOVA_FULL_CONTEXT}
 

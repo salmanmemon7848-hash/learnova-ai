@@ -257,7 +257,7 @@ All output must be in ${selectedLanguage}.
 
       const systemPrompts: Record<string, string> = {
         english: `${knowledgeBlock}\n${strictLanguageRule}
-You are Learnova's AI Interviewer — a professional interviewer conducting a real voice interview in Indian English.
+You are Thinkior's AI Interviewer — a professional interviewer conducting a real voice interview in Indian English.
 
 Interview type: ${interviewType || 'General'}
 
@@ -279,7 +279,7 @@ Interview structure:
 Never repeat a question already asked. Track conversation history carefully.
 Before you respond, compare your planned next question to every assistant question in the history; if it is the same topic or wording, replace it with a different question.`,
         hindi: `${knowledgeBlock}\n${strictLanguageRule}
-आप Learnova के AI इंटरव्यूअर हैं — एक पेशेवर इंटरव्यूअर जो पूरी तरह हिंदी में इंटरव्यू ले रहे हैं।
+आप Thinkior के AI इंटरव्यूअर हैं — एक पेशेवर इंटरव्यूअर जो पूरी तरह हिंदी में इंटरव्यू ले रहे हैं।
 
 इंटरव्यू प्रकार: ${interviewType || 'General'}
 
@@ -306,7 +306,7 @@ CRITICAL LANGUAGE RULE — READ THIS FIRST:
 The user has selected: "${normalizedLang}" as their interview language.
 You MUST respond in HINGLISH ONLY — every response must mix Hindi and English naturally. Example: "Accha, that's a good point. Ab batao, aapne koi challenging project handle kiya hai?" Never respond in pure English or pure Hindi. This rule has NO exceptions.
 
-You are Learnova's AI Interviewer — a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
+You are Thinkior's AI Interviewer — a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
 
 Interview type: ${interviewType || 'General'}
 

@@ -30,12 +30,12 @@ export default function PrivacyPage() {
               1. Introduction
             </h2>
             <p className="mb-3">
-              Learnova AI ("we," "our," or "us") is an AI-powered educational and business tool built for Indian students and entrepreneurs. 
+              Thinkior AI ("we," "our," or "us") is an AI-powered educational and business tool built for Indian students and entrepreneurs. 
               This privacy policy explains what data we collect, how we use it, and your rights regarding your data.
             </p>
             <p>
-              This policy applies to all Learnova services, including our website, AI chat, exam simulator, business validator, 
-              and any other features we offer. By using Learnova, you agree to the practices described in this policy.
+              This policy applies to all Thinkior services, including our website, AI chat, exam simulator, business validator, 
+              and any other features we offer. By using Thinkior, you agree to the practices described in this policy.
             </p>
           </section>
 
@@ -141,8 +141,8 @@ export default function PrivacyPage() {
               5. Third-Party Services We Use
             </h2>
             <p className="mb-4">
-              Learnova relies on several third-party services to function. Each has its own privacy policy:
-            </p>
+               Thinkior relies on several third-party services to function. Each has its own privacy policy:
+             </p>
             <div className="space-y-4">
               <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <h4 className="font-semibold mb-1" style={{ color: 'var(--foreground)' }}>Supabase (Authentication & Database)</h4>
@@ -234,7 +234,7 @@ export default function PrivacyPage() {
               8. Children's Privacy
             </h2>
             <p>
-              Learnova is not directed at children under 13 years of age. We do not knowingly collect personal 
+              Thinkior is not directed at children under 13 years of age. We do not knowingly collect personal 
               information from children under 13. If we learn that we have collected data from a child under 13, 
               we will delete it promptly. If you believe we have such data, please contact us.
             </p>
@@ -255,7 +255,7 @@ export default function PrivacyPage() {
               <li>Email notification (if you've opted in to communications)</li>
             </ul>
             <p style={{ color: 'var(--foreground-muted)' }}>
-              Your continued use of Learnova after changes constitutes acceptance of the updated policy.
+              Your continued use of Thinkior after changes constitutes acceptance of the updated policy.
             </p>
           </section>
 

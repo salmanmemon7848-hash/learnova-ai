@@ -1,4 +1,4 @@
-// Streak tracking utilities for Learnova AI
+// Streak tracking utilities for Thinkior AI
 
 export interface StreakData {
   currentStreak: number
@@ -124,19 +124,19 @@ export function getMilestoneMessage(days: number): string {
 
 // Generate WhatsApp share link for streak
 export function getStreakWhatsAppLink(days: number): string {
-  const text = `I've been studying for ${days} days straight on Learnova AI! 🔥 Join me: https://learnova-ai-zeta.vercel.app`
+  const text = `I've been studying for ${days} days straight on Thinkior AI! 🔥 Join me: https://learnova-ai-zeta.vercel.app`
   return getWhatsAppLink(text)
 }
 
 // Generate WhatsApp share link for exam score
 export function getExamWhatsAppLink(score: number, total: number, subject: string): string {
-  const text = `I just scored ${score}/${total} on a ${subject} mock test on Learnova AI! 📚 Try it free: https://learnova-ai-zeta.vercel.app`
+  const text = `I just scored ${score}/${total} on a ${subject} mock test on Thinkior AI! 📚 Try it free: https://learnova-ai-zeta.vercel.app`
   return getWhatsAppLink(text)
 }
 
 // Generate WhatsApp share link for business validation
 export function getBusinessWhatsAppLink(score: string): string {
-  const text = `My startup idea scored ${score}/10 on Learnova AI's India validator! 🚀 https://learnova-ai-zeta.vercel.app`
+  const text = `My startup idea scored ${score}/10 on Thinkior AI's India validator! 🚀 https://learnova-ai-zeta.vercel.app`
   return getWhatsAppLink(text)
 }
 

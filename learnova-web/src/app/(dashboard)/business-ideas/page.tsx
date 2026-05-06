@@ -707,7 +707,7 @@ export default function BusinessIdeasPage() {
         </button>
 
         <p className="text-gray-600 text-xs mt-5">
-          Powered by Learnova AI Business Coach • Free for all users
+          Powered by Thinkior AI Business Coach • Free for all users
         </p>
 
       </div>

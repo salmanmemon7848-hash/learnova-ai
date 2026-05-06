@@ -42,7 +42,7 @@ export async function GET() {
       type: 'chat',
       icon: '💬',
       title: 'AI Chat Session',
-      detail: 'Had a conversation with Learnova AI',
+      detail: 'Had a conversation with Thinkior AI',
       time: c.updatedAt,
     }));
 
