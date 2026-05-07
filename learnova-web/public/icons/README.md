@@ -3,7 +3,7 @@
 Place the following icon files in this directory:
 
 1. **icon-192.png** - 192x192px PNG file
-   - Learnova brand logo
+   - Thinkior brand logo
    - Purple background (#534AB7)
    - White or light-colored logo text/icon
 
@@ -13,7 +13,7 @@ Place the following icon files in this directory:
 
 ## Recommended Design:
 - Background: #534AB7 (purple)
-- Text: "L" or Learnova logo in white
+- Text: "L" or Thinkior logo in white
 - Style: Clean, modern, recognizable at small sizes
 
 ## Tools to Create Icons:

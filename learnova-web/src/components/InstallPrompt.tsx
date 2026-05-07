@@ -94,7 +94,7 @@ export default function InstallPrompt() {
 
           <div className="flex-1 pr-6">
             <h3 className="text-base font-semibold mb-1" style={{ color: '#e2e8f0' }}>
-              Install Learnova AI
+              Install Thinkior AI
             </h3>
             <p className="text-sm mb-3" style={{ color: '#9ca3af' }}>
               Add to your home screen for quick access and offline support

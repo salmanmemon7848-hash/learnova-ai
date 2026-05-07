@@ -5,13 +5,10 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
-  CAREER_GUIDE_KNOWLEDGE,
-  EDUFINDER_KNOWLEDGE,
-  AI_WRITER_KNOWLEDGE,
   getLanguageInstruction,
-} from '@/lib/learnovaKnowledge';
+} from '@/lib/thinkiorKnowledge';
 import {
   sanitizeEnum,
   sanitizeJsonPostBody,
@@ -29,7 +26,7 @@ const levelInstructions: Record<string, string> = {
 function buildSystemPrompt(level: string, languageInstruction: string): string {
   const instruction = levelInstructions[level] ?? levelInstructions['auto'];
 
-  return `${LEARNOVA_FULL_CONTEXT}
+  return `${THINKIOR_FULL_CONTEXT}
 ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
@@ -78,6 +75,105 @@ Rules:
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'doubt-solver', ipAddress);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    }
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
+    const userId = session.user.id;
+
+    const contentType = req.headers.get('content-type') || '';
+    const isMultipart = contentType.includes('multipart/form-data');
+
+    if (isMultipart) {
+      const formData = await req.formData();
+      const imageFile = formData.get('image') as File | null;
+      const question = sanitizeString(formData.get('question'), 500);
+      const subject = sanitizeString(formData.get('subject'), 100);
+
+      if (!imageFile) {
+        return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      }
+
+      const maxImageSize = 4 * 1024 * 1024;
+      if (imageFile.size > maxImageSize) {
+        return NextResponse.json({ error: 'Image too large. Please use an image under 4MB.' }, { status: 413 });
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(imageFile.type)) {
+        return NextResponse.json({ error: 'Invalid image type. Use JPG, PNG, or WebP.' }, { status: 400 });
+      }
+
+      const googleApiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
+      if (!googleApiKey) {
+        return NextResponse.json({ error: 'Image solving is not configured.' }, { status: 500 });
+      }
+
+      const imageBytes = await imageFile.arrayBuffer();
+      const base64Image = Buffer.from(imageBytes).toString('base64');
+      const mimeType = imageFile.type;
+
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`;
+
+      const geminiBody = {
+        contents: [
+          {
+            parts: [
+              {
+                text: `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n\nYou are Thinkior's Doubt Solver AI - a world-class Indian tutor.\n\nSubject: ${subject || 'Auto-detect'}\nStudent Question: ${question || 'Please explain what is shown in this image and solve any problems visible.'}\n\nLook at this image carefully. Identify the question, problem, or concept shown. Then provide:\n1. What the image shows\n2. Step-by-step solution or explanation\n3. Key concept behind it\n4. Exam tip for CBSE/JEE/NEET students\n\nRespond in clear, helpful Indian English. Use Indian examples where relevant.`,
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Image,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: 2000,
+          temperature: 0.3,
+        },
+      };
+
+      const geminiRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody),
+      });
+
+      if (!geminiRes.ok) {
+        const errText = await geminiRes.text();
+        console.error('[DoubtSolver Image] Gemini error:', geminiRes.status, errText.slice(0, 200));
+        return NextResponse.json({ error: 'Could not analyze image. Please try again.' }, { status: 500 });
+      }
+
+      const geminiData = await geminiRes.json();
+      const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      if (!responseText) {
+        return NextResponse.json({ error: 'No response from AI. Please try again.' }, { status: 500 });
+      }
+
+      try {
+        await supabase.from('activity_log').insert({
+          user_id: session.user.id,
+          activity_type: 'doubt',
+          title: `Image doubt - ${subject || 'General'}`,
+          metadata: { subject, hasImage: true },
+        });
+      } catch {}
+
+      return NextResponse.json({ answer: responseText, provider: 'gemini-vision' }, { headers: responseHeaders });
+    }
+
     let rawBody: unknown = {};
     try {
       rawBody = await req.json();
@@ -106,18 +202,6 @@ export async function POST(req: NextRequest) {
     const level = sanitizeEnum(body.level, ['auto', 'basic', 'medium', 'advanced'], 'auto');
 
     const userQuestion = (question || questionText || '').trim();
-
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'doubt-solver', ipAddress);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
-    }
-    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
-
-    const userId = session.user.id;
 
     // ── Language detection ─────────────────────────────────────────────────────
     const languageInstruction = getLanguageInstruction(userQuestion);
@@ -163,8 +247,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ solution }, { headers: responseHeaders });
-  } catch (error: any) {
-    console.error('❌ Doubt Solver Error:', error?.message || error);
+  } catch (error: unknown) {
+    console.error('❌ Doubt Solver Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Failed to solve doubt.' }, { status: 500 });
   }
 }

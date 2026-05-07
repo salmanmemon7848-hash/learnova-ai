@@ -18,7 +18,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize theme from localStorage or default to dark
   useEffect(() => {
-    const savedTheme = localStorage.getItem('learnova-theme') as Theme | null
+    const savedTheme = localStorage.getItem('thinkior-theme') as Theme | null
     if (savedTheme) {
       setThemeState(savedTheme)
     }
@@ -28,7 +28,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
-    localStorage.setItem('learnova-theme', theme)
+    localStorage.setItem('thinkior-theme', theme)
   }, [theme])
 
   const toggleTheme = () => {

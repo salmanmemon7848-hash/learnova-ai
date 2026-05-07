@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo Learnova AI - Environment Setup
+echo Thinkior AI - Environment Setup
 echo ========================================
 echo.
 

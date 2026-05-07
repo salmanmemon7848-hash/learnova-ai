@@ -1,12 +1,12 @@
 /**
- * /api/learnova — Unified Thinkior AI endpoint
+ * __PROTECT_API_THINKIOR__ — Unified Thinkior AI endpoint
  *
  * Accepts: { feature: string, messages: ChatMessage[] }
  * Returns: { reply: string }
  *
  * feature must be one of:
- *   doubt_solver | practice_test | study_planner |
- *   edufinder | mock_interview | pitch_deck | business_idea
+ *   doubt_solver | practice_test | edufinder |
+ *   mock_interview | pitch_deck | business_idea
  *
  * Passes the full conversation history so multi-turn features
  * (Mock Interview, Business Idea Flow, EduFinder) retain memory.
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     if (!anthropicRes.ok) {
       const errText = await anthropicRes.text();
-      console.error('[/api/learnova] Anthropic error:', errText);
+      console.error('[__PROTECT_API_THINKIOR__] Anthropic error:', errText);
       return NextResponse.json(
         { error: 'AI service temporarily unavailable. Please try again.' },
         { status: 502 }
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply });
   } catch (error: any) {
-    console.error('[/api/learnova] Unexpected error:', error?.message ?? error);
+    console.error('[__PROTECT_API_THINKIOR__] Unexpected error:', error?.message ?? error);
     return NextResponse.json(
       { error: 'Server error. Please try again.' },
       { status: 500 }

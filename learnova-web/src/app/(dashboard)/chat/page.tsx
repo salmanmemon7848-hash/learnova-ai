@@ -12,7 +12,6 @@ import {
   Globe,
   BookOpen,
   Lightbulb,
-  Calendar,
   Copy,
   Check,
   Send,
@@ -23,9 +22,8 @@ import {
   HelpCircle,
   BarChart3,
   Mic,
-  PenTool,
   TrendingUp,
-  FileText,
+  Telescope,
   Navigation,
   CreditCard,
 } from 'lucide-react'
@@ -177,7 +175,7 @@ function ChatContent() {
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('learnova_language')
+    const savedLanguage = localStorage.getItem('thinkior_language')
     if (savedLanguage === 'hindi' || savedLanguage === 'english') {
       setLanguage(savedLanguage)
     }
@@ -185,7 +183,7 @@ function ChatContent() {
     const savedStreak = loadStreak()
     setStreak(savedStreak)
 
-    const savedConvs = localStorage.getItem('learnova_conversations')
+    const savedConvs = localStorage.getItem('thinkior_conversations')
     if (savedConvs) {
       setConversations(JSON.parse(savedConvs))
     }
@@ -211,7 +209,7 @@ function ChatContent() {
   // Save conversations to localStorage
   useEffect(() => {
     if (conversations.length > 0) {
-      localStorage.setItem('learnova_conversations', JSON.stringify(conversations))
+      localStorage.setItem('thinkior_conversations', JSON.stringify(conversations))
     }
   }, [conversations])
 
@@ -403,7 +401,7 @@ function ChatContent() {
   const toggleLanguage = () => {
     const newLang = language === 'english' ? 'hindi' : 'english'
     setLanguage(newLang)
-    localStorage.setItem('learnova_language', newLang)
+    localStorage.setItem('thinkior_language', newLang)
   }
 
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
@@ -415,7 +413,6 @@ function ChatContent() {
     { icon: Globe, label: 'Chat', path: '/chat' },
     { icon: BookOpen, label: 'Exam Simulator', path: '/exam' },
     { icon: Lightbulb, label: 'Business Validator', path: '/tools/business-validator' },
-    { icon: Calendar, label: 'Study Planner', path: '/planner' },
   ]
 
   const navigateItems = [
@@ -423,9 +420,8 @@ function ChatContent() {
     { icon: HelpCircle, label: 'Doubt Solver', path: '/doubt-solver' },
     { icon: BarChart3, label: 'My Progress', path: '/progress' },
     { icon: Mic, label: 'Mock Interview', path: '/interview' },
-    { icon: PenTool, label: 'AI Writer', path: '/writer', pro: true },
     { icon: TrendingUp, label: 'Business Ideas', path: '/business-ideas' },
-    { icon: FileText, label: 'Pitch Deck', path: '/pitch-deck' },
+    { icon: Telescope, label: 'Competitor Research', path: '/competitor-research', isNew: true },
     { icon: Navigation, label: 'Career Guide', path: '/career' },
   ]
 

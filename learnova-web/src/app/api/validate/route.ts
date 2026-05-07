@@ -4,10 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   FOUNDER_KNOWLEDGE,
   getLanguageInstruction,
-} from '@/lib/learnovaKnowledge'
+} from '@/lib/thinkiorKnowledge'
 import {
   sanitizeJsonPostBody,
   sanitizeMessages,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     const languageInstruction = getLanguageInstruction(`${idea} ${stage}`);
 
-    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
+    const baseSystemPrompt = `${THINKIOR_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}

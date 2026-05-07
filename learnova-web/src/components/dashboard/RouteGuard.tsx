@@ -5,9 +5,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import type { UserRole } from '@/contexts/RoleContext'
 
 // Routes only students can access
-const STUDENT_ONLY = ['/doubt-solver', '/exam', '/planner', '/edufinder', '/writer', '/career', '/notes', '/progress']
+const STUDENT_ONLY = ['/doubt-solver', '/exam', '/edufinder', '/career', '/notes', '/progress']
 // Routes only founders can access
-const FOUNDER_ONLY = ['/validate', '/tools/business-validator', '/pitch-deck', '/business-ideas']
+const FOUNDER_ONLY = ['/validate', '/tools/business-validator', '/competitor-research', '/business-ideas']
 
 function isStudentOnly(path: string) {
   return STUDENT_ONLY.some(r => path === r || path.startsWith(r + '/'))

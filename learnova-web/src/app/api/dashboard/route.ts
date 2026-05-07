@@ -9,6 +9,7 @@ export async function GET() {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const userId = session.user.id;
+    const twentyFourHoursAgo = new Date(Date.now() - 86400000).toISOString();
 
     // Fetch all dashboard data in parallel
     const [
@@ -23,6 +24,7 @@ export async function GET() {
         .from('activity_log')
         .select('*')
         .eq('user_id', userId)
+        .gte('created_at', twentyFourHoursAgo)
         .order('created_at', { ascending: false })
         .limit(20),
 

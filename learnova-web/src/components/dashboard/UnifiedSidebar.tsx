@@ -9,14 +9,12 @@ import {
   Globe,
   BookOpen,
   Lightbulb,
-  Calendar,
   Home,
   HelpCircle,
   GraduationCap,
   Mic,
-  PenTool,
   TrendingUp,
-  FileText,
+  Telescope,
   Navigation,
   CreditCard,
   Settings,
@@ -42,6 +40,14 @@ interface SidebarProps {
   onCloseMobileSidebar: () => void
 }
 
+type SidebarNavItem = {
+  icon: React.ElementType
+  label: string
+  path: string
+  pro?: boolean
+  isNew?: boolean
+}
+
 function UnifiedSidebar({
   conversations,
   currentConvId,
@@ -57,21 +63,19 @@ function UnifiedSidebar({
   const router = useRouter()
   const pathname = usePathname()
 
-  const tools = [
+  const tools: SidebarNavItem[] = [
     { icon: Globe, label: 'Chat', path: '/chat' },
     { icon: BookOpen, label: 'Exam Simulator', path: '/exam' },
     { icon: Lightbulb, label: 'Business Validator', path: '/tools/business-validator' },
-    { icon: Calendar, label: 'Study Planner', path: '/planner' },
   ]
 
-  const navigateItems = [
+  const navigateItems: SidebarNavItem[] = [
     { icon: Home, label: 'Home', path: '/dashboard' },
     { icon: HelpCircle, label: 'Doubt Solver', path: '/doubt-solver' },
     { icon: GraduationCap, label: 'EduFinder', path: '/edufinder' },
     { icon: Mic, label: 'Mock Interview', path: '/interview' },
-    { icon: PenTool, label: 'AI Writer', path: '/writer', pro: true },
     { icon: TrendingUp, label: 'Business Ideas', path: '/business-ideas' },
-    { icon: FileText, label: 'Pitch Deck', path: '/pitch-deck' },
+    { icon: Telescope, label: 'Competitor Research', path: '/competitor-research', isNew: true },
     { icon: Navigation, label: 'Career Guide', path: '/career' },
   ]
 
@@ -216,7 +220,18 @@ function UnifiedSidebar({
             >
               <item.icon size={16} color="#A78BFA" />
               <span className="text-[13px] flex-1">{item.label}</span>
-              {item.pro && (
+              {item.isNew && (
+                <span
+                  className="px-2 py-0.5 rounded text-[10px] font-semibold"
+                  style={{
+                    background: '#7C3AED',
+                    color: '#EDE9FE',
+                  }}
+                >
+                  New
+                </span>
+              )}
+              {item.pro && !item.isNew && (
                 <span
                   className="px-2 py-0.5 rounded text-[10px] font-semibold"
                   style={{

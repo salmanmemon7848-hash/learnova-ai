@@ -4,14 +4,13 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { createClient } from '@/lib/supabase/server'
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
   EDUFINDER_KNOWLEDGE,
-  AI_WRITER_KNOWLEDGE,
   getLanguageInstruction,
   buildIndianSearchQuery,
-} from '@/lib/learnovaKnowledge'
+} from '@/lib/thinkiorKnowledge'
 import {
   sanitizeEnum,
   sanitizeJsonPostBody,
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest) {
     const sampleMsg = `${subject} ${chapter || ''} ${examType}`.trim();
     const languageInstruction = getLanguageInstruction(language === 'hindi' ? 'à¤¨à¤®à¤¸à¥à¤¤à¥‡' : sampleMsg);
 
-    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
+    const baseSystemPrompt = `${THINKIOR_FULL_CONTEXT}
 ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}

@@ -61,7 +61,7 @@ export default function ExamSimulatorPage() {
 
   // Load language preference
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('learnova_language')
+    const savedLanguage = localStorage.getItem('thinkior_language')
     if (savedLanguage === 'hindi' || savedLanguage === 'english') {
       setLanguage(savedLanguage)
     }
@@ -220,9 +220,9 @@ export default function ExamSimulatorPage() {
       total: questions.length,
     }
     
-    const scores = JSON.parse(localStorage.getItem('learnova_exam_scores') || '[]')
+    const scores = JSON.parse(localStorage.getItem('thinkior_exam_scores') || '[]')
     scores.push(scoreData)
-    localStorage.setItem('learnova_exam_scores', JSON.stringify(scores.slice(-20)))
+    localStorage.setItem('thinkior_exam_scores', JSON.stringify(scores.slice(-20)))
 
     const scorePercentage = Math.round((correctCount / questions.length) * 100)
     const timeTakenSeconds = startTime
@@ -332,7 +332,7 @@ export default function ExamSimulatorPage() {
   // ===== SETUP STEP =====
   if (step === 'setup') {
     return (
-      <div className="min-h-screen px-5 py-8" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+      <div className="page-container min-h-screen px-5 py-8" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
         {/* Back Link */}
         <button
           onClick={() => router.push('/chat')}
@@ -364,7 +364,7 @@ export default function ExamSimulatorPage() {
           </h2>
 
           {/* 2-Column Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="two-col-grid grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Exam Type */}
             <div>
               <label className="block text-[12px] font-medium mb-1.5" style={{ color: '#C4B5FD' }}>
@@ -602,7 +602,7 @@ export default function ExamSimulatorPage() {
     const hasAnswered = !!userAnswers[currentQ?.number]
 
     return (
-      <div className="min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+      <div className="page-container min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
         {/* Back Link */}
         <button
           onClick={() => setStep('setup')}
@@ -669,7 +669,7 @@ export default function ExamSimulatorPage() {
 
         {currentQ && (
           <div
-            className="rounded-[14px] p-6"
+            className="question-card rounded-[14px] p-6"
             style={{
               background: '#160D2E',
               border: '1px solid #2D1B69',
@@ -786,7 +786,7 @@ export default function ExamSimulatorPage() {
   const timeTaken = getTimeTaken()
 
   return (
-    <div className="min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
+    <div className="page-container min-h-screen" style={{ background: '#080412', maxWidth: '800px', margin: '0 auto', padding: '32px 20px' }}>
       {/* Back Link */}
       <button
         onClick={() => router.push('/chat')}

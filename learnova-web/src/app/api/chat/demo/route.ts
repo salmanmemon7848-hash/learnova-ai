@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     // Simple rate limiting via cookies (1 demo per session)
     const cookieStore = await cookies();
-    const demoUsed = cookieStore.get('learnova-demo-used');
+    const demoUsed = cookieStore.get('thinkior-demo-used');
     
     if (demoUsed) {
       return NextResponse.json(
@@ -67,7 +67,7 @@ Keep responses under 300 words for the demo. Be engaging and show the value of T
     });
 
     // Set cookie to prevent unlimited demo usage
-    response.cookies.set('learnova-demo-used', 'true', {
+    response.cookies.set('thinkior-demo-used', 'true', {
       maxAge: 60 * 60 * 24, // 24 hours
       httpOnly: true,
       sameSite: 'lax',

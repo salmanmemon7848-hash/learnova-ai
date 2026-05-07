@@ -6,11 +6,11 @@ import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
-} from '@/lib/learnovaKnowledge';
+} from '@/lib/thinkiorKnowledge';
 import { LANGUAGE_CONFIGS, getLanguageInstruction, normalizeLanguage, validateLanguage } from '@/lib/languageConfig';
 import {
   sanitizeJsonPostBody,
@@ -89,8 +89,8 @@ export async function POST(req: NextRequest) {
 
     const isFounderInterview = ['startup_founder', 'investor_pitch'].includes(interviewType || '');
     const knowledgeBlock = isFounderInterview
-      ? `${LEARNOVA_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}`
-      : `${LEARNOVA_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n${CAREER_GUIDE_KNOWLEDGE}`;
+      ? `${THINKIOR_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}`
+      : `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n${CAREER_GUIDE_KNOWLEDGE}`;
 
     // VOICE MODE: conversational turn
     if (action === 'voice_turn') {

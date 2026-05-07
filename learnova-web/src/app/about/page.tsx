@@ -153,9 +153,9 @@ export default function AboutPage() {
               <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
                 <h4 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Get in Touch</h4>
                 <div className="space-y-3">
-                  <a href="mailto:founder@learnova.ai" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                  <a href="mailto:founder@thinkior.ai" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                     <Mail className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-                    <span style={{ color: 'var(--foreground-secondary)' }}>founder@learnova.ai</span>
+                    <span style={{ color: 'var(--foreground-secondary)' }}>founder@thinkior.ai</span>
                   </a>
                   <div className="flex items-center gap-3">
                     <MapPin className="w-5 h-5" style={{ color: 'var(--accent)' }} />

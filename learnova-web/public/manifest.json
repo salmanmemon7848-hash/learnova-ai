@@ -1,6 +1,6 @@
 {
-  "name": "Learnova AI",
-  "short_name": "Learnova",
+  "name": "Thinkior AI",
+  "short_name": "Thinkior",
   "description": "The AI that studies with you and builds with you",
   "start_url": "/dashboard?source=pwa",
   "scope": "/",
@@ -31,7 +31,7 @@
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Learnova AI - Your AI Study Partner"
+      "label": "Thinkior AI - Your AI Study Partner"
     }
   ]
 }

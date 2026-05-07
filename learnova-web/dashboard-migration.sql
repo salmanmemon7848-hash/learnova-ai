@@ -1,5 +1,5 @@
 -- ============================================================
--- Learnova AI — Dashboard Tables Migration
+-- Thinkior AI — Dashboard Tables Migration
 -- Run this entire script in Supabase SQL Editor:
 -- https://app.supabase.com/project/_/sql
 -- ============================================================

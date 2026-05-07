@@ -7,7 +7,7 @@
 1. Go to [Supabase](https://supabase.com/)
 2. Click **"Start your project"** → **"New project"**
 3. Fill in:
-   - **Project name**: Learnova
+   - **Project name**: Thinkior
    - **Database password**: Choose a strong password (save it!)
    - **Region**: Choose closest to you
 4. Click **"Create new project"**
@@ -50,14 +50,14 @@ Supabase enables email/password authentication automatically! No extra setup nee
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Click **"Select a project"** → **"New Project"**
-3. Name it "Learnova" and click **Create**
+3. Name it "Thinkior" and click **Create**
 
 #### 5.2 Configure OAuth Consent Screen
 
 1. Go to **APIs & Services** → **OAuth consent screen**
 2. Select **External** user type
 3. Fill in:
-   - **App name**: Learnova
+   - **App name**: Thinkior
    - **User support email**: Your email
    - **Developer contact email**: Your email
 4. Click **Save and Continue**
@@ -70,7 +70,7 @@ Supabase enables email/password authentication automatically! No extra setup nee
 1. Go to **APIs & Services** → **Credentials**
 2. Click **+ CREATE CREDENTIALS** → **OAuth client ID**
 3. Application type: **Web application**
-4. Name: **Learnova Web**
+4. Name: **Thinkior Web**
 5. **Authorized JavaScript origins**:
    ```
    http://localhost:3000

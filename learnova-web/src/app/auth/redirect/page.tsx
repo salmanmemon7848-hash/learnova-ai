@@ -40,7 +40,7 @@ export default function AuthRedirect() {
 
       try {
         // Check localStorage for persona (set during onboarding)
-        const localStoragePersona = localStorage.getItem('learnova_persona')
+        const localStoragePersona = localStorage.getItem('thinkior_persona')
 
         if (localStoragePersona) {
           // User has persona in localStorage - go straight to chat

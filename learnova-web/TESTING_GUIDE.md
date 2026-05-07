@@ -1,4 +1,4 @@
-# Learnova AI - Complete Testing Guide
+# Thinkior AI - Complete Testing Guide
 
 ## 🚨 IMPORTANT: Before Testing
 
@@ -421,7 +421,7 @@ Check these tables:
 
 ## ✅ Success Criteria
 
-Your Learnova AI platform is working if:
+Your Thinkior AI platform is working if:
 1. ✅ Students can solve doubts via text/photo
 2. ✅ Notes can be saved and searched
 3. ✅ Dashboard shows personalized analytics

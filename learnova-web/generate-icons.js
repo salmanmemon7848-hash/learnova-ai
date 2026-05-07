@@ -149,7 +149,7 @@ if (!fs.existsSync(iconsDir)) {
     fs.mkdirSync(iconsDir, { recursive: true });
 }
 
-console.log('🎨 Generating Learnova AI PWA icons...');
+console.log('🎨 Generating Thinkior AI PWA icons...');
 
 // Generate 192x192 icon
 const canvas192 = drawLogo(192);

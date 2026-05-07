@@ -1,4 +1,4 @@
-# 💰 LEARNOVA AI - REDESIGNED PRICING STRUCTURE
+# 💰 THINKIOR AI - REDESIGNED PRICING STRUCTURE
 
 ## ✅ Implementation Status: **COMPLETE**
 
@@ -158,10 +158,10 @@ pro: {
 - Cheaper than tuition fees (₹2000-5000/month)
 - Cheaper than coaching classes (₹3000-8000/month)
 - Cheaper than test series (₹1500-3000/year)
-- **Learnova feels like the cheapest smartest option**
+- **Thinkior feels like the cheapest smartest option**
 
 **Comparison:**
-| Service | Typical Cost | Learnova Equivalent |
+| Service | Typical Cost | Thinkior Equivalent |
 |---------|-------------|---------------------|
 | Tuition (monthly) | ₹2000-5000 | ₹79 (Student) |
 | Coaching (monthly) | ₹3000-8000 | ₹149 (Competitive) |

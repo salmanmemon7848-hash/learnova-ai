@@ -94,7 +94,7 @@ User signs in with Google
     ↓
 /auth/redirect page loads
     ↓
-Check localStorage for 'learnova_persona'
+Check localStorage for 'thinkior_persona'
     ↓
 ├─ Found → router.replace('/chat')
 └─ Not found → Check database

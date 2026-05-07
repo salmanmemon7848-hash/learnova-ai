@@ -1,4 +1,4 @@
-const CACHE_NAME = 'learnova-v2';
+const CACHE_NAME = 'thinkior-v2';
 const urlsToCache = [
   '/',
   '/dashboard',
@@ -81,7 +81,7 @@ self.addEventListener('fetch', event => {
 // Handle push notifications
 self.addEventListener('push', event => {
   const options = {
-    body: event.data ? event.data.text() : 'New update from Learnova AI',
+    body: event.data ? event.data.text() : 'New update from Thinkior AI',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     vibrate: [100, 50, 100],
@@ -96,7 +96,7 @@ self.addEventListener('push', event => {
   };
 
   event.waitUntil(
-    self.registration.showNotification('Learnova AI', options)
+    self.registration.showNotification('Thinkior AI', options)
   );
 });
 

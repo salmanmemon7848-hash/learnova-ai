@@ -8,7 +8,7 @@
  */
 
 const SEARXNG_URL =
-  process.env.SEARXNG_URL || 'https://learnova-searxng.onrender.com/search';
+  process.env.SEARXNG_URL || 'https://search.sapti.me/search';
 
 const SEARCH_FETCH_TIMEOUT_MS =
   Number(process.env.SEARXNG_TIMEOUT_MS) || (process.env.VERCEL ? 3500 : 8000);

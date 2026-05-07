@@ -47,7 +47,7 @@ function parseDoubtResult(raw: string): DoubtResult | null {
 
 export default function DoubtSolverPage() {
   const { user } = useAuth()
-  const [selectedImage, setSelectedImage] = useState<string>('')
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [questionText, setQuestionText] = useState('')
   const [loading, setLoading] = useState(false)
   const [rawSolution, setRawSolution] = useState<string>('')
@@ -58,12 +58,12 @@ export default function DoubtSolverPage() {
   const [warning, setWarning] = useState('')
 
   const handleSubmit = async () => {
-    if (!selectedImage && !questionText.trim()) {
+    if (!selectedImageFile && !questionText.trim()) {
       setError('Please upload an image or type your question')
       return
     }
     const inputError = validateInput(questionText || 'image-input', 'doubt-solver')
-    if (!selectedImage && inputError) {
+    if (!selectedImageFile && inputError) {
       setError(inputError)
       return
     }
@@ -74,16 +74,29 @@ export default function DoubtSolverPage() {
     setResult(null)
 
     try {
-      const response = await fetch('/api/doubt-solver', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: selectedImage,
-          questionText: questionText.trim(),
-          language,
-          level,
-        }),
-      })
+      let response: Response
+
+      if (selectedImageFile) {
+        const formData = new FormData()
+        formData.append('image', selectedImageFile)
+        formData.append('question', questionText.trim())
+        formData.append('subject', '')
+
+        response = await fetch('/api/doubt-solver', {
+          method: 'POST',
+          body: formData,
+        })
+      } else {
+        response = await fetch('/api/doubt-solver', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionText: questionText.trim(),
+            language,
+            level,
+          }),
+        })
+      }
 
       if (!response.ok) {
         const errData = await response.json()
@@ -96,12 +109,13 @@ export default function DoubtSolverPage() {
       if (limitWarning) setWarning(limitWarning)
 
       const data = await response.json()
-      const parsed = parseDoubtResult(data.solution)
+      const solutionText = data.answer || data.solution || ''
+      const parsed = parseDoubtResult(solutionText)
       if (parsed) {
         setResult(parsed)
       } else {
         // Fallback: show raw markdown
-        setRawSolution(data.solution)
+        setRawSolution(solutionText)
       }
     } catch (err: any) {
       setError(err.message)
@@ -111,7 +125,7 @@ export default function DoubtSolverPage() {
   }
 
   const handleReset = () => {
-    setSelectedImage('')
+    setSelectedImageFile(null)
     setQuestionText('')
     setRawSolution('')
     setResult(null)
@@ -121,7 +135,7 @@ export default function DoubtSolverPage() {
   const hasOutput = !!result || !!rawSolution
 
   return (
-    <div className="doubt-page max-w-6xl mx-auto">
+    <div className="page-container doubt-page max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl">
@@ -133,7 +147,7 @@ export default function DoubtSolverPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="two-col-grid grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Left Column - Input */}
         <div className="space-y-4 sm:space-y-6">
           {/* Language Selector */}
@@ -176,7 +190,11 @@ export default function DoubtSolverPage() {
           {/* Image Upload */}
           <div className="upload-card">
             <label className="language-label">Upload Question Image</label>
-            <ImageUploader onImageSelect={setSelectedImage} />
+            <ImageUploader
+              onImageSelect={(file) => {
+                setSelectedImageFile(file)
+              }}
+            />
           </div>
 
           {/* Text Input */}
@@ -195,7 +213,7 @@ export default function DoubtSolverPage() {
           <div className="flex gap-2 sm:gap-3">
             <button
               onClick={handleSubmit}
-              disabled={loading || (!selectedImage && !questionText.trim())}
+              disabled={loading || (!selectedImageFile && !questionText.trim())}
               className="btn-secondary flex-1 py-2.5 sm:py-3.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {loading ? (
@@ -365,7 +383,7 @@ export default function DoubtSolverPage() {
               </div>
 
               {/* Two Col — Mistakes + Memory Trick */}
-              <div className="doubt-two-col">
+              <div className="two-col-grid doubt-two-col">
                 <div style={{
                   background: 'linear-gradient(135deg, #160D2E, #1E1040)',
                   border: '1px solid #7F1D1D',

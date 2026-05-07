@@ -27,11 +27,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Thinkior AI - The AI built for India's students and builders",
   description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Currently in beta, free to use.",
-  keywords: ["AI tutor", "exam prep", "business validator", "AI writer", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
+  keywords: ["AI tutor", "exam prep", "business validator", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
   authors: [{ name: "Salman Memon" }],
   creator: "Thinkior AI",
   publisher: "Thinkior AI",
-  metadataBase: new URL("https://learnova.ai"),
+  metadataBase: new URL("https://thinkior.ai"),
   manifest: '/manifest.json',
   themeColor: '#4f46e5',
   appleWebApp: {

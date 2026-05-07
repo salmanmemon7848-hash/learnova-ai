@@ -1,4 +1,4 @@
--- Supabase Database Schema for Learnova AI
+-- Supabase Database Schema for Thinkior AI
 -- Run this SQL in your Supabase SQL Editor: https://app.supabase.com/project/_/sql
 
 -- User Profiles Table (extends Supabase auth.users)

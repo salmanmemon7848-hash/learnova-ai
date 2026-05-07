@@ -113,8 +113,8 @@ export default function BetaDisclaimerPage() {
               Your feedback directly shapes the future of Thinkior AI.
               <br />
               Contact:{' '}
-              <a href="mailto:feedback@learnova.ai" className="text-blue-600 hover:underline">
-                feedback@learnova.ai
+              <a href="mailto:feedback@thinkior.ai" className="text-blue-600 hover:underline">
+                feedback@thinkior.ai
               </a>
             </p>
           </section>

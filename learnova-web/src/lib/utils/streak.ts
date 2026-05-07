@@ -46,7 +46,7 @@ export function loadStreak(): StreakData {
   }
   
   try {
-    const stored = localStorage.getItem('learnova_streak')
+    const stored = localStorage.getItem('thinkior_streak')
     if (stored) {
       return JSON.parse(stored)
     }
@@ -60,7 +60,7 @@ export function loadStreak(): StreakData {
 // Save streak data to localStorage
 export function saveStreak(streak: StreakData): void {
   try {
-    localStorage.setItem('learnova_streak', JSON.stringify(streak))
+    localStorage.setItem('thinkior_streak', JSON.stringify(streak))
   } catch (error) {
     console.error('Failed to save streak:', error)
   }
@@ -124,20 +124,27 @@ export function getMilestoneMessage(days: number): string {
 
 // Generate WhatsApp share link for streak
 export function getStreakWhatsAppLink(days: number): string {
-  const text = `I've been studying for ${days} days straight on Thinkior AI! 🔥 Join me: https://learnova-ai-zeta.vercel.app`
+  const text = `I've been studying for ${days} days straight on Thinkior AI! 🔥 Join me: ${getAppUrl()}`
   return getWhatsAppLink(text)
 }
 
 // Generate WhatsApp share link for exam score
 export function getExamWhatsAppLink(score: number, total: number, subject: string): string {
-  const text = `I just scored ${score}/${total} on a ${subject} mock test on Thinkior AI! 📚 Try it free: https://learnova-ai-zeta.vercel.app`
+  const text = `I just scored ${score}/${total} on a ${subject} mock test on Thinkior AI! 📚 Try it free: ${getAppUrl()}`
   return getWhatsAppLink(text)
 }
 
 // Generate WhatsApp share link for business validation
 export function getBusinessWhatsAppLink(score: string): string {
-  const text = `My startup idea scored ${score}/10 on Thinkior AI's India validator! 🚀 https://learnova-ai-zeta.vercel.app`
+  const text = `My startup idea scored ${score}/10 on Thinkior AI's India validator! 🚀 ${getAppUrl()}`
   return getWhatsAppLink(text)
+}
+
+function getAppUrl(): string {
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://thinkior.ai'
 }
 
 // Helper to generate platform-specific WhatsApp link

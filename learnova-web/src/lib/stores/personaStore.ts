@@ -17,7 +17,7 @@ export const usePersonaStore = create<PersonaStore>()(
       clearPersona: () => set({ persona: null }),
     }),
     {
-      name: 'learnova_persona',
+      name: 'thinkior_persona',
     }
   )
 );

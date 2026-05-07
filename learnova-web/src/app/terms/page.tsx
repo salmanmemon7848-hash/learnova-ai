@@ -228,8 +228,8 @@ export default function TermsPage() {
             </p>
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <p className="mb-1"><strong>Email:</strong>{' '}
-                <a href="mailto:legal@learnova.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                   legal@learnova.ai
+                <a href="mailto:legal@thinkior.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                   legal@thinkior.ai
                  </a>
               </p>
               <p><strong>Location:</strong> Gariyaband, Chhattisgarh, India</p>

@@ -198,8 +198,8 @@ export default function PrivacyPage() {
             </p>
             <p className="mb-3">
               You can request full deletion of your account and all associated data by emailing us at:{' '}
-              <a href="mailto:privacy@learnova.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                privacy@learnova.ai
+              <a href="mailto:privacy@thinkior.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                privacy@thinkior.ai
               </a>
             </p>
             <p style={{ color: 'var(--foreground-muted)' }}>
@@ -222,8 +222,8 @@ export default function PrivacyPage() {
             </ul>
             <p>
               To exercise these rights, contact:{' '}
-              <a href="mailto:privacy@learnova.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                privacy@learnova.ai
+              <a href="mailto:privacy@thinkior.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                privacy@thinkior.ai
               </a>
             </p>
           </section>
@@ -269,8 +269,8 @@ export default function PrivacyPage() {
             </p>
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <p className="mb-1"><strong>Email:</strong>{' '}
-                <a href="mailto:privacy@learnova.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                  privacy@learnova.ai
+                <a href="mailto:privacy@thinkior.ai" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                  privacy@thinkior.ai
                 </a>
               </p>
               <p><strong>Address:</strong> Gariyaband, Chhattisgarh, India</p>

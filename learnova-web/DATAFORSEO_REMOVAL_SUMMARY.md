@@ -2,7 +2,7 @@
 
 ## ✅ Complete Removal - Groq-Only Architecture Restored
 
-All DataForSEO functionality has been successfully removed from Learnova AI. The system is now back to using **Groq AI exclusively** for all features.
+All DataForSEO functionality has been successfully removed from Thinkior AI. The system is now back to using **Groq AI exclusively** for all features.
 
 ---
 
@@ -296,7 +296,7 @@ Instead of real-time search data, consider:
 
 ## 🎉 Final Notes
 
-The Learnova AI platform is now:
+The Thinkior AI platform is now:
 - **100% Groq-powered**
 - **Simpler and faster**
 - **More cost-effective**

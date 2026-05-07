@@ -79,7 +79,7 @@ export default function PersonaSelector() {
               backgroundClip: 'text',
             }}
           >
-            Learnova AI
+            Thinkior AI
           </h1>
           <p className="text-[15px] mt-2" style={{ color: '#C4B5FD' }}>
             Choose your path to get started

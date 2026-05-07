@@ -460,7 +460,6 @@ TONE RULES:
 export const SYSTEM_PROMPTS: Record<string, string> = {
   doubt_solver: DOUBT_SOLVER_PROMPT,
   practice_test: PRACTICE_TEST_PROMPT,
-  study_planner: STUDY_PLANNER_PROMPT,
   edufinder: EDUFINDER_PROMPT,
   mock_interview: MOCK_INTERVIEW_PROMPT,
   pitch_deck: PITCH_DECK_PROMPT,

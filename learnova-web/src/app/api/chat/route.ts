@@ -5,14 +5,13 @@ import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
   EDUFINDER_KNOWLEDGE,
-  AI_WRITER_KNOWLEDGE,
   getLanguageInstruction,
-} from '@/lib/learnovaKnowledge';
+} from '@/lib/thinkiorKnowledge';
 import {
   sanitizeJsonPostBody,
   sanitizeMessages,
@@ -101,7 +100,7 @@ export async function POST(req: NextRequest) {
     let systemPrompt = basePrompt;
     
     if (persona === 'student') {
-      systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}
 ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
@@ -110,7 +109,7 @@ You are Thinkior, an AI tutor built specifically for Indian students. You explai
 
 ${basePrompt}`;
     } else if (persona === 'founder') {
-      systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
@@ -119,7 +118,7 @@ You are Thinkior, an AI business advisor for Indian entrepreneurs. You understan
 
 ${basePrompt}`; 
     } else {
-      systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 

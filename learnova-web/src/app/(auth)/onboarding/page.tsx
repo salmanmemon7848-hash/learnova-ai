@@ -22,11 +22,11 @@ export default function OnboardingPage() {
 
     try {
       // Save persona to localStorage
-      localStorage.setItem('learnova_persona', persona)
+      localStorage.setItem('thinkior_persona', persona)
       
       // Save language preference
       const langKey = language === 'hindi' ? 'hindi' : 'english'
-      localStorage.setItem('learnova_language', langKey)
+      localStorage.setItem('thinkior_language', langKey)
 
       console.log('Onboarding complete:', { persona, language })
       
@@ -62,7 +62,7 @@ export default function OnboardingPage() {
               className="text-3xl font-bold mb-4"
               style={{ color: '#F5F3FF' }}
             >
-              Welcome to Learnova! 🌟
+              Welcome to Thinkior! 🌟
             </h1>
             <p
               className="text-base mb-8"

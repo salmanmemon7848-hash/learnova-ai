@@ -1,8 +1,8 @@
-# 📱 Learnova AI - PWA Setup Complete!
+# 📱 Thinkior AI - PWA Setup Complete!
 
 ## ✅ What's Been Configured
 
-Your Learnova AI app is now a **fully functional Progressive Web App (PWA)** that can be installed on all devices!
+Your Thinkior AI app is now a **fully functional Progressive Web App (PWA)** that can be installed on all devices!
 
 ### Features Implemented:
 
@@ -121,7 +121,7 @@ Your app icons feature:
 - **Purple gradient** background (#7c3aed → #534AB7 → #4338a0)
 - **AI neural network** symbol (7 interconnected nodes)
 - **Glowing white nodes** with gradient effects
-- **Subtle "L" watermark** for Learnova branding
+- **Subtle "L" watermark** for Thinkior branding
 - **Sparkle accents** for AI magic feel
 - **Professional design** like ChatGPT/Claude/Gemini
 
@@ -151,7 +151,7 @@ Edit `src/components/InstallPrompt.tsx`:
 
 ### Service Worker Caching
 Edit `public/service-worker.js`:
-- Update cache name to bust cache: `const CACHE_NAME = 'learnova-v3'`
+- Update cache name to bust cache: `const CACHE_NAME = 'thinkior-v3'`
 - Add more URLs to cache: `const urlsToCache = [...]`
 
 ### Manifest Customization
@@ -215,7 +215,7 @@ Edit `public/manifest.json`:
 
 ## 🎉 You're All Set!
 
-Your Learnova AI app is now a professional PWA that users can install on any device!
+Your Thinkior AI app is now a professional PWA that users can install on any device!
 
 **Next Steps:**
 1. Deploy to Vercel

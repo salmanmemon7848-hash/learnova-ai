@@ -5,11 +5,11 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { BUSINESS_IDEA_PROMPT } from '@/lib/systemPrompts';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  LEARNOVA_FULL_CONTEXT,
+  THINKIOR_FULL_CONTEXT,
   FOUNDER_KNOWLEDGE,
   getLanguageInstruction,
   buildIndianSearchQuery,
-} from '@/lib/learnovaKnowledge';
+} from '@/lib/thinkiorKnowledge';
 import {
   sanitizeArray,
   sanitizeJsonPostBody,
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       typeof ctx === 'object' ? Object.values(ctx as Record<string, string>).join(' ') : String(ctx)
     );
 
-    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
+    const systemPrompt = `${THINKIOR_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}

@@ -27,6 +27,14 @@ function Spinner() {
   )
 }
 
+function getOAuthRedirectTo() {
+  const origin = typeof window !== 'undefined'
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_SITE_URL
+
+  return `${origin || ''}/auth/callback`
+}
+
 // ─── Save role to Supabase ───────────────────────────────────────────────────
 // If the user came via "I'm a Student" / "I'm a Founder" CTA, pendingRole is
 // set and we ALWAYS apply it (even if overwriting an old role).
@@ -34,7 +42,7 @@ function Spinner() {
 
 async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userId: string) {
   const pendingRole = typeof window !== 'undefined'
-    ? localStorage.getItem('learnova_pending_role')
+    ? localStorage.getItem('thinkior_pending_role')
     : null
 
   if (!pendingRole) return  // returning user, no CTA selection — keep existing role
@@ -44,7 +52,7 @@ async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userI
     .from('profiles')
     .upsert({ id: userId, role: pendingRole }, { onConflict: 'id' })
 
-  localStorage.removeItem('learnova_pending_role')
+  localStorage.removeItem('thinkior_pending_role')
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -63,10 +71,19 @@ export default function AuthPage() {
 
   // Read pending role from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('learnova_pending_role')
+    const stored = localStorage.getItem('thinkior_pending_role')
     setPendingRole(stored)
     // Default to signup when arriving from a CTA button
     if (stored) setTab('signup')
+
+    const authError = new URLSearchParams(window.location.search).get('error')
+    if (authError) {
+      setError(
+        authError === 'auth_failed'
+          ? 'Google sign-in could not finish. Please try again from this same browser URL.'
+          : 'Authentication failed. Please try again.'
+      )
+    }
   }, [])
 
   // Already logged in → save role then hard-navigate to dashboard
@@ -140,15 +157,14 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     // Read directly from localStorage to avoid any React state timing issues
-    const role = localStorage.getItem('learnova_pending_role')
+    const role = localStorage.getItem('thinkior_pending_role')
     if (role) {
-      document.cookie = `learnova_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
+      document.cookie = `thinkior_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
     }
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${siteUrl}/auth/callback`,
+        redirectTo: getOAuthRedirectTo(),
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })
@@ -172,8 +188,8 @@ export default function AuthPage() {
           <div className="space-y-4 text-left mb-8">
             {[
               pendingRole === 'founder' ? 'Validate your startup idea in minutes' : 'Exam simulator with instant feedback',
-              pendingRole === 'founder' ? 'Pitch deck builder powered by AI' : 'Business idea validator & AI writer',
-              pendingRole === 'founder' ? 'Investor Q&A practice sessions' : 'Smart planner & session recaps',
+              pendingRole === 'founder' ? 'Pitch deck builder powered by AI' : 'Business idea validator & market insights',
+              pendingRole === 'founder' ? 'Investor Q&A practice sessions' : 'Doubt solver & session recaps',
             ].map((f, i) => (
               <div key={i} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

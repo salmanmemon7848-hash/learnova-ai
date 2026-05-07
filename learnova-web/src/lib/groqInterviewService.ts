@@ -279,17 +279,17 @@ function parseAndValidateQuestions(
       final = final.filter((q) => validateHinglishQuestion(String(q.question || '')));
       if (final.length < before) {
         console.error(
-          `[Learnova] ${before - final.length} Hinglish questions failed validation and were removed`
+          `[Thinkior] ${before - final.length} Hinglish questions failed validation and were removed`
         );
       }
     }
 
-    console.log(`[Learnova] ✅ Generated ${final.length} valid ${language} questions`);
+    console.log(`[Thinkior] ✅ Generated ${final.length} valid ${language} questions`);
     return final;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Learnova] Question parse error:', msg);
-    console.error('[Learnova] Raw response was:', rawText.substring(0, 300));
+    console.error('[Thinkior] Question parse error:', msg);
+    console.error('[Thinkior] Raw response was:', rawText.substring(0, 300));
     return [];
   }
 }

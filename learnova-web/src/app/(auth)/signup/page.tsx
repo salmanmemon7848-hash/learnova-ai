@@ -104,8 +104,8 @@ export default function SignupPage() {
           <div className="space-y-4 text-left mb-8">
             {[
               'Exam simulator with instant feedback',
-              'Business idea validator & AI writer',
-              'Smart planner & session recaps',
+              'Business idea validator & market insights',
+              'Doubt solver & session recaps',
             ].map((feature, index) => (
               <div key={index} className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,11 +142,10 @@ export default function SignupPage() {
           {/* Google Sign Up */}
           <button
             onClick={async () => {
-              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
               const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                  redirectTo: `${siteUrl}/auth/callback`,
+                  redirectTo: `${window.location.origin}/auth/callback`,
                   queryParams: {
                     access_type: 'offline',
                     prompt: 'consent',

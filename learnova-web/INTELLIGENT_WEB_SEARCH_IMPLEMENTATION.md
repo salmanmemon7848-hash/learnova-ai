@@ -2,7 +2,7 @@
 
 ## ✅ Implementation Complete
 
-Your Learnova AI platform now has **intelligent web search** that behaves like Claude:
+Your Thinkior AI platform now has **intelligent web search** that behaves like Claude:
 - ✅ Only searches when necessary
 - ✅ Stays fast for normal queries
 - ✅ Uses web data only for real-time or unknown information

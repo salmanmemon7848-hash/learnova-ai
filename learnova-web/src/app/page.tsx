@@ -1,24 +1,23 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, Lightbulb, Calendar, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BookOpen, Lightbulb, Telescope, ArrowRight } from 'lucide-react';
 import { usePersonaStore } from '@/lib/stores/personaStore';
 import { Suspense } from 'react';
 
 function LandingContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setPersona } = usePersonaStore();
 
   const handleStudentClick = () => {
     setPersona('student');
-    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'student');
+    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'student');
     router.push('/auth');
   };
 
   const handleFounderClick = () => {
     setPersona('founder');
-    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'founder');
+    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'founder');
     router.push('/auth');
   };
 
@@ -43,9 +42,10 @@ function LandingContent() {
       badge: 'Most Used',
     },
     {
-      icon: <Calendar size={22} color="#A78BFA" />,
-      title: 'Study Planner',
-      description: 'Personalized revision plans for your exam date, subjects, and weak areas.',
+      icon: <Telescope size={22} color="#A78BFA" />,
+      title: 'Competitor Research',
+      badge: null,
+      description: 'Discover your top competitors, analyze their gaps, and find opportunities they are missing in the Indian market.',
     },
   ];
 
@@ -155,7 +155,7 @@ function LandingContent() {
 
           {/* Headline */}
           <h2
-            className="text-[32px] sm:text-[52px] font-bold text-center leading-[1.15] mt-5"
+            className="landing-hero-title text-[32px] sm:text-[52px] font-bold text-center leading-[1.15] mt-5"
             style={{ maxWidth: '700px' }}
           >
             <span style={{ color: '#F5F3FF' }}>The AI built for </span>
@@ -174,14 +174,14 @@ function LandingContent() {
 
           {/* Subheadline */}
           <p
-            className="text-[17px] text-center leading-[1.6] mt-4"
+            className="landing-hero-subtitle text-[17px] text-center leading-[1.6] mt-4"
             style={{ color: '#C4B5FD', maxWidth: '520px' }}
           >
-            Smarter than a tutor. Faster than Google. Built for JEE, NEET, and Indian startups.
+            Your AI-powered companion for academic excellence and startup success — built exclusively for India.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-8">
+          <div className="landing-cta-row flex flex-wrap items-center justify-center gap-3 mt-8">
             <button
               onClick={handleStudentClick}
               className="text-[15px] font-medium text-white flex items-center gap-2 transition-all hover:brightness-110 hover:-translate-y-0.5"
@@ -231,7 +231,7 @@ function LandingContent() {
           </h3>
 
           {/* Features Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10" style={{ maxWidth: '860px', margin: '40px auto 0' }}>
+          <div className="landing-features-grid grid grid-cols-1 md:grid-cols-3 gap-4 mt-10" style={{ maxWidth: '860px', margin: '40px auto 0' }}>
             {features.map((feature, idx) => (
               <div
                 key={idx}
@@ -426,7 +426,7 @@ function LandingContent() {
         {/* Copyright Line */}
         <div className="max-w-7xl mx-auto mt-6 pt-4 border-t" style={{ borderColor: '#1E1B4B' }}>
           <p className="text-[11px] text-center" style={{ color: '#4B5563' }}>
-            © 2025 Thinkior AI. All rights reserved.
+            © 2026 Thinkior AI. All rights reserved.
           </p>
         </div>
       </footer>

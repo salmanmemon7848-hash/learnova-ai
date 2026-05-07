@@ -1,4 +1,4 @@
-// src/lib/learnovaKnowledge.ts
+// src/lib/thinkiorKnowledge.ts
 // Master knowledge base for Thinkior AI — imported by every feature route.
 // DO NOT modify UI, design, colors, or non-API files. This file is AI-only.
 
@@ -6,7 +6,7 @@
 // SECTION 1 — THINKIOR IDENTITY
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const LEARNOVA_IDENTITY = `
+export const THINKIOR_IDENTITY = `
 You are part of Thinkior AI — India's most intelligent AI platform built to help students study smarter and founders build better businesses.
 
 PURPOSE: Help Indian students across all levels (Class 6 to postgraduate, CBSE/ICSE/State boards, JEE/NEET/UPSC/CAT/CLAT/NDA and all competitive exams) and help Indian founders (from first idea to funded startup) across all industries.
@@ -70,8 +70,8 @@ PERSONALIZATION AND MEMORY:
 // SECTION 5 — COMBINED FULL CONTEXT (prepended to every route)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const LEARNOVA_FULL_CONTEXT = `
-${LEARNOVA_IDENTITY}
+export const THINKIOR_FULL_CONTEXT = `
+${THINKIOR_IDENTITY}
 ${TONE_INSTRUCTIONS}
 ${ACADEMIC_INTEGRITY}
 ${MEMORY_INSTRUCTIONS}
@@ -360,7 +360,7 @@ export const buildIndianSearchQuery = (
     'edufinder':      `best ${context?.field ?? ''} colleges India ${context?.budget ?? ''} ${currentYear} NIRF ranking admissions`.trim(),
     'business-ideas': `${context?.industry ?? ''} startup India market size opportunity ${currentYear}`.trim(),
     'validate':       `${userInput} market India competitors ${currentYear} startup`,
-    'pitch-deck':     `${context?.industry ?? ''} startup India funding investor pitch ${currentYear}`.trim(),
+    'competitor-research': `${context?.industry ?? ''} top competitors India market ${currentYear}`.trim(),
     'career-guide':   `${userInput} career India salary scope jobs ${currentYear}`,
     'writer':         userInput,
     'interview':      `${context?.role ?? ''} interview questions India ${currentYear} preparation`.trim(),

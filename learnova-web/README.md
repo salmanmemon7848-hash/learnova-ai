@@ -47,7 +47,7 @@ Thinkior is a full-stack Next.js application that serves as an AI-powered compan
    Create a `.env.local` file in the root directory:
    ```env
    # Database
-   DATABASE_URL="postgresql://username:password@localhost:5432/learnova?schema=public"
+   DATABASE_URL="postgresql://username:password@localhost:5432/thinkior?schema=public"
    
    # NextAuth
    NEXTAUTH_URL="http://localhost:3000"

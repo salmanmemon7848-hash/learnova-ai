@@ -127,7 +127,7 @@ npm install @supabase/supabase-js @supabase/ssr
 
 1. Go to https://supabase.com/
 2. Click "New Project"
-3. Name: "Learnova"
+3. Name: "Thinkior"
 4. Set database password (save it!)
 5. Choose region
 6. Wait 2-3 minutes

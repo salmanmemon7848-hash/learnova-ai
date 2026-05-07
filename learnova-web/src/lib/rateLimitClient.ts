@@ -9,7 +9,7 @@ export const MAX_INPUT_CHARS: Record<string, number> = {
   writer: 1000,
   'business-ideas': 800,
   validate: 800,
-  'pitch-deck': 1000,
+  'competitor-research': 1000,
 };
 
 export function validateInput(input: string, feature: string): string | null {

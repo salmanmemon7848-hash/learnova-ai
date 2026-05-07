@@ -1,5 +1,5 @@
 -- =====================================================
--- LEARNOVA AI - MINIMUM SQL SETUP (Run This!)
+-- THINKIOR AI - MINIMUM SQL SETUP (Run This!)
 -- =====================================================
 -- Go to: https://app.supabase.com
 -- Click your project → SQL Editor → New Query

@@ -88,7 +88,7 @@ export function shouldSearch(query: string): boolean {
  */
 export async function searchWeb(query: string): Promise<SearchResult[]> {
   // Use your deployed SearXNG instance first, then fallback to public instances
-  const primaryInstance = (process.env.SEARXNG_URL || 'https://learnova-searxng.onrender.com/search')
+  const primaryInstance = (process.env.SEARXNG_URL || 'https://search.sapti.me/search')
     .replace('/search', ''); // strip /search — this array appends it below
   const searxngInstances = [
     primaryInstance,            // Your deployed instance (from env)
@@ -109,7 +109,7 @@ export async function searchWeb(query: string): Promise<SearchResult[]> {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Learnova AI Chatbot',
+          'User-Agent': 'Thinkior AI Chatbot',
         },
         signal: AbortSignal.timeout(5000),
       });

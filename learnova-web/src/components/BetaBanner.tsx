@@ -47,7 +47,7 @@ export default function BetaBanner() {
             <span className="sm:hidden">Help us improve with your feedback.</span>
             {' '}
             <a
-              href="mailto:feedback@learnova.ai"
+              href="mailto:feedback@thinkior.ai"
               className="underline font-semibold hover:opacity-80 transition-opacity"
             >
               Send feedback →

@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       console.log('✅ Session established for user:', data.user.id);
       
       // Read the pending role from cookie (set by client before OAuth redirect)
-      const pendingRole = cookieStore.get('learnova_pending_role')?.value
+      const pendingRole = cookieStore.get('thinkior_pending_role')?.value
 
       if (pendingRole && (pendingRole === 'student' || pendingRole === 'founder')) {
         console.log('👤 Applying pending role:', pendingRole);
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
       // Clear the pending role cookie and redirect
       const response = NextResponse.redirect(`${origin}${next}`)
-      response.cookies.set('learnova_pending_role', '', { maxAge: 0, path: '/' })
+      response.cookies.set('thinkior_pending_role', '', { maxAge: 0, path: '/' })
       return response
     }
   }

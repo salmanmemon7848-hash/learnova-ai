@@ -23,7 +23,7 @@ export const FEATURE_LIMITS: Record<string, FeatureLimit> = {
   writer: { limit: 8, resetType: 'monthly', displayName: 'AI Writer', warningThreshold: 0.8, minGapSeconds: 30, maxInputChars: 1000, newAccountMultiplier: 0.5 },
   'business-ideas': { limit: 5, resetType: 'monthly', displayName: 'Business Ideas', warningThreshold: 0.8, minGapSeconds: 30, maxInputChars: 800, newAccountMultiplier: 0.5 },
   validate: { limit: 5, resetType: 'monthly', displayName: 'Business Validator', warningThreshold: 0.8, minGapSeconds: 30, maxInputChars: 800, newAccountMultiplier: 0.5 },
-  'pitch-deck': { limit: 3, resetType: 'monthly', displayName: 'Pitch Deck', warningThreshold: 0.8, minGapSeconds: 60, maxInputChars: 1000, newAccountMultiplier: 0.5 },
+  'competitor-research': { limit: 5, resetType: 'monthly', displayName: 'Competitor Research', warningThreshold: 0.8, minGapSeconds: 60, maxInputChars: 1000, newAccountMultiplier: 0.5 },
 };
 
 export function getPeriodEnd(resetType: ResetType): Date {

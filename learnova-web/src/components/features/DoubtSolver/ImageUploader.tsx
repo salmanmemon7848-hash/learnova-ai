@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Upload, Camera, X, Sparkles } from 'lucide-react'
 
 interface ImageUploaderProps {
-  onImageSelect: (base64Image: string) => void
+  onImageSelect: (file: File | null, preview: string) => void
 }
 
 export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -17,7 +18,7 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
       reader.onload = (e) => {
         const base64 = e.target?.result as string
         setPreview(base64)
-        onImageSelect(base64)
+        onImageSelect(file, base64)
       }
       reader.readAsDataURL(file)
     }
@@ -49,25 +50,22 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
     }
   }
 
-  const handleCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      // In a real implementation, you'd capture a frame from the stream
-      // For now, we'll just trigger the file input
-      const input = document.getElementById('file-upload') as HTMLInputElement
-      input?.click()
-      stream.getTracks().forEach(track => track.stop())
-    } catch (err) {
-      console.error('Camera access denied:', err)
-      // Fallback to file input
-      const input = document.getElementById('file-upload') as HTMLInputElement
-      input?.click()
+  const handleCamera = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.capture = 'environment'
+    input.onchange = (event) => {
+      const target = event.target as HTMLInputElement
+      if (target.files?.[0]) handleFile(target.files[0])
     }
+    input.click()
   }
 
   const removeImage = () => {
     setPreview(null)
-    onImageSelect('')
+    onImageSelect(null, '')
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
@@ -83,13 +81,13 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
               ? 'border-[var(--accent-purple)] bg-[var(--accent-purple-glow)]'
               : 'border-[var(--border-input)] hover:border-[var(--accent-purple)] hover:bg-[var(--bg-tertiary)]'
           }`}
-          onClick={() => document.getElementById('file-upload')?.click()}
+          onClick={() => fileInputRef.current?.click()}
         >
           <input
+            ref={fileInputRef}
             id="file-upload"
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
             onChange={handleChange}
             className="hidden"
           />
@@ -113,11 +111,11 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  document.getElementById('file-upload')?.click()
+                  fileInputRef.current?.click()
                 }}
                 className="px-3 sm:px-4 py-2 bg-[#534AB7] text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                Browse Files
+                🖼️ Browse Photos
               </button>
               <button
                 type="button"
@@ -129,12 +127,12 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                 style={{ color: 'var(--accent-purple-light)' }}
               >
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
-                Camera
+                📷 Take Photo
               </button>
             </div>
 
             <p className="text-[10px] sm:text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Supports: JPG, PNG, JPEG • Max size: 5MB
+              Supports: JPG, PNG, JPEG, WebP • Max size: 4MB
             </p>
           </div>
         </div>

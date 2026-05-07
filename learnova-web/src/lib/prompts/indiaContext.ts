@@ -1,4 +1,4 @@
-// India-specific context for Learnova AI
+// India-specific context for Thinkior AI
 
 export const INDIAN_EXAM_PATTERNS = {
   CBSE: {
