@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-type Phase = 'questions' | 'loading' | 'results';
+type Phase = 'questions' | 'loading' | 'results' | 'details';
 
 type Career = {
   colorIndex?: number;
@@ -27,6 +27,11 @@ type Career = {
 type CareerResults = {
   careers: Career[];
   personalizedMessage?: string;
+};
+
+type CareerGuideError = {
+  error?: string;
+  message?: string;
 };
 
 const questions = [
@@ -176,12 +181,125 @@ function CareerCard({
   );
 }
 
+function CareerFullDetails({ career, onBack }: { career: Career; onBack: () => void }) {
+  return (
+    <div style={{ maxWidth: 860, margin: '0 auto', padding: '16px 16px 48px' }}>
+      <button
+        onClick={onBack}
+        style={{
+          background: 'none', border: 'none', color: 'inherit',
+          cursor: 'pointer', fontSize: '0.875rem', opacity: 0.7,
+          marginBottom: 20, padding: 0,
+        }}
+      >
+        ← Back to results
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: 12,
+          background: 'rgba(255,255,255,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.8rem',
+        }}>
+          {career.icon}
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.4rem' }}>{career.title}</h2>
+          <p style={{ margin: 0, opacity: 0.6, fontSize: '0.875rem' }}>{career.tagline}</p>
+        </div>
+      </div>
+
+      {career.fullDetails && (
+        <p style={{ lineHeight: 1.8, opacity: 0.85, marginBottom: 24, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
+          {career.fullDetails}
+        </p>
+      )}
+
+      {career.whyMatch && (
+        <div className="result-card" style={{ marginBottom: 16, padding: '16px 20px' }}>
+          <h3 style={{ marginBottom: 10, fontSize: '1rem' }}>Why this matches you</h3>
+          <p style={{ opacity: 0.85, lineHeight: 1.6 }}>{career.whyMatch}</p>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div>
+          <h4 style={{ marginBottom: 12, opacity: 0.7, fontSize: '0.875rem', fontWeight: 500 }}>Key Skills</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {career.keySkills?.map((skill: string, i: number) => (
+              <span key={i} style={{
+                padding: '8px 14px', borderRadius: 20,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                fontSize: '0.85rem',
+              }}>
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h4 style={{ marginBottom: 12, opacity: 0.7, fontSize: '0.875rem', fontWeight: 500 }}>Top Colleges</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {career.topColleges?.map((college: string, i: number) => (
+              <span key={i} style={{
+                padding: '8px 14px', borderRadius: 20,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                fontSize: '0.85rem',
+              }}>
+                {college}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {career.careerPath && (
+        <div className="result-card" style={{ marginBottom: 16 }}>
+          <h4 style={{ marginBottom: 10 }}>Career Path</h4>
+          <p style={{ opacity: 0.8, fontSize: '0.9rem' }}>{career.careerPath}</p>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div className="result-card" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '0.72rem', opacity: 0.55, marginBottom: 4 }}>Entry Salary</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{career.entrySalary}</div>
+        </div>
+        <div className="result-card" style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '0.72rem', opacity: 0.55, marginBottom: 4 }}>Top Salary</div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{career.topSalary}</div>
+        </div>
+      </div>
+
+      {career.exams && career.exams.length > 0 && (
+        <div className="result-card" style={{ marginBottom: 16 }}>
+          <h4 style={{ marginBottom: 12 }}>Entrance Exams Required</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {career.exams.map((exam: string, i: number) => (
+              <span key={i} style={{
+                padding: '6px 14px', borderRadius: 20, fontSize: '0.82rem',
+                background: 'rgba(124,58,237,0.15)',
+                border: '1px solid rgba(124,58,237,0.3)',
+              }}>
+                {exam}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CareerGuidePage() {
   const [phase, setPhase] = useState<Phase>('questions');
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [results, setResults] = useState<CareerResults | null>(null);
-  const [selectedStream, setSelectedStream] = useState('Science');
+  const [selectedStream, setSelectedStream] = useState('');
   const [selectedCareer, setSelectedCareer] = useState<Career | null>(null);
   const [error, setError] = useState('');
 
@@ -196,9 +314,12 @@ export default function CareerGuidePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers: finalAnswers, language: 'english' }),
       });
-      const data = await res.json() as CareerResults & { error?: string };
-      if (!res.ok) throw new Error(data.error || 'Failed to find careers');
+      const data = await res.json() as CareerResults & CareerGuideError;
+      if (!res.ok) throw new Error(data.message || data.error || 'Failed to find careers');
+      const streams = Array.from(new Set((data.careers || []).map((c) => c.stream).filter(Boolean))) as string[];
+      setSelectedStream(streams[0] || '');
       setResults(data);
+      console.log('[CareerGuide] Fixed: stream tabs now render only streams returned by AI results');
       setPhase('results');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to find careers');
@@ -206,15 +327,39 @@ export default function CareerGuidePage() {
     }
   };
 
-  const filteredCareers = useMemo(() => {
+  const availableStreams = useMemo(() => {
     const careers = results?.careers || [];
-    return careers.filter((career) => {
-      if (!career.stream) return true;
-      return String(career.stream).toLowerCase().includes(selectedStream.toLowerCase());
-    });
-  }, [results, selectedStream]);
+    return Array.from(new Set(careers.map((career) => career.stream).filter(Boolean))) as string[];
+  }, [results]);
 
-  if (selectedCareer) {
+  useEffect(() => {
+    if (availableStreams.length > 1 && !availableStreams.includes(selectedStream)) {
+      setSelectedStream(availableStreams[0]);
+    }
+  }, [availableStreams, selectedStream]);
+
+  const displayedCareers = useMemo(() => {
+    const careers = results?.careers || [];
+    return availableStreams.length > 1
+      ? careers.filter((career) => career.stream === selectedStream)
+      : careers;
+  }, [availableStreams.length, results, selectedStream]);
+
+  if (phase === 'details' && selectedCareer) {
+    return (
+      <div className="page-container min-h-screen bg-[#0F0F10] text-white p-6 max-w-4xl mx-auto">
+        <CareerFullDetails
+          career={selectedCareer}
+          onBack={() => {
+            setSelectedCareer(null);
+            setPhase('results');
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (selectedCareer && phase === 'questions') {
     return (
       <div className="page-container min-h-screen bg-[#0F0F10] text-white p-6 max-w-4xl mx-auto">
         <button
@@ -301,6 +446,7 @@ export default function CareerGuidePage() {
           <p style={{ opacity: 0.6, marginBottom: 16, fontSize: '0.875rem' }}>
             {results?.personalizedMessage || 'Here are your best-fit career paths.'}
           </p>
+          {availableStreams.length > 1 && (
           <div
             className="tabs-row"
             style={{
@@ -313,7 +459,7 @@ export default function CareerGuidePage() {
               paddingBottom: 4,
             }}
           >
-            {(['Science', 'Commerce', 'Arts'] as const).map((tab) => (
+            {availableStreams.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setSelectedStream(tab)}
@@ -339,20 +485,26 @@ export default function CareerGuidePage() {
                 setCurrentQ(0);
                 setAnswers({});
                 setResults(null);
+                setSelectedStream('');
               }}
               style={{ background: 'none', border: 'none', opacity: 0.55, cursor: 'pointer', color: 'inherit', fontSize: '0.85rem', padding: '8px 12px' }}
             >
               Start over
             </button>
           </div>
+          )}
         </div>
 
         <div className="career-cards-grid grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(filteredCareers.length ? filteredCareers : results?.careers || []).map((career, i) => (
+          {displayedCareers.map((career, i) => (
             <CareerCard
               key={`${career.title}-${i}`}
               career={{ ...career, colorIndex: career.colorIndex ?? i }}
-              onViewDetails={setSelectedCareer}
+              onViewDetails={(career) => {
+                setSelectedCareer(career);
+                setPhase('details');
+                console.log('[CareerGuide] Fixed: full career object passed to details view');
+              }}
             />
           ))}
         </div>

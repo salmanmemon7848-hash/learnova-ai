@@ -21,7 +21,7 @@ import {
   Users,
   CheckCircle,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import InstallButton from '@/components/InstallButton'
 import InstallPrompt from '@/components/InstallPrompt'
 import MobileBottomNav from './MobileBottomNav'
@@ -156,6 +156,9 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
   const userInitial = userName.charAt(0).toUpperCase()
 
   const navItems = role === 'founder' ? founderNav : studentNav
+  useEffect(() => {
+    console.log('[Sidebar] Fixed: companion subtitle and mobile sign out layout are role-aware')
+  }, [])
 
   return (
     <div className="dashboard-shell min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
@@ -195,7 +198,9 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
               </Link>
               <InstallButton />
             </div>
-            <p className="text-xs mt-1" style={{ color: '#a78bfa' }}>AI Study Companion</p>
+            <p className="text-xs mt-1" style={{ color: '#a78bfa' }}>
+              {role === 'founder' ? 'AI Business Companion' : 'AI Study Companion'}
+            </p>
           </div>
 
           {/* Role badge */}
@@ -204,7 +209,7 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-2 overflow-y-auto">
+          <nav className="sidebar-nav-list flex-1 px-3 py-2 overflow-y-auto">
             {navItems.map((item, index) => (
               <NavLink
                 key={`nav-${item.href}-${index}`}
@@ -221,7 +226,7 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
           </nav>
 
           {/* User Card & Logout */}
-          <div className="p-4" style={{ borderTop: '0.5px solid #2a2d3a' }}>
+          <div className="sidebar-bottom-section p-4" style={{ borderTop: '0.5px solid #2a2d3a' }}>
             <div className="flex items-center gap-3 mb-3">
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold text-sm"
@@ -236,7 +241,7 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
             </div>
             <button
               onClick={() => signOut()}
-              className="flex items-center gap-2 text-sm font-medium w-full px-3 py-2 rounded-lg transition-all"
+              className="sign-out-btn flex items-center gap-2 text-sm font-medium w-full px-3 py-2 rounded-lg transition-all"
               style={{ color: '#9ca3af' }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = '#1e1010'

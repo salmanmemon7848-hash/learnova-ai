@@ -1,5 +1,6 @@
 import { generateText } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { BUSINESS_IDEA_PROMPT } from '@/lib/systemPrompts';
@@ -226,6 +227,14 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
       );
     }
 
+    await logActivity(
+      supabase,
+      session.user.id,
+      'business-ideas',
+      `Business ideas: ${industryLabel || 'Founder profile'}`,
+      { count: result.ideas.length }
+    );
+    console.log('[BusinessIdeas] Fixed: generated ideas now appear in founder dashboard activity');
     console.log(`âœ… Successfully parsed ${result.ideas.length} ideas`);
     return NextResponse.json({ result }, { headers: responseHeaders });
 

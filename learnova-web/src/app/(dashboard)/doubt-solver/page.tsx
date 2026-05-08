@@ -48,6 +48,7 @@ function parseDoubtResult(raw: string): DoubtResult | null {
 export default function DoubtSolverPage() {
   const { user } = useAuth()
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
+  const [subject, setSubject] = useState('')
   const [questionText, setQuestionText] = useState('')
   const [loading, setLoading] = useState(false)
   const [rawSolution, setRawSolution] = useState<string>('')
@@ -80,7 +81,8 @@ export default function DoubtSolverPage() {
         const formData = new FormData()
         formData.append('image', selectedImageFile)
         formData.append('question', questionText.trim())
-        formData.append('subject', '')
+        formData.append('subject', subject.trim())
+        console.log('[DoubtSolver] Fixed: image request sends FormData without manual Content-Type')
 
         response = await fetch('/api/doubt-solver', {
           method: 'POST',
@@ -92,6 +94,7 @@ export default function DoubtSolverPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             questionText: questionText.trim(),
+            subject: subject.trim(),
             language,
             level,
           }),
@@ -126,6 +129,7 @@ export default function DoubtSolverPage() {
 
   const handleReset = () => {
     setSelectedImageFile(null)
+    setSubject('')
     setQuestionText('')
     setRawSolution('')
     setResult(null)
@@ -194,6 +198,18 @@ export default function DoubtSolverPage() {
               onImageSelect={(file) => {
                 setSelectedImageFile(file)
               }}
+              onError={setError}
+            />
+          </div>
+
+          {/* Subject Input */}
+          <div className="upload-card">
+            <label className="language-label">Subject</label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Maths, Physics, Chemistry, Biology..."
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-xl focus:ring-2 transition-all text-sm sm:text-base settings-field"
             />
           </div>
 

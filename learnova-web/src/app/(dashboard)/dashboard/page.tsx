@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useRole } from '@/contexts/RoleContext'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,14 +35,20 @@ function scoreColor(score: number) {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DashboardData {
+  userRole?: 'student' | 'founder'
   recentActivity: any[]
   streak: { current_streak: number; longest_streak: number; total_sessions: number }
   practiceTests: any[]
+  allTimePracticeTestCount?: number
   avgTestScore: number
   interviewSessions: any[]
+  allTimeInterviewCount?: number
+  latestInterviewAt?: string | null
   doubtHistory: any[]
   savedFiles: any[]
 }
+
+type TabKey = 'tests' | 'interviews' | 'doubts' | 'files'
 
 // ── Skeleton Components ───────────────────────────────────────────────────────
 
@@ -134,10 +141,11 @@ function Modal({ title, content, onClose }: { title: string; content: string; on
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { role } = useRole()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [data, setData] = useState<DashboardData | null>(null)
-  const [activeTab, setActiveTab] = useState<'tests' | 'interviews' | 'doubts' | 'files'>('tests')
+  const [activeTab, setActiveTab] = useState<TabKey>('tests')
   const [expandedDoubt, setExpandedDoubt] = useState<string | null>(null)
   const [modalFile, setModalFile] = useState<{ title: string; content: string } | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -189,6 +197,18 @@ export default function DashboardPage() {
     { key: 'doubts', label: '🤔 Doubts' },
     { key: 'files', label: '📄 Saved Files' },
   ] as const
+  const userRole = role || data?.userRole || 'student'
+  const activeTabs = useMemo(
+    () => userRole === 'founder' ? tabs.filter((tab) => tab.key === 'files') : tabs,
+    [userRole]
+  )
+
+  useEffect(() => {
+    if (!activeTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(activeTabs[0].key)
+      console.log('[Dashboard] Fixed: founder home only shows Saved Files tab')
+    }
+  }, [activeTab, activeTabs])
 
   return (
     <div className="page-container" style={{ maxWidth: 900, margin: '0 auto', padding: '16px' }}>
@@ -233,8 +253,8 @@ export default function DashboardPage() {
           <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
             <StatCard emoji="🔥" label="Current Streak" value={data.streak.current_streak} sub={`Longest: ${data.streak.longest_streak} days`} />
             <StatCard emoji="📚" label="Total Sessions" value={data.streak.total_sessions} sub="All-time activities" />
-            <StatCard emoji="✅" label="Avg Test Score" value={data.avgTestScore > 0 ? `${data.avgTestScore}%` : '—'} sub={`${data.practiceTests.length} tests taken`} />
-            <StatCard emoji="🎤" label="Interviews Done" value={data.interviewSessions.length} sub={data.interviewSessions.length > 0 ? `Last: ${timeAgo(data.interviewSessions[0].created_at)}` : 'None yet'} />
+            <StatCard emoji="✅" label="Avg Test Score" value={data.avgTestScore > 0 ? `${data.avgTestScore}%` : '—'} sub={`${data.allTimePracticeTestCount ?? data.practiceTests.length} tests taken`} />
+            <StatCard emoji="🎤" label="Interviews Done" value={data.allTimeInterviewCount ?? data.interviewSessions.length} sub={data.latestInterviewAt ? `Last: ${timeAgo(data.latestInterviewAt)}` : 'None yet'} />
           </div>
 
           {/* ── Section 2: Recent Activity Feed ──────────────────────────────── */}
@@ -242,9 +262,9 @@ export default function DashboardPage() {
             <h2 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px 0' }}>Recent Activity</h2>
 
             {data.recentActivity.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>
-                <p style={{ fontSize: 32, margin: 0 }}>📭</p>
-                <p style={{ marginTop: 8, fontSize: 13 }}>No recent activity in the last 24 hours — start a session to see it here!</p>
+              <div style={{ textAlign: 'center', padding: '40px 20px', opacity: 0.5 }}>
+                <p style={{ fontSize: '2rem', marginBottom: 8 }}>📭</p>
+                <p>No recent activity in the last 24 hours — start a session to see it here!</p>
               </div>
             ) : (
               <div>
@@ -290,7 +310,7 @@ export default function DashboardPage() {
           <div style={{ background: '#13151e', border: '1px solid #2a2d3a', borderRadius: 12, padding: '20px 24px' }}>
             {/* Tab Row */}
             <div className="tabs-row" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', marginBottom: 20 }}>
-              {tabs.map(tab => (
+              {activeTabs.map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}

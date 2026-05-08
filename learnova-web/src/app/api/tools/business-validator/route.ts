@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIResponse } from '@/lib/aiRouter'
 import { parseBizValidatorReport } from '@/lib/businessValidatorReport'
+import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/supabase/dashboardHelpers'
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import { sanitizeJsonPostBody, sanitizeString } from '@/lib/validation'
 
 export const runtime = 'nodejs'
@@ -59,6 +62,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'validate', ipAddress)
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 })
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult)
+    console.log('[BusinessValidator] Fixed: active validator route now enforces auth and rate limits')
+
     const userContent = `Business Idea: ${ideaName}
 Description: ${description}
 Target Audience: ${targetAudience || 'Not specified'}`
@@ -85,7 +97,16 @@ Target Audience: ${targetAudience || 'Not specified'}`
       )
     }
 
-    return NextResponse.json({ report })
+    await logActivity(
+      supabase,
+      session.user.id,
+      'validate',
+      `Validated: ${ideaName}`,
+      { targetAudience }
+    )
+    console.log('[BusinessValidator] Fixed: active validator results now appear in founder dashboard activity')
+
+    return NextResponse.json({ report }, { headers: responseHeaders })
   } catch (error: unknown) {
     console.error('[business-validator]', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'

@@ -5,23 +5,35 @@ import { Upload, Camera, X, Sparkles } from 'lucide-react'
 
 interface ImageUploaderProps {
   onImageSelect: (file: File | null, preview: string) => void
+  onError?: (message: string) => void
 }
 
-export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
+export default function ImageUploader({ onImageSelect, onError }: ImageUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string
-        setPreview(base64)
-        onImageSelect(file, base64)
-      }
-      reader.readAsDataURL(file)
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!file || !validTypes.includes(file.type)) {
+      onError?.('Invalid file type. Please upload a JPG, PNG, or WebP image.')
+      return
     }
+    if (file.size > 4 * 1024 * 1024) {
+      onError?.('Image too large. Please use an image under 4MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string
+      setPreview(base64)
+      onImageSelect(file, base64)
+      onError?.('')
+      console.log('[DoubtSolver] Fixed: image preview is ready before submission')
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleDrag = (e: React.DragEvent) => {
@@ -43,29 +55,18 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault()
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0])
     }
   }
 
-  const handleCamera = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment'
-    input.onchange = (event) => {
-      const target = event.target as HTMLInputElement
-      if (target.files?.[0]) handleFile(target.files[0])
-    }
-    input.click()
-  }
-
   const removeImage = () => {
     setPreview(null)
     onImageSelect(null, '')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
   return (
@@ -88,7 +89,15 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
             id="file-upload"
             type="file"
             accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={handleChange}
+            onChange={handleFileSelected}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileSelected}
             className="hidden"
           />
           
@@ -112,6 +121,7 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                 onClick={(e) => {
                   e.stopPropagation()
                   fileInputRef.current?.click()
+                  console.log('[DoubtSolver] Fixed: Browse Photos opens gallery input without camera capture')
                 }}
                 className="px-3 sm:px-4 py-2 bg-[#534AB7] text-white rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity"
               >
@@ -121,7 +131,8 @@ export default function ImageUploader({ onImageSelect }: ImageUploaderProps) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleCamera()
+                  cameraInputRef.current?.click()
+                  console.log('[DoubtSolver] Fixed: Take Photo opens camera capture input')
                 }}
                 className="px-3 sm:px-4 py-2 bg-[var(--bg-secondary)] border-2 border-[var(--border-input)] rounded-lg text-xs sm:text-sm font-medium hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2"
                 style={{ color: 'var(--accent-purple-light)' }}

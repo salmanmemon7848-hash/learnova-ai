@@ -1,5 +1,6 @@
 import { chatWithHistory } from '@/lib/openai';
 import { createClient } from '@/lib/supabase/server';
+import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -139,6 +140,14 @@ ${searchUsageInstruction}`;
     }
 
     const responseText = await chatWithHistory(messagesArray, systemPrompt);
+    await logActivity(
+      supabase,
+      session.user.id,
+      'chat',
+      `Chat: ${latestUserMessage.slice(0, 60)}${latestUserMessage.length > 60 ? '...' : ''}`,
+      { persona: persona || 'default' }
+    );
+    console.log('[AIChat] Fixed: chat sessions now appear in role-filtered dashboard activity');
 
     // Return response with metadata
     return NextResponse.json({

@@ -111,6 +111,7 @@ export async function checkAndIncrementUsage(
       .limit(1)
       .maybeSingle();
 
+    let createdUsageRecord = false;
     if (!record) {
       const { data: newRecord } = await supabase
         .from('user_usage')
@@ -126,10 +127,11 @@ export async function checkAndIncrementUsage(
         .select()
         .single();
       record = newRecord;
+      createdUsageRecord = true;
     }
 
     const currentCount = record?.count || 0;
-    if (record?.last_request_at) {
+    if (!createdUsageRecord && currentCount > 0 && record?.last_request_at) {
       const secondsAgo = secondsSince(record.last_request_at);
       if (secondsAgo < config.minGapSeconds) {
         const waitSeconds = Math.ceil(config.minGapSeconds - secondsAgo);

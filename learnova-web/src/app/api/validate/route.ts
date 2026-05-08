@@ -1,6 +1,7 @@
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
 import { getAIResponse } from '@/lib/aiRouter'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity } from '@/lib/supabase/dashboardHelpers'
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import { NextRequest, NextResponse } from 'next/server'
 import {
@@ -128,6 +129,14 @@ Please analyse this thoroughly using your India expertise.`
       systemPrompt,
       { temperature: 0.7, maxTokens: 3000, feature: 'validate' }
     )
+    await logActivity(
+      supabase,
+      session.user.id,
+      'validate',
+      `Validated: ${idea.slice(0, 60)}${idea.length > 60 ? '...' : ''}`,
+      { industry, targetMarket }
+    )
+    console.log('[BusinessValidator] Fixed: validation now appears in founder dashboard activity')
 
     return NextResponse.json({ result }, { headers: responseHeaders })
   } catch (error: any) {

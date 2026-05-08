@@ -91,28 +91,33 @@ export async function POST(req: NextRequest) {
     const isMultipart = contentType.includes('multipart/form-data');
 
     if (isMultipart) {
-      const formData = await req.formData();
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch {
+        return NextResponse.json({ error: 'Failed to read image data' }, { status: 400 });
+      }
       const imageFile = formData.get('image') as File | null;
       const question = sanitizeString(formData.get('question'), 500);
       const subject = sanitizeString(formData.get('subject'), 100);
 
       if (!imageFile) {
-        return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+        return NextResponse.json({ error: 'No image file received' }, { status: 400 });
       }
 
       const maxImageSize = 4 * 1024 * 1024;
       if (imageFile.size > maxImageSize) {
-        return NextResponse.json({ error: 'Image too large. Please use an image under 4MB.' }, { status: 413 });
+        return NextResponse.json({ error: 'Image is too large. Please use an image under 4MB or compress it first.' }, { status: 413 });
       }
 
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!allowedTypes.includes(imageFile.type)) {
-        return NextResponse.json({ error: 'Invalid image type. Use JPG, PNG, or WebP.' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid file type. Please upload a JPG, PNG, or WebP image.' }, { status: 400 });
       }
 
       const googleApiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
       if (!googleApiKey) {
-        return NextResponse.json({ error: 'Image solving is not configured.' }, { status: 500 });
+        return NextResponse.json({ error: 'Image analysis not configured' }, { status: 500 });
       }
 
       const imageBytes = await imageFile.arrayBuffer();
@@ -121,13 +126,27 @@ export async function POST(req: NextRequest) {
 
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`;
 
+      const prompt = `You are Thinkior's AI Doubt Solver — a world-class tutor for Indian students preparing for CBSE, JEE, NEET, and other exams.
+
+Subject context: ${subject || 'Auto-detect from image'}
+Student question: ${question || 'Please analyze this image and solve or explain whatever is shown.'}
+
+Look at this image carefully. It may contain a math problem, science diagram, question from a textbook, handwritten notes, or any academic content.
+
+Provide a complete response with:
+1. **What I see:** Describe exactly what academic content is in the image
+2. **Step-by-step solution:** Solve or explain with clear numbered steps
+3. **Key concept:** The underlying concept or formula being tested
+4. **Why it works:** The reasoning behind the solution
+5. **Exam tip:** A specific tip for CBSE/JEE/NEET students on this topic
+
+Use clear Indian English. Reference NCERT where relevant. Give examples from Indian context.`;
+
       const geminiBody = {
         contents: [
           {
             parts: [
-              {
-                text: `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n\nYou are Thinkior's Doubt Solver AI - a world-class Indian tutor.\n\nSubject: ${subject || 'Auto-detect'}\nStudent Question: ${question || 'Please explain what is shown in this image and solve any problems visible.'}\n\nLook at this image carefully. Identify the question, problem, or concept shown. Then provide:\n1. What the image shows\n2. Step-by-step solution or explanation\n3. Key concept behind it\n4. Exam tip for CBSE/JEE/NEET students\n\nRespond in clear, helpful Indian English. Use Indian examples where relevant.`,
-              },
+              { text: prompt },
               {
                 inline_data: {
                   mime_type: mimeType,
@@ -141,6 +160,12 @@ export async function POST(req: NextRequest) {
           maxOutputTokens: 2000,
           temperature: 0.3,
         },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
       };
 
       const geminiRes = await fetch(geminiUrl, {
@@ -163,13 +188,22 @@ export async function POST(req: NextRequest) {
       }
 
       try {
+        await supabase.from('doubt_history').insert({
+          user_id: session.user.id,
+          subject: subject || 'Image',
+          question: question || 'Image upload',
+          answer: responseText,
+        });
         await supabase.from('activity_log').insert({
           user_id: session.user.id,
           activity_type: 'doubt',
-          title: `Image doubt - ${subject || 'General'}`,
+          title: `Image doubt — ${subject || 'General'}`,
           metadata: { subject, hasImage: true },
         });
-      } catch {}
+        console.log('[DoubtSolver] Fixed: image doubts are saved and routed through Gemini Vision');
+      } catch (logErr) {
+        console.warn('[DoubtSolver] Supabase log failed:', logErr);
+      }
 
       return NextResponse.json({ answer: responseText, provider: 'gemini-vision' }, { headers: responseHeaders });
     }

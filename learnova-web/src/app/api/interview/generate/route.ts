@@ -1,4 +1,6 @@
 import { generateInterviewQuestions } from '@/lib/groqInterviewService';
+import { createClient } from '@/lib/supabase/server';
+import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   sanitizeJsonPostBody,
@@ -39,6 +41,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'jobRole and language are required' }, { status: 400 });
     }
 
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'interview', ipAddress);
+    if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
+    console.log('[MockInterview] Fixed: interview question generation now enforces auth and rate limits');
+
     const questions = await generateInterviewQuestions({
       jobRole,
       experienceLevel: experienceLevel || 'Mid-level',
@@ -51,7 +62,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to generate questions' }, { status: 500 });
     }
 
-    return NextResponse.json({ questions, language, total: questions.length });
+    return NextResponse.json({ questions, language, total: questions.length }, { headers: responseHeaders });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Thinkior API] Error:', error);
