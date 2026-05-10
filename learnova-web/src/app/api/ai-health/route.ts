@@ -1,40 +1,29 @@
 import { NextResponse } from 'next/server';
-import { getAIResponse } from '@/lib/aiRouter';
-import { chatWithGemini } from '@/lib/gemini';
+import { aiHandler } from '@/lib/ai/aiHandler';
 
 export async function GET() {
-  // SECURITY: Internal health probe — fixed prompts only; no user input surface.
-  const results: Record<string, any> = {};
+  // SECURITY: Internal health probe - fixed prompt only; no user input surface.
+  const start = Date.now();
 
   try {
-    const start = Date.now();
-    await getAIResponse(
-      [{ role: 'user', content: 'Say OK' }],
-      'You are a test assistant. Reply with just the word OK.',
-      { maxTokens: 10, feature: 'health-check' }
-    );
-    results.groq = { status: 'ok', ms: Date.now() - start };
-  } catch (e: any) {
-    results.groq = { status: 'error', error: e.message };
+    const response = await aiHandler({
+      prompt: 'Say OK',
+      context: 'You are a test assistant. Reply with just the word OK.',
+      featureName: 'health-check',
+      isSearchFeature: false,
+      taskComplexity: 'simple',
+    });
+
+    return NextResponse.json({
+      status: response.result.trim().length > 0 ? 'ok' : 'degraded',
+      ms: Date.now() - start,
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    return NextResponse.json({
+      status: 'degraded',
+      ms: Date.now() - start,
+      timestamp: new Date().toISOString(),
+    });
   }
-
-  try {
-    const start = Date.now();
-    await chatWithGemini(
-      [{ role: 'user', content: 'Say OK' }],
-      'You are a test assistant. Reply with just the word OK.',
-      10
-    );
-    results.gemini = { status: 'ok', ms: Date.now() - start };
-  } catch (e: any) {
-    results.gemini = { status: 'error', error: e.message };
-  }
-
-  const allOk = Object.values(results).every((r: any) => r.status === 'ok');
-
-  return NextResponse.json({
-    status: allOk ? 'all systems ok' : 'degraded',
-    providers: results,
-    timestamp: new Date().toISOString(),
-  });
 }

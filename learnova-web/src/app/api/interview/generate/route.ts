@@ -64,8 +64,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ questions, language, total: questions.length }, { headers: responseHeaders });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Thinkior API] Error:', error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Our AI is temporarily unavailable. Please try again in a moment.' }, { status: 500 });
   }
 }

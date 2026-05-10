@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Thinkior AI - The AI built for India's students and builders",
-  description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Currently in beta, free to use.",
+  description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Free to start.",
   keywords: ["AI tutor", "exam prep", "business validator", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
   authors: [{ name: "Salman Memon" }],
   creator: "Thinkior AI",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Thinkior AI - The AI built for India's students and builders",
-    description: "Prepare for competitive exams or validate your startup idea with AI. Built for India, currently in beta.",
+    description: "Prepare for competitive exams or validate your startup idea with AI. Built for India. Free to start.",
     type: "website",
     locale: "en_US",
     siteName: "Thinkior AI",

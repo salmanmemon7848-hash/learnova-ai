@@ -127,7 +127,13 @@ Please analyse this thoroughly using your India expertise.`
     const result = await getAIResponse(
       [{ role: 'user', content: userPrompt }],
       systemPrompt,
-      { temperature: 0.7, maxTokens: 3000, feature: 'validate' }
+      {
+        temperature: 0.7,
+        maxTokens: 3000,
+        feature: 'validate',
+        isSearchFeature: false,
+        taskComplexity: 'complex',
+      }
     )
     await logActivity(
       supabase,
@@ -139,41 +145,11 @@ Please analyse this thoroughly using your India expertise.`
     console.log('[BusinessValidator] Fixed: validation now appears in founder dashboard activity')
 
     return NextResponse.json({ result }, { headers: responseHeaders })
-  } catch (error: any) {
-    console.error('❌ Validate Error:', error?.message || error)
-
-    const msg = typeof error?.message === 'string' ? error.message : ''
-
-    if (error?.name === 'AbortError' || msg.toLowerCase().includes('timeout')) {
-      return NextResponse.json(
-        { error: 'Request timed out. Please try again with a simpler idea description.' },
-        { status: 408 }
-      )
-    }
-
-    if (msg.includes('GROQ_API_KEY') || msg.includes('API key is missing or invalid')) {
-      return NextResponse.json(
-        {
-          error:
-            'AI is not configured for this deployment. Add GROQ_API_KEY in Vercel → Project → Settings → Environment Variables, then redeploy.',
-        },
-        { status: 503 }
-      )
-    }
-
-    const status = error?.status ?? error?.response?.status
-    if (status === 401 || status === 403) {
-      return NextResponse.json(
-        {
-          error:
-            'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.',
-        },
-        { status: 503 }
-      )
-    }
+  } catch (error: unknown) {
+    console.error('Validate Error:', error)
 
     return NextResponse.json(
-      { error: 'AI validation service is temporarily unavailable. Please try again in a moment.' },
+      { error: 'Our AI is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }
     )
   }

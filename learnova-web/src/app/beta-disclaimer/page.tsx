@@ -13,7 +13,7 @@ export default function BetaDisclaimerPage() {
           
           <div className="p-4 rounded-lg border-l-4" style={{ backgroundColor: 'var(--warning-light)', borderColor: 'var(--warning)' }}>
             <p className="font-semibold" style={{ color: 'var(--foreground)' }}>
-              Important: Thinkior AI is currently in beta testing phase.
+              Important: Thinkior AI is actively being developed and improved. You may encounter occasional issues.
             </p>
           </div>
 
@@ -62,22 +62,22 @@ export default function BetaDisclaimerPage() {
 
           <section>
             <h2 className="text-2xl font-semibold mb-3" style={{ color: 'var(--foreground)' }}>
-              Free to Use
+              Free to Start
             </h2>
             <p>
-              During the beta phase, Thinkior AI is completely free to use. We may introduce paid features 
+              Thinkior AI is free to start. We may introduce paid features
               in the future, but:
             </p>
             <ul className="list-disc ml-6 mt-2 space-y-1">
               <li>Existing free features will remain accessible</li>
               <li>We will communicate clearly about any pricing changes</li>
-              <li>Early beta users may receive special offers when we launch paid tiers</li>
+              <li>Early users may receive special offers when we launch paid tiers</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-3" style={{ color: 'var(--foreground)' }}>
-              Data and Privacy During Beta
+              Data and Privacy
             </h2>
             <p>
               As we test and improve the platform, we may:

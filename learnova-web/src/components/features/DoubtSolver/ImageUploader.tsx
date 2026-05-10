@@ -15,13 +15,13 @@ export default function ImageUploader({ onImageSelect, onError }: ImageUploaderP
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (file: File) => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
     if (!file || !validTypes.includes(file.type)) {
-      onError?.('Invalid file type. Please upload a JPG, PNG, or WebP image.')
+      onError?.('Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.')
       return
     }
-    if (file.size > 4 * 1024 * 1024) {
-      onError?.('Image too large. Please use an image under 4MB.')
+    if (file.size > 10 * 1024 * 1024) {
+      onError?.('Please upload an image under 10MB.')
       return
     }
 
@@ -88,7 +88,7 @@ export default function ImageUploader({ onImageSelect, onError }: ImageUploaderP
             ref={fileInputRef}
             id="file-upload"
             type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
             onChange={handleFileSelected}
             className="hidden"
           />
@@ -143,7 +143,7 @@ export default function ImageUploader({ onImageSelect, onError }: ImageUploaderP
             </div>
 
             <p className="text-[10px] sm:text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Supports: JPG, PNG, JPEG, WebP • Max size: 4MB
+              Supports: JPG, PNG, JPEG, WebP, GIF • Max size: 10MB
             </p>
           </div>
         </div>

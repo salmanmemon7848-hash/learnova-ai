@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { chatWithFallback } from '@/lib/aiFallback';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import {
   THINKIOR_FULL_CONTEXT,
@@ -126,21 +126,21 @@ CRITICAL: Respond with ONLY valid JSON. No markdown. Start with { end with }.
       ? `Student answers:\n${JSON.stringify(answers, null, 2)}\n\nLanguage preference: ${language}`
       : `Student request:\n${legacyPrompt}\n\nLanguage preference: ${language}`;
 
-    const aiResult = await chatWithFallback(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      { feature: 'career-guide', maxTokens: 2500, temperature: 0.3 }
-    );
+    const aiResult = await aiHandler({
+      prompt: userMessage,
+      context: systemPrompt,
+      featureName: 'career-guide',
+      isSearchFeature: false,
+      taskComplexity: 'complex',
+    });
 
-    if (!aiResult.text) {
+    if (!aiResult.result) {
       return NextResponse.json({ error: 'Failed to generate career guidance' }, { status: 500 });
     }
 
     let data: CareerGuideResponse | null;
     try {
-      data = extractJson(aiResult.text);
+      data = extractJson(aiResult.result);
     } catch {
       return NextResponse.json({ error: 'Could not parse career guidance' }, { status: 500 });
     }
@@ -162,9 +162,8 @@ CRITICAL: Respond with ONLY valid JSON. No markdown. Start with { end with }.
     return NextResponse.json({
       careers: finalCareers,
       personalizedMessage: data.personalizedMessage || '',
-      provider: aiResult.provider,
     }, { headers: responseHeaders });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to generate career guidance' }, { status: 500 });
+    return NextResponse.json({ error: 'Our AI is temporarily unavailable. Please try again in a moment.' }, { status: 500 });
   }
 }

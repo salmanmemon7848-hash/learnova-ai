@@ -84,6 +84,8 @@ Target Audience: ${targetAudience || 'Not specified'}`
           maxTokens: 3000,
           timeoutMs: process.env.VERCEL ? 12_000 : 45_000,
           feature: 'business-validator',
+          isSearchFeature: false,
+          taskComplexity: 'complex',
         }
       )
     ).trim()
@@ -109,9 +111,8 @@ Target Audience: ${targetAudience || 'Not specified'}`
     return NextResponse.json({ report }, { headers: responseHeaders })
   } catch (error: unknown) {
     console.error('[business-validator]', error)
-    const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: msg || 'Validation failed. Please try again.' },
+      { error: 'Our AI is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }
     )
   }

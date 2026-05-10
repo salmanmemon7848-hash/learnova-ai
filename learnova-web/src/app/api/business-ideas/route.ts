@@ -1,4 +1,4 @@
-import { generateText } from '@/lib/openai';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
@@ -169,8 +169,15 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
       ? `${systemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`
       : `${systemPrompt}\n\n${searchUsageInstruction}`;
 
-    console.log('ðŸ¤– Calling Groq AI for business ideas...');
-    const text = await generateText(systemPrompt, finalSystemPrompt || undefined);
+    console.log('[BusinessIdeas] Calling central AI handler for business ideas...');
+    const aiResponse = await aiHandler({
+      prompt: `Generate exactly ${count || 5} personalized business ideas for this founder profile.`,
+      context: finalSystemPrompt || systemPrompt,
+      featureName: 'business-ideas',
+      isSearchFeature: false,
+      taskComplexity: 'complex',
+    });
+    const text = aiResponse.result;
     console.log('ðŸ“¤ Raw AI response length:', text?.length);
 
     let result: any = null;

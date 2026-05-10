@@ -30,6 +30,7 @@ import {
 import { usePathname } from 'next/navigation'
 import { updateStreak, loadStreak, getMilestoneMessage, getStreakWhatsAppLink, StreakData } from '@/lib/utils/streak'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
+import ChatInput from '@/components/chat/ChatInput'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -285,9 +286,9 @@ function ChatContent() {
     return []
   }
 
-  const handleSendMessage = async (text?: string) => {
+  const handleSendMessage = async (text?: string, image?: File) => {
     const messageText = text || input.trim()
-    if (!messageText || loading) return
+    if ((!messageText && !image) || loading) return
     const inputError = validateInput(messageText, 'chat')
     if (inputError) {
       setMessages((prev) => [...prev, { role: 'assistant', content: inputError, id: Date.now().toString() }])
@@ -324,15 +325,31 @@ function ChatContent() {
     }
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      let bodyInit: RequestInit['body']
+      let headersInit: Record<string, string> = {}
+
+      if (image) {
+        const formData = new FormData()
+        formData.append('message', messageText)
+        formData.append('messages', JSON.stringify(newMessages.map(m => ({ role: m.role, content: m.content }))))
+        formData.append('persona', persona || '')
+        formData.append('language', language || '')
+        formData.append('image', image)
+        bodyInit = formData
+      } else {
+        bodyInit = JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
           persona,
           language,
           systemPrompt: getSystemPrompt(),
-        }),
+        })
+        headersInit['Content-Type'] = 'application/json'
+      }
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: headersInit,
+        body: bodyInit,
       })
 
       if (!response.ok) {
@@ -708,82 +725,13 @@ function ChatContent() {
                 </button>
               </div>
             )}
-            {/* Prompt Chips (only when empty) */}
-            {messages.length === 0 && quickPrompts.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2.5">
-                {quickPrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="text-[13px] px-3.5 py-1.5 rounded-[20px] cursor-pointer transition-all"
-                    style={{
-                      background: '#160D2E',
-                      border: '1px solid #2D1B69',
-                      color: '#C4B5FD',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#7C3AED'
-                      e.currentTarget.style.color = '#F5F3FF'
-                      e.currentTarget.style.background = '#1E1040'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#2D1B69'
-                      e.currentTarget.style.color = '#C4B5FD'
-                      e.currentTarget.style.background = '#160D2E'
-                    }}
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Input Container */}
-            <div
-              className="flex items-end gap-2.5 rounded-[14px] p-3 transition-all"
-              style={{
-                background: '#160D2E',
-                border: '1px solid #2D1B69',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#7C3AED'
-                e.currentTarget.style.boxShadow = '0 0 0 3px #7C3AED20'
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#2D1B69'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            >
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }
-                }}
+            <div className="mt-auto w-full">
+              <ChatInput 
+                onSend={(text, image) => handleSendMessage(text, image)} 
+                disabled={loading} 
                 placeholder={language === 'hindi' ? 'Thinkior से कुछ भी पूछें...' : 'Ask Thinkior anything...'}
-                className="flex-1 text-[14px] leading-relaxed bg-transparent border-none outline-none resize-none"
-                style={{
-                  color: '#F5F3FF',
-                  minHeight: '24px',
-                  maxHeight: '120px',
-                }}
-                rows={1}
               />
-              <button
-                onClick={() => handleSendMessage()}
-                disabled={!input.trim() || loading}
-                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-50"
-                style={{
-                  background: input.trim() && !loading ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#2D1B69',
-                  boxShadow: input.trim() && !loading ? '0 4px 12px #7C3AED40' : 'none',
-                }}
-              >
-                <Send size={16} color="white" />
-              </button>
             </div>
 
             {/* Share on WhatsApp */}

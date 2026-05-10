@@ -1,4 +1,4 @@
-import { generateText } from '@/lib/openai';
+import { aiHandler, aiVisionHandler } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -105,28 +105,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'No image file received' }, { status: 400 });
       }
 
-      const maxImageSize = 4 * 1024 * 1024;
+      const maxImageSize = 10 * 1024 * 1024;
       if (imageFile.size > maxImageSize) {
-        return NextResponse.json({ error: 'Image is too large. Please use an image under 4MB or compress it first.' }, { status: 413 });
+        return NextResponse.json({ error: 'Please upload an image under 10MB.' }, { status: 413 });
       }
 
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!allowedTypes.includes(imageFile.type)) {
-        return NextResponse.json({ error: 'Invalid file type. Please upload a JPG, PNG, or WebP image.' }, { status: 400 });
-      }
-
-      const googleApiKey = process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
-      if (!googleApiKey) {
-        return NextResponse.json({ error: 'Image analysis not configured' }, { status: 500 });
+        return NextResponse.json({ error: 'Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.' }, { status: 400 });
       }
 
       const imageBytes = await imageFile.arrayBuffer();
       const base64Image = Buffer.from(imageBytes).toString('base64');
       const mimeType = imageFile.type;
 
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`;
-
-      const prompt = `You are Thinkior's AI Doubt Solver — a world-class tutor for Indian students preparing for CBSE, JEE, NEET, and other exams.
+      const prompt = `You are Thinkior's AI Doubt Solver - a world-class tutor for Indian students preparing for CBSE, JEE, NEET, and other exams.
 
 Subject context: ${subject || 'Auto-detect from image'}
 Student question: ${question || 'Please analyze this image and solve or explain whatever is shown.'}
@@ -134,57 +127,25 @@ Student question: ${question || 'Please analyze this image and solve or explain 
 Look at this image carefully. It may contain a math problem, science diagram, question from a textbook, handwritten notes, or any academic content.
 
 Provide a complete response with:
-1. **What I see:** Describe exactly what academic content is in the image
-2. **Step-by-step solution:** Solve or explain with clear numbered steps
-3. **Key concept:** The underlying concept or formula being tested
-4. **Why it works:** The reasoning behind the solution
-5. **Exam tip:** A specific tip for CBSE/JEE/NEET students on this topic
+1. What I see: Describe exactly what academic content is in the image
+2. Step-by-step solution: Solve or explain with clear numbered steps
+3. Key concept: The underlying concept or formula being tested
+4. Why it works: The reasoning behind the solution
+5. Exam tip: A specific tip for CBSE/JEE/NEET students on this topic
 
 Use clear Indian English. Reference NCERT where relevant. Give examples from Indian context.`;
 
-      const geminiBody = {
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: 2000,
-          temperature: 0.3,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-      };
-
-      const geminiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody),
+      const visionResponse = await aiVisionHandler({
+        prompt,
+        imageBase64: base64Image,
+        mimeType,
+        featureName: 'doubt-solver-image',
+        taskComplexity: 'complex',
       });
+      const responseText = visionResponse.result;
 
-      if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error('[DoubtSolver Image] Gemini error:', geminiRes.status, errText.slice(0, 200));
-        return NextResponse.json({ error: 'Could not analyze image. Please try again.' }, { status: 500 });
-      }
-
-      const geminiData = await geminiRes.json();
-      const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      if (!responseText) {
-        return NextResponse.json({ error: 'No response from AI. Please try again.' }, { status: 500 });
+      if (!responseText || responseText === 'Our AI is temporarily unavailable. Please try again in a moment.') {
+        return NextResponse.json({ error: 'Our AI is temporarily unavailable. Please try again in a moment.' }, { status: 500 });
       }
 
       try {
@@ -205,7 +166,7 @@ Use clear Indian English. Reference NCERT where relevant. Give examples from Ind
         console.warn('[DoubtSolver] Supabase log failed:', logErr);
       }
 
-      return NextResponse.json({ answer: responseText, provider: 'gemini-vision' }, { headers: responseHeaders });
+      return NextResponse.json({ answer: responseText }, { headers: responseHeaders });
     }
 
     let rawBody: unknown = {};
@@ -258,7 +219,14 @@ Use clear Indian English. Reference NCERT where relevant. Give examples from Ind
       ? `[Subject: ${userSubject}] ${userQuestion}`
       : userQuestion;
 
-    const solution = await generateText(prompt, finalSystemPrompt);
+    const aiResponse = await aiHandler({
+      prompt,
+      context: finalSystemPrompt,
+      featureName: 'doubt-solver',
+      isSearchFeature: false,
+      taskComplexity: 'simple',
+    });
+    const solution = aiResponse.result;
 
     // ── Save to Supabase (non-blocking) ───────────────────────────────────────
     try {

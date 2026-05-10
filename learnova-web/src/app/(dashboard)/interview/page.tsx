@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRole } from '@/contexts/RoleContext'
 import { validateLanguage } from '@/lib/languageConfig'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
+import { startVoiceSession, getOpeningQuestion, type InterviewConfig, type VoiceSession } from '@/lib/voice/voiceHandler'
 
 type Step = 'setup' | 'voice-interview' | 'chat-interview' | 'voice-results' | 'chat-results'
 type InterviewMode = 'voice' | 'chat'
@@ -48,7 +49,14 @@ export default function InterviewPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // ── Voice mode — Gemini-style phase machine ────────────────────────────────
+  // ── Personalisation (new) ─────────────────────────────────────────────────
+  const [userName, setUserName] = useState('')
+  const [liveTranscript, setLiveTranscript] = useState<Array<{speaker:'user'|'ai';text:string}>>( [])
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const voiceSessionRef = useRef<VoiceSession | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Voice mode — phase machine ────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('idle')
   const [conversationHistory, setConversationHistory] = useState<Message[]>([])
   const [currentQuestion, setCurrentQuestion] = useState('')
@@ -296,12 +304,9 @@ export default function InterviewPage() {
     }
   };
 
-  // ── Get next question from API — never throws (FIX 3) ────────────────────
+  // ── Get next question from API — never throws ─────────────────────────────
   const getNextQuestion = async (fullHistory: Message[]): Promise<string> => {
-    // CRITICAL: Always read from ref, never from state variable
     const currentLanguage = normalizedLanguageRef.current;
-    console.log('[API] Calling /api/interview — history length:', fullHistory.length)
-    console.log('[API] Sending language to interview API:', currentLanguage);
     try {
       const res = await fetch('/api/interview', {
         method: 'POST',
@@ -309,8 +314,11 @@ export default function InterviewPage() {
         body: JSON.stringify({
           action: 'voice_turn',
           interviewType,
-          language: currentLanguage, // MUST be 'english', 'hindi', or 'hinglish'
+          language: currentLanguage,
           messages: fullHistory,
+          userName: userName.trim() || 'Candidate',
+          topicOrRole: interviewType || 'General',
+          userType: role === 'founder' ? 'founder' : 'student',
         }),
       })
 
@@ -537,31 +545,51 @@ export default function InterviewPage() {
     }
   }
 
-  // ── VOICE: start interview ────────────────────────────────────────────────
+  // ── VOICE: start interview (Gemini Live + Groq fallback) ─────────────────
   const startVoiceInterview = async () => {
-    if (firstQuestionAskedRef.current) return // prevent re-triggering
+    if (firstQuestionAskedRef.current) return
     firstQuestionAskedRef.current = true
-    
-    // Set language ref immediately when interview starts
-    const lang = normalizeLanguage(language);
-    normalizedLanguageRef.current = lang;
-    console.log('[Interview Start] Language set to:', lang);
-    console.log('[Interview Start] language state raw value:', language);
-    
-    setLoading(true)
-    setError('')
-    setMicDenied(false)
-    setVoiceError('')
-    conversationHistoryRef.current = [] // reset ref for fresh interview
+
+    const lang = normalizeLanguage(language)
+    normalizedLanguageRef.current = lang
+    setLoading(true); setError(''); setMicDenied(false); setVoiceError('')
+    conversationHistoryRef.current = []
+    setLiveTranscript([])
+    setElapsedSeconds(0)
+
+    const interviewConfig: InterviewConfig = {
+      userName: userName.trim() || 'Candidate',
+      topicOrRole: interviewType || 'General',
+      userType: role === 'founder' ? 'founder' : 'student',
+    }
+
     try {
-      const opening = await getNextQuestion([]) // empty history = first question
+      // Get opening question (Gemini first, Groq fallback)
+      const opening = await getOpeningQuestion(interviewConfig, (hist) => getNextQuestion(hist as Message[]))
       const q = opening || 'Please introduce your background and recent work.'
       addToHistory('assistant', q)
       setCurrentQuestion(q)
       setQuestionNum(1)
       setLastStudentAnswer('')
+      setLiveTranscript([{ speaker: 'ai', text: q }])
+
+      // Start Gemini voice session (async, non-blocking for UI)
+      const session = await startVoiceSession({
+        interviewConfig,
+        onTranscript: (text, speaker) => {
+          setLiveTranscript(prev => [...prev, { speaker, text }])
+        },
+        onError: (msg) => setVoiceError(msg),
+        getNextAIQuestion: (hist) => getNextQuestion(hist as Message[]),
+      })
+      voiceSessionRef.current = session
+
       setStep('voice-interview')
       setPhase('ai-speaking')
+
+      // Start timer
+      timerRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
+
       speakText(q, languageProfiles[lang], () => { startRecording() })
     } catch { setError('Connection issue. Please try again.') }
     finally { setLoading(false) }
@@ -802,16 +830,19 @@ export default function InterviewPage() {
     setMicDenied(false); setVoiceError('')
     setChatQuestions([]); setCurrentIndex(0); setAnswers({}); setIsComplete(false)
     setChatAnswers([]); setUserAnswer(''); setShowFeedback(false); setError('')
+    setLiveTranscript([]); setElapsedSeconds(0)
     isRecordingRef.current = false
     conversationHistoryRef.current = []
     firstQuestionAskedRef.current = false
+    // Clean up Gemini session
+    try { voiceSessionRef.current?.close() } catch { /* ignore */ }
+    voiceSessionRef.current = null
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     try {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop()
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     mediaRecorderRef.current = null
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
@@ -857,8 +888,22 @@ export default function InterviewPage() {
       <div style={{ background: 'linear-gradient(135deg,#160D2E,#1E1040)', border: `1px solid ${C.border}`, borderRadius: 16, padding: 28, boxShadow: '0 0 40px #7C3AED18' }}>
         <h2 style={{ fontSize: 17, fontWeight: 600, marginBottom: 20 }}>Setup Your Interview</h2>
 
+        {/* Name field — new for personalisation */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.muted, marginBottom: 6 }}>Interview Type</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.muted, marginBottom: 6 }}>Your Name</label>
+          <input
+            type="text"
+            placeholder={role === 'founder' ? 'e.g. Sarah' : 'e.g. Rahul'}
+            value={userName}
+            onChange={e => setUserName(e.target.value)}
+            style={{ width: '100%', background: '#0F0A1E', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', color: C.text, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.muted, marginBottom: 6 }}>
+            {role === 'founder' ? 'Startup Domain / Topic' : 'Interview Type'}
+          </label>
           <select className="interview-config-card form-select" value={interviewType} onChange={e => setInterviewType(e.target.value)}
             style={{ width: '100%', background: '#0F0A1E', border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', color: C.text, fontSize: 14 }}>
             <option value="">Select type...</option>
@@ -908,8 +953,8 @@ export default function InterviewPage() {
         {error && <div style={{ background: '#450A0A', border: '1px solid #7F1D1D', borderRadius: 10, padding: '10px 14px', color: '#F87171', fontSize: 13, marginBottom: 16 }}>{error}</div>}
         {rateWarning && <div style={{ background: '#451A03', border: '1px solid #92400E', borderRadius: 10, padding: '10px 14px', color: '#FBBF24', fontSize: 13, marginBottom: 16 }}>{rateWarning}</div>}
 
-        <button onClick={startInterview} disabled={!interviewType || loading}
-          style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 16, fontWeight: 600, cursor: !interviewType || loading ? 'not-allowed' : 'pointer', opacity: !interviewType ? 0.5 : 1, boxShadow: '0 8px 32px #7C3AED40' }}>
+        <button onClick={startInterview} disabled={!interviewType || !userName.trim() || loading}
+          style={{ width: '100%', background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 16, fontWeight: 600, cursor: (!interviewType || !userName.trim() || loading) ? 'not-allowed' : 'pointer', opacity: (!interviewType || !userName.trim()) ? 0.5 : 1, boxShadow: '0 8px 32px #7C3AED40' }}>
           {loading ? '⏳ Starting...' : '✨ Start Interview'}
         </button>
       </div>
@@ -993,12 +1038,18 @@ export default function InterviewPage() {
               {language.charAt(0).toUpperCase() + language.slice(1)}
             </span>
           </div>
-          <button
-            onClick={() => { window.speechSynthesis?.cancel(); resetAll() }}
-            style={{ background:'transparent', border:'none', color:C.hint, fontSize:13, cursor:'pointer', padding:'6px 0' }}
-          >
-            End Interview
-          </button>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            {/* Timer */}
+            <span style={{ fontFamily:'monospace', fontSize:13, color:C.muted, background:'rgba(255,255,255,0.05)', padding:'4px 10px', borderRadius:16 }}>
+              {String(Math.floor(elapsedSeconds/60)).padStart(2,'0')}:{String(elapsedSeconds%60).padStart(2,'0')}
+            </span>
+            <button
+              onClick={() => { window.speechSynthesis?.cancel(); resetAll() }}
+              style={{ background:'transparent', border:'none', color:C.hint, fontSize:13, cursor:'pointer', padding:'6px 0' }}
+            >
+              End Interview
+            </button>
+          </div>
         </div>
 
         {/* Mic denied */}
@@ -1030,6 +1081,23 @@ export default function InterviewPage() {
             </p>
           )}
         </div>
+
+        {/* Live Transcript Panel */}
+        {liveTranscript.length > 0 && (
+          <div style={{ width:'100%', maxWidth:600, maxHeight:140, overflowY:'auto', padding:'0 16px', boxSizing:'border-box', flexShrink:0 }}>
+            {liveTranscript.slice(-6).map((entry, i) => (
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:4, alignItems:'flex-start' }}>
+                <span style={{ fontSize:10, fontWeight:700, color: entry.speaker==='ai' ? C.accentL : '#34D399', flexShrink:0, paddingTop:2, minWidth:28 }}>
+                  {entry.speaker==='ai' ? 'AI' : 'You'}
+                </span>
+                <span style={{ fontSize:12, color: entry.speaker==='ai' ? C.text : C.muted, lineHeight:1.5, opacity: i < liveTranscript.slice(-6).length-1 ? 0.6 : 1 }}>
+                  {entry.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
 
         {/* Bottom — voice button (keep above flex content for reliable clicks) */}
         <div
@@ -1319,9 +1387,43 @@ export default function InterviewPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-          <button onClick={resetAll} style={{ flex: 1, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: '0 8px 32px #7C3AED40' }}>🔄 Try Again</button>
-          <button onClick={() => { resetAll(); setTimeout(() => setMode('chat'), 50) }} style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.accentL, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>💬 Switch to Chat</button>
+        <div style={{ marginTop: 20 }}>
+          {/* Download Transcript */}
+          {liveTranscript.length > 0 && (
+            <div style={{ ...RCARD, marginBottom: 12 }}>
+              <h3 style={{ marginBottom: 12, fontSize: 14 }}>📄 Full Interview Transcript</h3>
+              <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 12 }}>
+                {liveTranscript.map((entry, i) => (
+                  <div key={i} style={{ marginBottom: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 12, color: entry.speaker === 'ai' ? '#A78BFA' : '#34D399' }}>
+                      {entry.speaker === 'ai' ? 'Interviewer' : (userName || 'You')}:
+                    </span>
+                    <span style={{ fontSize: 13, marginLeft: 8, opacity: 0.85 }}>{entry.text}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  const text = liveTranscript.map(e =>
+                    `${e.speaker === 'ai' ? 'Interviewer' : (userName || 'You')}: ${e.text}`
+                  ).join('\n\n');
+                  const blob = new Blob([text], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = `interview-transcript-${Date.now()}.txt`;
+                  a.click(); URL.revokeObjectURL(url);
+                }}
+                style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid #7C3AED60', color: '#A78BFA', borderRadius: 10, padding: '10px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                ⬇️ Download Transcript (.txt)
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <button onClick={resetAll} style={{ flex: 1, background: 'linear-gradient(135deg,#7C3AED,#4F46E5)', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: '0 8px 32px #7C3AED40' }}>🔄 Start New Interview</button>
+            <button onClick={() => { resetAll(); setTimeout(() => setMode('chat'), 50) }} style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.accentL, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>💬 Switch to Chat</button>
+          </div>
         </div>
       </div>
     )

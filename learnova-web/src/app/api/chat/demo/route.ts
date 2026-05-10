@@ -1,4 +1,4 @@
-import { chatWithHistory } from '@/lib/openai';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
@@ -57,8 +57,14 @@ IMPORTANT: This is a demo interaction. Provide a helpful, concise response that 
 Keep responses under 300 words for the demo. Be engaging and show the value of Thinkior AI.`;
 
     // Call AI with the message
-    const messages = [{ role: 'user', content: message }];
-    const responseText = await chatWithHistory(messages, systemPrompt);
+    const aiResponse = await aiHandler({
+      prompt: message,
+      context: systemPrompt,
+      featureName: 'ai-chat-demo',
+      isSearchFeature: false,
+      taskComplexity: 'simple',
+    });
+    const responseText = aiResponse.result;
 
     const response = NextResponse.json({ 
       message: responseText, 

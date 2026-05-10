@@ -1,213 +1,286 @@
 'use client'
 
-import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { Check, X, Star } from 'lucide-react'
+import { Check, Lock, Star } from 'lucide-react'
+import { useRole } from '@/contexts/RoleContext'
 
-export default function PricingPage() {
-  const { user } = useAuth()
-  const [isYearly, setIsYearly] = useState(false)
-  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'
+type Audience = 'student' | 'founder'
 
-  const plans = [
-    {
-      name: 'Free',
-      emoji: '🆓',
-      price: '₹0',
-      period: '/month',
-      description: 'Try karo, trust karo',
-      tagline: 'Perfect for getting started',
-      highlighted: false,
-      current: true,
-      features: [
-        { text: '20 messages/day', included: true },
-        { text: '3 doubts/day (photo)', included: true },
-        { text: '3 tests/month', included: true },
-        { text: '3 career checks/month', included: true },
-        { text: 'Basic doubt explanations', included: true },
-        { text: '1 flashcard set (20 cards)', included: true },
-        { text: 'Basic career quiz', included: true },
-        { text: '1 validation/month', included: true },
-        { text: 'Full streak & gamification', included: true },
-        { text: 'Top 3 weaknesses only', included: true },
-        { text: '2 tone modes (Simple + Class)', included: true },
-        { text: 'English + Hinglish', included: true },
-        { text: 'Non-intrusive ads', included: true },
-        { text: 'Parent Dashboard', included: false },
-      ],
-      cta: 'Current Plan',
-    },
-    {
-      name: 'Student',
-      emoji: '🎓',
-      price: isYearly ? '₹699' : '₹79',
-      period: isYearly ? '/year' : '/month',
-      savings: isYearly ? 'Save 26%' : null,
-      description: 'Topper banne ka sabse sasta raasta',
-      tagline: 'Best for: Class 9-12 students, board exam prep',
-      highlighted: true,
-      current: false,
-      features: [
-        { text: '60 messages/day', included: true },
-        { text: '15 doubts/day (photo)', included: true },
-        { text: '20 tests/month + PYQ access', included: true },
-        { text: '15 career checks/month', included: true },
-        { text: 'Full doubt-solving access', included: true },
-        { text: 'Unlimited flashcard sets', included: true },
-        { text: 'Full career guide access', included: true },
-        { text: '3 validations/month', included: true },
-        { text: 'Parent Dashboard', included: true },
-        { text: 'Full streak + exclusive badges', included: true },
-        { text: 'Daily AI briefing', included: true },
-        { text: 'All 5 tone modes', included: true },
-        { text: 'English + Hindi + Hinglish', included: true },
-        { text: 'No ads', included: true },
-        { text: 'Full analytics + recommendations', included: true },
-      ],
-      cta: 'Upgrade to Student',
-    },
-    {
-      name: 'Competitive',
-      emoji: '🚀',
-      price: isYearly ? '₹1,299' : '₹149',
-      period: isYearly ? '/year' : '/month',
-      savings: isYearly ? 'Save 27%' : null,
-      description: 'JEE/NEET/UPSC ke liye designed',
-      tagline: 'Best for: JEE/NEET/UPSC aspirants',
-      highlighted: false,
-      current: false,
-      popular: true,
-      features: [
-        { text: 'Everything in Student, PLUS:', included: true, bold: true },
-        { text: '120 messages/day', included: true },
-        { text: 'Unlimited doubts (photo)', included: true },
-        { text: 'Unlimited tests + 10yr PYQ bank', included: true },
-        { text: 'Unlimited career checks', included: true },
-        { text: 'JEE/NEET/UPSC test patterns', included: true },
-        { text: 'Detailed analytics (percentile, time)', included: true },
-        { text: 'AI-generated mock test PDFs', included: true },
-        { text: 'Advanced exam analytics', included: true },
-        { text: 'AI-generated chapter summaries', included: true },
-        { text: 'Study Buddy System', included: true },
-        { text: '5 validations/month', included: true },
-        { text: 'Priority support (24hr)', included: true },
-      ],
-      cta: 'Upgrade to Competitive',
-    },
-    {
-      name: 'Pro Builder',
-      emoji: '💼',
-      price: isYearly ? '₹1,799' : '₹199',
-      period: isYearly ? '/year' : '/month',
-      savings: isYearly ? 'Save 25%' : null,
-      description: 'Students + Entrepreneurs',
-      tagline: 'Best for: College students with startup dreams',
-      highlighted: false,
-      current: false,
-      features: [
-        { text: 'Everything in Competitive, PLUS:', included: true, bold: true },
-        { text: '200 messages/day', included: true },
-        { text: 'Unlimited validations', included: true },
-        { text: 'Unlimited founder research', included: true },
-        { text: 'Business Plan Generator', included: true },
-        { text: 'GST & Startup India guidance', included: true },
-        { text: 'LinkedIn/Instagram content calendar', included: true },
-        { text: 'Pitch Deck outline generator', included: true },
-        { text: 'Business Expert mode', included: true },
-        { text: 'Export everything as PDF', included: true },
-        { text: 'Priority support (12hr)', included: true },
-        { text: 'Early access to new features', included: true },
-      ],
-      cta: 'Upgrade to Pro Builder',
-    },
-  ]
+type Feature = {
+  name: string
+  limit?: string
+  included?: boolean
+  locked?: boolean
+}
 
-  const specialOffers = [
-    {
-      emoji: '📦',
-      name: 'Family Pack',
-      description: '₹249/month for 2 siblings (both get Student Plan — saves ₹79/month)',
-    },
-    {
-      emoji: '🏫',
-      name: 'School/Coaching Plan',
-      description: '₹999/month for 20 students (₹50/student — best value)',
-    },
-    {
-      emoji: '🎁',
-      name: 'Referral Bonus',
-      description: 'Refer 3 friends who subscribe → Get 1 month free',
-    },
-    {
-      emoji: '📱',
-      name: 'Free Trial',
-      description: 'First 7 Days Free on any paid plan — no credit card required',
-    },
-  ]
+type Plan = {
+  name: string
+  price: string
+  tagline: string
+  cta: string
+  featured?: boolean
+  features: Feature[]
+}
+
+const studentPlans: Plan[] = [
+  {
+    name: 'Free',
+    price: '₹0',
+    tagline: 'Start learning with Thinkior AI - no card needed.',
+    cta: 'Get started free',
+    features: [
+      { name: 'AI chat', limit: '10/day' },
+      { name: 'Doubt solver', limit: '3/day' },
+      { name: 'Practice test', limit: '1/day' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+      { name: 'Edu finder', locked: true },
+      { name: 'Mock interview', locked: true },
+      { name: 'Career guide', locked: true },
+    ],
+  },
+  {
+    name: 'Pro',
+    price: '₹299',
+    tagline: 'More power for students who study seriously every day.',
+    cta: 'Upgrade to Pro',
+    features: [
+      { name: 'AI chat', limit: '20/day' },
+      { name: 'Doubt solver', limit: '5/day' },
+      { name: 'Practice test', limit: '10/day' },
+      { name: 'Edu finder', limit: '5/day' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+      { name: 'Mock interview', locked: true },
+      { name: 'Career guide', locked: true },
+    ],
+  },
+  {
+    name: 'Max',
+    price: '₹599',
+    tagline: 'Full Thinkior AI - interviews, career guide & beyond.',
+    cta: 'Upgrade to Max',
+    featured: true,
+    features: [
+      { name: 'AI chat', limit: '20/day' },
+      { name: 'Doubt solver', limit: '10/day' },
+      { name: 'Practice test', limit: '20/day' },
+      { name: 'Edu finder', limit: '10/day' },
+      { name: 'Mock interview with voice', limit: '5/day' },
+      { name: 'Career guide', limit: '5/day' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+    ],
+  },
+]
+
+const founderPlans: Plan[] = [
+  {
+    name: 'Starter',
+    price: '₹0',
+    tagline: 'Explore Thinkior AI before you commit a rupee.',
+    cta: 'Get started free',
+    features: [
+      { name: 'AI chat', limit: '10/day' },
+      { name: 'Business ideas', limit: 'one-time' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+      { name: 'Business validator', locked: true },
+      { name: 'Competitor research', locked: true },
+      { name: 'Mock interview', locked: true },
+    ],
+  },
+  {
+    name: 'Builder',
+    price: '₹299',
+    tagline: 'Validate ideas & research your market every day.',
+    cta: 'Upgrade to Builder',
+    features: [
+      { name: 'AI chat', limit: '20/day' },
+      { name: 'Business ideas', limit: '10/day' },
+      { name: 'Business validator', limit: '10/day' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+      { name: 'Competitor research', locked: true },
+      { name: 'Mock interview', locked: true },
+    ],
+  },
+  {
+    name: 'Founder Pro',
+    price: '₹599',
+    tagline: 'Full stack for founders who move fast & pitch hard.',
+    cta: 'Upgrade to Founder Pro',
+    featured: true,
+    features: [
+      { name: 'AI chat', limit: '20/day' },
+      { name: 'Business ideas', limit: '10/day' },
+      { name: 'Business validator', limit: '10/day' },
+      { name: 'Competitor research', limit: '5/day' },
+      { name: 'Mock interview with voice', limit: '5/day' },
+      { name: 'Full usage dashboard', included: true },
+      { name: 'Priority email support', included: true },
+    ],
+  },
+]
+
+const pricingCopy = {
+  student: {
+    title: 'Thinkior AI — Student Plans',
+    subtitle: 'Built for students. Fair daily limits. No surprises.',
+  },
+  founder: {
+    title: 'Thinkior AI — Founder Plans',
+    subtitle: 'Built for founders. Validate faster. Build smarter.',
+  },
+}
+
+function LimitBadge({ children, muted = false }: { children: string; muted?: boolean }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+      style={{
+        background: muted ? '#1e2130' : '#1E1B4B',
+        border: muted ? '1px solid #374151' : '1px solid #4338CA',
+        color: muted ? '#9CA3AF' : '#A78BFA',
+      }}
+    >
+      {children}
+    </span>
+  )
+}
+
+function FeatureRow({ feature }: { feature: Feature }) {
+  if (feature.locked) {
+    return (
+      <li className="flex items-center justify-between gap-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5" style={{ color: '#9CA3AF' }}>
+          <Lock size={16} className="shrink-0" color="#6B7280" />
+          <span className="text-sm" style={{ color: '#9CA3AF' }}>{feature.name}</span>
+        </div>
+        <LimitBadge muted>Locked</LimitBadge>
+      </li>
+    )
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 flex items-center justify-center min-h-[calc(100vh-8rem)]">
-      <div className="text-center">
-        {/* Animated Icon */}
-        <div className="mb-8 relative">
-          <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-purple-600 to-purple-800 animate-pulse">
-            <span className="text-6xl">🚀</span>
-          </div>
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#1D9E75] rounded-full animate-bounce" />
-          <div className="absolute -bottom-1 -left-3 w-4 h-4 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-        </div>
+    <li className="flex items-center justify-between gap-3 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Check size={16} className="shrink-0" color="#4ADE80" />
+        <span className="text-sm" style={{ color: '#E2E8F0' }}>{feature.name}</span>
+      </div>
+      <LimitBadge>{feature.limit || 'Included'}</LimitBadge>
+    </li>
+  )
+}
 
-        {/* Coming Soon Text */}
-        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-          Coming Soon
-        </h1>
-
-        {/* Building Animation */}
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-[#13151e] border-2 border-[#2a2d3a]">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" />
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
-            </div>
-            <span className="text-lg font-semibold" style={{ color: '#e2e8f0' }}>
-              Salman Is Building This ....
-            </span>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-lg max-w-2xl mx-auto mb-8" style={{ color: '#9ca3af' }}>
-          We're working hard to bring you amazing pricing plans that will blow your mind.
-          Something incredible is coming your way! 🎉
-        </p>
-
-        {/* Progress Bar */}
-        <div className="max-w-md mx-auto mb-8">
-          <div className="h-2 bg-[#13151e] rounded-full overflow-hidden border border-[#2a2d3a]">
-            <div 
-              className="h-full bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 rounded-full animate-pulse"
-              style={{ width: '65%' }}
-            />
-          </div>
-          <p className="text-sm mt-2" style={{ color: '#6b7280' }}>
-            65% Complete
-          </p>
-        </div>
-
-        {/* Notify Button */}
-        <button
-          className="px-8 py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 transition-all hover:shadow-xl hover:scale-105 transform"
-          onClick={() => alert('We\'ll notify you when it\'s ready! 🚀')}
+function PlanCard({ plan }: { plan: Plan }) {
+  return (
+    <article
+      className="relative flex h-full flex-col rounded-2xl p-5 transition-all"
+      style={{
+        background: plan.featured
+          ? 'linear-gradient(135deg, rgba(22, 13, 46, 0.96), rgba(30, 16, 64, 0.98))'
+          : '#13151e',
+        border: plan.featured ? '2px solid #7C3AED' : '1px solid #2a2d3a',
+        boxShadow: plan.featured ? '0 0 36px rgba(124, 58, 237, 0.28)' : '0 0 24px rgba(0, 0, 0, 0.18)',
+      }}
+    >
+      {plan.featured && (
+        <div
+          className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+          style={{
+            background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+            color: '#FFFFFF',
+            boxShadow: '0 4px 16px #7C3AED35',
+          }}
         >
-          🔔 Notify Me When It's Ready
-        </button>
+          <Star size={13} fill="currentColor" />
+          Best value
+        </div>
+      )}
 
-        {/* Fun Message */}
-        <p className="text-sm mt-8" style={{ color: '#6b7280' }}>
-          💡 Pro tip: Great things take time. Stay tuned!
+      <div className="mb-5 pr-24">
+        <h2 className="text-2xl font-bold" style={{ color: '#F5F3FF' }}>{plan.name}</h2>
+        <p className="mt-2 min-h-[44px] text-sm leading-6" style={{ color: '#C4B5FD' }}>
+          {plan.tagline}
         </p>
       </div>
+
+      <div className="mb-5 flex items-end gap-1">
+        <span className="text-4xl font-bold leading-none" style={{ color: '#F5F3FF' }}>
+          {plan.price}
+        </span>
+        <span className="pb-1 text-sm" style={{ color: '#9CA3AF' }}>/mo</span>
+      </div>
+
+      <ul className="mb-6 flex-1 divide-y" style={{ borderColor: '#2a2d3a' }}>
+        {plan.features.map((feature) => (
+          <FeatureRow key={feature.name} feature={feature} />
+        ))}
+      </ul>
+
+      <button
+        className="mt-auto w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all hover:brightness-110"
+        style={{
+          background: plan.featured ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#1E1040',
+          border: plan.featured ? '1px solid #7C3AED' : '1px solid #2D1B69',
+          color: '#FFFFFF',
+          boxShadow: plan.featured ? '0 4px 20px #7C3AED40' : 'none',
+        }}
+      >
+        {plan.cta}
+      </button>
+    </article>
+  )
+}
+
+export default function PricingPage() {
+  const { role, roleLoading } = useRole()
+  const audience: Audience = role === 'founder' ? 'founder' : 'student'
+  const plans = audience === 'student' ? studentPlans : founderPlans
+  const copy = pricingCopy[audience]
+
+  if (roleLoading) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
+        <div
+          className="h-40 rounded-2xl"
+          style={{
+            background: '#13151e',
+            border: '1px solid #2a2d3a',
+            boxShadow: '0 0 24px rgba(0, 0, 0, 0.18)',
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
+      <header className="mb-7">
+        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px]" style={{ color: '#A78BFA' }}>
+              Thinkior AI Pricing
+            </p>
+            <h1 className="text-3xl font-bold md:text-4xl" style={{ color: '#F5F3FF' }}>
+              {copy.title}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 md:text-base" style={{ color: '#C4B5FD' }}>
+              {copy.subtitle}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        {plans.map((plan) => (
+          <PlanCard key={plan.name} plan={plan} />
+        ))}
+      </section>
+
+      <p className="mt-5 text-center text-xs" style={{ color: '#9CA3AF' }}>
+        All limits are strictly per day and reset at midnight IST.
+      </p>
     </div>
   )
 }

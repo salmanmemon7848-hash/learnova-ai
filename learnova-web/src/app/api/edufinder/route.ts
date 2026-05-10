@@ -177,7 +177,12 @@ Respond ONLY in this exact JSON â€” no markdown, no extra text:
     const rawContent = await getAIResponse(
       [{ role: 'user', content: 'Generate EduFinder recommendations in the requested JSON format.' }],
       systemPrompt,
-      { maxTokens: 3000, feature: 'edufinder' }
+      {
+        maxTokens: 3000,
+        feature: 'edufinder',
+        isSearchFeature: true,
+        taskComplexity: 'complex',
+      }
     );
 
     if (!rawContent) {

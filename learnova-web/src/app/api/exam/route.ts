@@ -158,7 +158,13 @@ Do not include anything outside the JSON object in your response.`
         { role: 'user', content: userPrompt },
       ],
       systemPrompt,
-      { temperature: 0.7, maxTokens: 6000, feature: 'exam-generate' }
+      {
+        temperature: 0.7,
+        maxTokens: 6000,
+        feature: 'exam-generate',
+        isSearchFeature: false,
+        taskComplexity: 'simple',
+      }
     )
     console.log('[EXAM API] Raw AI response:', rawText)
 

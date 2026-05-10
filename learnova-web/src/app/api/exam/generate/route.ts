@@ -1,4 +1,4 @@
-import { generateText } from '@/lib/openai';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -88,7 +88,13 @@ Rules:
 - Never repeat questions
 - Return ONLY the JSON object, nothing else`;
 
-    const text = await generateText(prompt);
+    const aiResponse = await aiHandler({
+      prompt,
+      featureName: 'practice-tests',
+      isSearchFeature: false,
+      taskComplexity: 'simple',
+    });
+    const text = aiResponse.result;
 
     // Try multiple ways to extract JSON
     let questions = null;
@@ -147,7 +153,13 @@ Rules:
       // Retry once with simpler prompt
       const retryPrompt = `Generate ${count} MCQ questions about ${subject} for ${contextLine}. ${chapter ? `Chapter: ${chapter}.` : ''}
 Return ONLY JSON array: [{"question":"...","options":["A","B","C","D"],"correctAnswer":0,"explanation":"..."}]`;
-      const retryText = await generateText(retryPrompt);
+      const retryResponse = await aiHandler({
+        prompt: retryPrompt,
+        featureName: 'practice-tests-retry',
+        isSearchFeature: false,
+        taskComplexity: 'simple',
+      });
+      const retryText = retryResponse.result;
       const retryMatch = retryText.match(/\[[\s\S]*\]/);
       if (retryMatch) questions = JSON.parse(retryMatch[0]);
     }

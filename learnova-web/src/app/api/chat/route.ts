@@ -1,4 +1,4 @@
-import { chatWithHistory } from '@/lib/openai';
+import { aiHandler, aiVisionHandler, messagesToPrompt, type AIChatMessage } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
@@ -13,40 +13,43 @@ import {
   EDUFINDER_KNOWLEDGE,
   getLanguageInstruction,
 } from '@/lib/thinkiorKnowledge';
-import {
-  sanitizeJsonPostBody,
-  sanitizeMessages,
-  sanitizeString,
-  validateLanguage,
-} from '@/lib/validation';
+import { sanitizeMessages, sanitizeString, validateLanguage } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
-    let rawBody: unknown = {};
-    try {
-      rawBody = await req.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    const contentType = req.headers.get('content-type') || '';
+    const isMultipart = contentType.includes('multipart/form-data');
+    
+    let body: any = {};
+    let imageFile: File | null = null;
+
+    if (isMultipart) {
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch {
+        return NextResponse.json({ error: 'Failed to read form data' }, { status: 400 });
+      }
+      body.message = formData.get('message') || '';
+      body.messages = formData.get('messages') ? JSON.parse(formData.get('messages') as string) : [];
+      body.mode = formData.get('mode') || '';
+      body.toneMode = formData.get('toneMode') || '';
+      body.language = formData.get('language') || '';
+      body.depthLevel = formData.get('depthLevel') || '';
+      body.conversationId = formData.get('conversationId') || '';
+      body.persona = formData.get('persona') || '';
+      imageFile = formData.get('image') as File | null;
+    } else {
+      try {
+        body = await req.json();
+      } catch {
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
     }
 
-    const parsed = sanitizeJsonPostBody(rawBody, [
-      'message',
-      'messages',
-      'mode',
-      'toneMode',
-      'language',
-      'depthLevel',
-      'conversationId',
-      'persona',
-    ]);
-    if (!parsed.ok) return parsed.response;
-
-    const body = parsed.body;
-
     // SECURITY: Sanitize user input to prevent XSS and injection attacks
-    // OWASP Reference: A03:2021 Injection
     const message = sanitizeString(body.message, 20000);
-    let messagesArray = sanitizeMessages(body.messages);
+    let messagesArray = sanitizeMessages(body.messages || []);
     const toneMode = sanitizeString(body.toneMode, 64);
     const mode = sanitizeString(body.mode, 64);
     const language = validateLanguage(body.language);
@@ -60,8 +63,8 @@ export async function POST(req: NextRequest) {
     } else if (message) {
       messagesArray = [{ role: 'user', content: message }];
       latestUserMessage = message;
-    } else {
-      return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
+    } else if (!imageFile) {
+      return NextResponse.json({ error: 'No messages or image provided' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     // Intelligent web search via getSearchContext
     const searchContext = await getSearchContext(
-      latestUserMessage,
+      latestUserMessage || (imageFile ? 'Please analyze this image' : ''),
       'chat'
     );
     const usedWebSearch = !!searchContext;
@@ -95,7 +98,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Language detection from actual message content
-    const languageInstruction = getLanguageInstruction(latestUserMessage);
+    const languageInstruction = getLanguageInstruction(latestUserMessage || 'english');
 
     // Add persona-specific system prompt
     let systemPrompt = basePrompt;
@@ -128,18 +131,53 @@ ${basePrompt}`;
 
     // Append live search context + usage instructions to the enriched system prompt
     if (searchContext) {
-      systemPrompt = `${systemPrompt}
-
-${searchContext}
-
-${searchUsageInstruction}`;
+      systemPrompt = `${systemPrompt}\n\n${searchContext}\n\n${searchUsageInstruction}`;
     } else {
-      systemPrompt = `${systemPrompt}
-
-${searchUsageInstruction}`;
+      systemPrompt = `${systemPrompt}\n\n${searchUsageInstruction}`;
     }
 
-    const responseText = await chatWithHistory(messagesArray, systemPrompt);
+    let responseText = '';
+
+    if (imageFile) {
+      const maxImageSize = 10 * 1024 * 1024;
+      if (imageFile.size > maxImageSize) {
+        return NextResponse.json({ error: 'Please upload an image under 10MB.' }, { status: 413 });
+      }
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+      if (!allowedTypes.includes(imageFile.type)) {
+        return NextResponse.json({ error: 'Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.' }, { status: 400 });
+      }
+
+      const imageBytes = await imageFile.arrayBuffer();
+      const base64Image = Buffer.from(imageBytes).toString('base64');
+      
+      const visionPrompt = `${systemPrompt}\n\nUser request: ${latestUserMessage || 'Please analyze this image and help me understand it.'}`;
+      
+      const visionResponse = await aiVisionHandler({
+        prompt: visionPrompt,
+        imageBase64: base64Image,
+        mimeType: imageFile.type,
+        featureName: 'chat-image',
+        taskComplexity: 'complex',
+      });
+      responseText = visionResponse.result;
+    } else {
+      const aiMessages: AIChatMessage[] = messagesArray
+        .filter((message) => message.role === 'user' || message.role === 'assistant')
+        .map((message) => ({
+          role: message.role === 'assistant' ? 'assistant' : 'user',
+          content: message.content,
+        }));
+      const aiResponse = await aiHandler({
+        prompt: messagesToPrompt(aiMessages),
+        context: systemPrompt,
+        featureName: 'ai-chat',
+        isSearchFeature: false,
+        taskComplexity: 'simple',
+      });
+      responseText = aiResponse.result;
+    }
+
     await logActivity(
       supabase,
       session.user.id,
@@ -147,9 +185,7 @@ ${searchUsageInstruction}`;
       `Chat: ${latestUserMessage.slice(0, 60)}${latestUserMessage.length > 60 ? '...' : ''}`,
       { persona: persona || 'default' }
     );
-    console.log('[AIChat] Fixed: chat sessions now appear in role-filtered dashboard activity');
 
-    // Return response with metadata
     return NextResponse.json({
       message: responseText, 
       role: 'assistant',
@@ -159,7 +195,7 @@ ${searchUsageInstruction}`;
       }
     }, { headers: responseHeaders });
   } catch (error: any) {
-    console.error('âŒ Chat Error:', error?.message || error);
+    console.error('❌ Chat Error:', error?.message || error);
     return NextResponse.json({ error: 'Failed to process your message. Please try again.' }, { status: 500 });
   }
 }

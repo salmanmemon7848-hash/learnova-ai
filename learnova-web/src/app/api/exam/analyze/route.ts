@@ -59,7 +59,13 @@ Respond ONLY in this JSON — no markdown, no extra text:
     const rawText = await getAIResponse(
       [{ role: 'user', content: 'Analyze the provided test data and return the required JSON.' }],
       systemPrompt,
-      { temperature: 0.3, maxTokens: 3000, feature: 'exam-analyze' }
+      {
+        temperature: 0.3,
+        maxTokens: 3000,
+        feature: 'exam-analyze',
+        isSearchFeature: false,
+        taskComplexity: 'simple',
+      }
     )
 
     let cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()

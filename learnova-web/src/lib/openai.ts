@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
-import { GROQ_PRIMARY_MODEL, groqChatCompletion } from './groqCompletion';
-import { getAIResponse } from './aiRouter';
+import { GROQ_PRIMARY_MODEL } from './groqCompletion';
+import { aiHandler, messagesToPrompt } from './ai/aiHandler';
 
 export const DEFAULT_MODEL = GROQ_PRIMARY_MODEL;
 
@@ -14,7 +14,7 @@ function getGroq(): Groq {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
     throw new Error(
-      'GROQ_API_KEY is not configured. Add it under Vercel → Project → Settings → Environment Variables, then redeploy.'
+      'GROQ_API_KEY is not configured. Add it under Vercel Project Settings Environment Variables, then redeploy.'
     );
   }
   if (!groqSingleton) {
@@ -23,7 +23,7 @@ function getGroq(): Groq {
   return groqSingleton;
 }
 
-/** Lazy client so API routes can load on Vercel even if env is missing until the handler runs. */
+/** Lazy client retained for non-text Groq APIs such as Whisper transcription. */
 export const groqClient = new Proxy({} as Groq, {
   get(_target, prop) {
     const client = getGroq();
@@ -40,37 +40,15 @@ export function isGroqConfigured(): boolean {
 }
 
 export async function generateText(prompt: string, systemPrompt?: string): Promise<string> {
-  const messages: any[] = [];
-  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-  messages.push({ role: 'user', content: prompt });
+  const response = await aiHandler({
+    prompt,
+    context: systemPrompt,
+    featureName: 'generateText',
+    isSearchFeature: false,
+    taskComplexity: 'simple',
+  });
 
-  try {
-    const response = await groqChatCompletion(getGroq(), {
-      model: DEFAULT_MODEL,
-      messages,
-      max_tokens: 2048,
-      temperature: 0.7,
-    });
-
-    return response.choices[0]?.message?.content || '';
-  } catch (error: any) {
-    console.error('Groq API error (generateText):', error?.message || error);
-
-    if (error?.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again.');
-    }
-    if (typeof error?.message === 'string' && error.message.includes('GROQ_API_KEY')) {
-      throw error;
-    }
-    const status = error?.status ?? error?.response?.status;
-    if (status === 401 || status === 403) {
-      throw new Error(
-        'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.'
-      );
-    }
-
-    throw new Error('AI is temporarily unavailable. Please try again in a moment.');
-  }
+  return response.result;
 }
 
 export async function chatWithHistory(
@@ -80,44 +58,26 @@ export async function chatWithHistory(
   temperatureOverride?: number,
   maxTokensOverride?: number
 ): Promise<string> {
-  try {
-    console.log('[chatWithHistory] Called — messages:', messages.length);
+  void temperatureOverride;
+  void maxTokensOverride;
+  console.log('[chatWithHistory] Called - messages:', messages.length);
 
-    const filteredMessages = messages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content,
-      })) as { role: 'user' | 'assistant'; content: string }[];
+  const filteredMessages = messages
+    .filter((message) => message.role === 'user' || message.role === 'assistant')
+    .map((message) => ({
+      role: message.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+      content: message.content,
+    }));
 
-    return await getAIResponse(
-      filteredMessages as any,
-      systemPrompt || '',
-      {
-        maxTokens: maxTokensOverride ?? 2048,
-        temperature: temperatureOverride ?? 0.7,
-        timeoutMs: 12000,
-        feature: modelOverride ? `chatWithHistory:${modelOverride}` : 'chatWithHistory',
-      }
-    );
-  } catch (error: any) {
-    console.error('[chatWithHistory] Both providers failed:', error?.message || error);
+  const response = await aiHandler({
+    prompt: messagesToPrompt(filteredMessages),
+    context: systemPrompt || '',
+    featureName: modelOverride ? `chatWithHistory:${modelOverride}` : 'chatWithHistory',
+    isSearchFeature: false,
+    taskComplexity: 'simple',
+  });
 
-    if (error?.name === 'AbortError') {
-      throw new Error('Request timed out. Please try again.');
-    }
-    if (typeof error?.message === 'string' && error.message.includes('GROQ_API_KEY')) {
-      throw error;
-    }
-    const status = error?.status ?? error?.response?.status;
-    if (status === 401 || status === 403) {
-      throw new Error(
-        'AI API key is missing or invalid. Check GROQ_API_KEY in your deployment environment.'
-      );
-    }
-
-    throw new Error('AI is temporarily unavailable. Please try again in a moment.');
-  }
+  return response.result;
 }
 
 export async function transcribeAudio(audioFile: File, language?: string, prompt?: string): Promise<string> {
@@ -130,8 +90,9 @@ export async function transcribeAudio(audioFile: File, language?: string, prompt
       response_format: 'json',
     });
     return transcription.text;
-  } catch (error: any) {
-    console.error('Groq Whisper error:', error?.message || error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Groq Whisper error:', message);
     throw new Error('Speech recognition failed. Please try again or type your answer.');
   }
 }

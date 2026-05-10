@@ -1,25 +1,20 @@
-/**
- * __PROTECT_API_THINKIOR__ — Unified Thinkior AI endpoint
- *
- * Accepts: { feature: string, messages: ChatMessage[] }
- * Returns: { reply: string }
- *
- * feature must be one of:
- *   doubt_solver | practice_test | edufinder |
- *   mock_interview | pitch_deck | business_idea
- *
- * Passes the full conversation history so multi-turn features
- * (Mock Interview, Business Idea Flow, EduFinder) retain memory.
- */
-
 import { SYSTEM_PROMPTS } from '@/lib/systemPrompts';
 import { createClient } from '@/lib/supabase/server';
+import { aiHandler, messagesToPrompt, type AIChatMessage } from '@/lib/ai/aiHandler';
 import { NextRequest, NextResponse } from 'next/server';
 import { sanitizeJsonPostBody, sanitizeMessages, sanitizeString } from '@/lib/validation';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+function isSearchFeature(feature: string): boolean {
+  return feature === 'edufinder';
+}
+
+function taskComplexity(feature: string): 'simple' | 'complex' {
+  return feature === 'doubt_solver' || feature === 'practice_test' ? 'simple' : 'complex';
 }
 
 export async function POST(req: NextRequest) {
@@ -34,24 +29,19 @@ export async function POST(req: NextRequest) {
     const parsed = sanitizeJsonPostBody(rawBody, ['feature', 'messages']);
     if (!parsed.ok) return parsed.response;
 
-    // SECURITY: Sanitize user input to prevent XSS and injection attacks
-    // OWASP Reference: A03:2021 Injection
     const feature = sanitizeString(parsed.body.feature, 64);
     const messagesSanitized = sanitizeMessages(parsed.body.messages)
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
+      .filter((message) => message.role === 'user' || message.role === 'assistant')
+      .map((message) => ({
+        role: message.role as 'user' | 'assistant',
+        content: message.content,
       })) as ChatMessage[];
 
-    // ── Auth guard ────────────────────────────────────────────────────────────
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const messages = messagesSanitized;
 
     if (!feature || !SYSTEM_PROMPTS[feature]) {
       return NextResponse.json(
@@ -62,61 +52,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    if (messagesSanitized.length === 0) {
       return NextResponse.json(
         { error: 'messages must be a non-empty array of { role, content } objects.' },
         { status: 400 }
       );
     }
 
-    const systemPrompt = SYSTEM_PROMPTS[feature];
+    const aiMessages: AIChatMessage[] = messagesSanitized.map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
 
-    // SECURITY: Server-only Anthropic key — never expose to the client.
-    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
-    if (!anthropicKey) {
-      return NextResponse.json({ error: 'AI service is not configured.' }, { status: 503 });
-    }
-
-    // ── Call Anthropic (Claude) ───────────────────────────────────────────────
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        system: systemPrompt,
-        messages,
-      }),
+    const response = await aiHandler({
+      prompt: messagesToPrompt(aiMessages),
+      context: SYSTEM_PROMPTS[feature],
+      featureName: feature,
+      isSearchFeature: isSearchFeature(feature),
+      taskComplexity: taskComplexity(feature),
     });
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error('[__PROTECT_API_THINKIOR__] Anthropic error:', errText);
-      return NextResponse.json(
-        { error: 'AI service temporarily unavailable. Please try again.' },
-        { status: 502 }
-      );
-    }
-
-    const data = await anthropicRes.json();
-    const reply: string = data?.content?.[0]?.text ?? '';
-
-    if (!reply) {
-      return NextResponse.json(
-        { error: 'Empty response from AI.' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ reply });
-  } catch (error: any) {
-    console.error('[__PROTECT_API_THINKIOR__] Unexpected error:', error?.message ?? error);
+    return NextResponse.json({ reply: response.result });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[__PROTECT_API_THINKIOR__] Unexpected error:', message);
     return NextResponse.json(
-      { error: 'Server error. Please try again.' },
+      { error: 'Our AI is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }
     );
   }

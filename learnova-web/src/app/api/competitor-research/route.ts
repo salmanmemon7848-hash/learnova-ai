@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { chatWithFallback } from '@/lib/aiFallback';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { searchWebMultiple } from '@/lib/searxng';
 import { checkAndIncrementUsage, buildBlockedResponse } from '@/lib/rateLimit';
 import { sanitizeString, sanitizeEnum, stripUnexpectedFields, checkBodySize } from '@/lib/validation';
@@ -291,22 +291,22 @@ Return this exact JSON structure (no markdown fences):
 Include exactly 10 rows in comparisonTable for: Pricing, Mobile App, AI Features, Customer Support, Free Plan, API Access, Language Support, India Focus, User Experience, Content Quality. Include at least 4 marketGaps and 4 nextSteps.`;
 
     // ── Call AI ────────────────────────────────────────────────────────────
-    const aiResult = await chatWithFallback(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
-      { maxTokens: 4000, temperature: 0.3, feature: 'competitor-research' }
-    );
+    const aiResult = await aiHandler({
+      prompt: userMessage,
+      context: systemPrompt,
+      featureName: 'competitor-research',
+      isSearchFeature: true,
+      taskComplexity: 'complex',
+    });
 
-    if (!aiResult.text) {
+    if (!aiResult.result) {
       throw new Error('Research failed to return text.');
     }
 
     // ── Parse AI Response ─────────────────────────────────────────────────
     let researchData: any = null;
     try {
-      const jsonMatch = aiResult.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiResult.result.match(/\{[\s\S]*\}/);
       if (jsonMatch) researchData = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       console.error('[CompetitorResearch] JSON parse failed:', parseError);
@@ -323,12 +323,11 @@ Include exactly 10 rows in comparisonTable for: Pricing, Mobile App, AI Features
         status: 'completed',
         requestData: body,
         result: researchData,
-        provider: aiResult.provider,
         competitorsFound: (researchData.indianCompetitors?.length || 0) + (researchData.globalCompetitors?.length || 0),
       }
     }).eq('id', jobRecord.id);
 
-    return { researchData, provider: aiResult.provider };
+    return { researchData };
   } catch (err: any) {
     console.error('[CompetitorResearch] Job failed:', err.message);
     await supabase.from('activity_log').update({
@@ -349,7 +348,6 @@ Include exactly 10 rows in comparisonTable for: Pricing, Mobile App, AI Features
     return NextResponse.json({
       success: true,
       data: result.researchData,
-      provider: result.provider,
       rateLimitInfo: {
         remaining: rateLimitResult.remaining,
         isWarning: rateLimitResult.isWarning,

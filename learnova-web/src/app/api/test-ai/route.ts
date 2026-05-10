@@ -1,12 +1,21 @@
-import { generateText } from '@/lib/openai';
+import { aiHandler } from '@/lib/ai/aiHandler';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  // SECURITY: Diagnostic endpoint — fixed prompt only; consider restricting by deployment policy.
+  // SECURITY: Diagnostic endpoint - fixed prompt only; consider restricting by deployment policy.
   try {
-    const text = await generateText('Say exactly: Thinkior AI is now powered by Groq!');
-    return NextResponse.json({ success: true, message: text });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const response = await aiHandler({
+      prompt: 'Say exactly: Thinkior AI fallback chain is working.',
+      featureName: 'test-ai',
+      isSearchFeature: false,
+      taskComplexity: 'simple',
+    });
+
+    return NextResponse.json({ success: true, message: response.result });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Our AI is temporarily unavailable. Please try again in a moment.' },
+      { status: 500 }
+    );
   }
 }

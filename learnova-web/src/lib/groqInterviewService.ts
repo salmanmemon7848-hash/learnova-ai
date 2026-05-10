@@ -1,12 +1,5 @@
-import Groq from 'groq-sdk';
 import { getConfig, type GroqLanguageConfig } from './languageConfig';
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-  dangerouslyAllowBrowser: false,
-});
-
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+import { aiHandler } from './ai/aiHandler';
 
 const HINGLISH_INSTRUCTION = `
 LANGUAGE SELECTED: Hinglish
@@ -216,17 +209,15 @@ Difficulty progression:
 - Last ${Math.floor(numberOfQuestions * 0.3)} questions: hard/advanced
 `.trim();
 
-  const response = await groq.chat.completions.create({
-    model: GROQ_MODEL,
-    temperature: 0.3,
-    max_tokens: 4096,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
+  const response = await aiHandler({
+    prompt: userPrompt,
+    context: systemPrompt,
+    featureName: 'mock-interview-question-generation',
+    isSearchFeature: false,
+    taskComplexity: 'complex',
   });
 
-  const rawText = response.choices[0]?.message?.content || '';
+  const rawText = response.result;
   return parseAndValidateQuestions(rawText, normalizedLanguage, langConfig);
 };
 
