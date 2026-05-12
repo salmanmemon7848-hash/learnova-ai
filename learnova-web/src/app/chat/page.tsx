@@ -1,0 +1,810 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
+import { usePowerfulMode, type PowerfulModeSources as PowerfulModeSourcesType } from '@/hooks/usePowerfulMode';
+import {
+  PowerfulModeBadge,
+  PowerfulModeProgress,
+  PowerfulModeSources,
+  PowerfulModeToggle,
+} from '@/components/PowerfulModeToggle';
+import { MessageActions } from '@/components/chat/MessageActions';
+import { ChatItem } from '@/components/chat/ChatItem';
+
+interface ChatSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  isPowerful?: boolean;
+  sources?: PowerfulModeSourcesType | null;
+}
+
+const getErrorMessage = (error: unknown) => (
+  error instanceof Error ? error.message : 'Unknown error'
+);
+
+function ChatSidebar({
+  sessions,
+  activeSessionId,
+  onSelectSession,
+  onNewChat,
+  onShareSession,
+  onRenameSession,
+  onDeleteSession,
+  user,
+}: {
+  sessions: ChatSession[];
+  activeSessionId: string | null;
+  onSelectSession: (id: string) => void;
+  onNewChat: () => void;
+  onShareSession: (id: string) => void;
+  onRenameSession: (id: string) => void;
+  onDeleteSession: (id: string) => void;
+  user: User;
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  const grouped = useMemo(() => {
+    const now = new Date();
+    const today = now.toDateString();
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(now.getDate() - 1);
+    const yesterday = yesterdayDate.toDateString();
+
+    return sessions.reduce<Record<string, ChatSession[]>>((acc, session) => {
+      const date = new Date(session.created_at).toDateString();
+      const label = date === today
+        ? 'Today'
+        : date === yesterday
+          ? 'Yesterday'
+          : new Date(session.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+      if (!acc[label]) acc[label] = [];
+      acc[label].push(session);
+      return acc;
+    }, {});
+  }, [sessions]);
+
+  return (
+    <aside
+      className="chat-sidebar-panel"
+      style={{
+        width: 260,
+        minWidth: 260,
+        height: '100vh',
+        background: 'rgba(255,255,255,0.03)',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 10,
+      }}
+    >
+      <div style={{ padding: '20px 16px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#a78bfa' }}>Thinkior</span>
+          <span style={{ fontSize: '0.72rem', opacity: 0.5, marginTop: 2 }}>General Chat</span>
+        </div>
+
+        <button
+          onClick={onNewChat}
+          style={{
+            width: '100%',
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: 'rgba(124,58,237,0.15)',
+            border: '1px solid rgba(124,58,237,0.3)',
+            color: '#a78bfa',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(124,58,237,0.25)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(124,58,237,0.15)'; }}
+        >
+          <span style={{ fontSize: '1.1rem' }}>+</span>
+          New Chat
+        </button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
+        {Object.entries(grouped).map(([label, groupSessions]) => (
+          <div key={label} style={{ marginBottom: 8 }}>
+            <p
+              style={{
+                fontSize: '0.72rem',
+                opacity: 0.45,
+                padding: '6px 8px 4px',
+                margin: 0,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}
+            >
+              {label}
+            </p>
+            {groupSessions.map((session) => (
+              <ChatItem
+                key={session.id}
+                session={session}
+                isActive={activeSessionId === session.id}
+                onSelect={onSelectSession}
+                onShare={onShareSession}
+                onRename={onRenameSession}
+                onDelete={onDeleteSession}
+              />
+            ))}
+          </div>
+        ))}
+
+        {sessions.length === 0 && (
+          <p style={{ fontSize: '0.8rem', opacity: 0.4, padding: '12px 10px' }}>
+            No conversations yet. Start chatting!
+          </p>
+        )}
+      </div>
+
+      <div
+        style={{
+          padding: '12px 16px',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: '#7c3aed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {user?.email?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.7rem', opacity: 0.45, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.email}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleSignOut}
+          style={{
+            width: '100%',
+            padding: '8px',
+            borderRadius: 8,
+            background: 'none',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'inherit',
+            cursor: 'pointer',
+            fontSize: '0.82rem',
+            opacity: 0.7,
+          }}
+        >
+          → Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function ChatMain({
+  messages,
+  isLoading,
+  isPowerfulMode,
+  isPowerfulLoading,
+  onTogglePowerfulMode,
+  onSend,
+}: {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  isPowerfulMode: boolean;
+  isPowerfulLoading: boolean;
+  onTogglePowerfulMode: () => void;
+  onSend: (message: string) => void;
+}) {
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  const handleSend = () => {
+    if (!input.trim() || isLoading || isPowerfulLoading) return;
+    onSend(input.trim());
+    setInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const suggestions = [
+    { icon: '💡', text: 'Explain quantum computing simply' },
+    { icon: '📝', text: 'Help me write a professional email' },
+    { icon: '🧮', text: 'Solve a math problem step by step' },
+    { icon: '🇮🇳', text: 'Tell me about Indian history' },
+    { icon: '💼', text: 'How to start a business in India' },
+    { icon: '🎯', text: 'Give me career advice' },
+  ];
+
+  return (
+    <div
+      className="chat-main-wrapper"
+      style={{
+        marginLeft: 260,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg, #0a0a0f)',
+      }}
+    >
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 24px' }}>
+          {messages.length === 0 && !isLoading && (
+            <div style={{ textAlign: 'center', paddingTop: '15vh' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 16 }}>💬</div>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 600, marginBottom: 8 }}>
+                How can I help you today?
+              </h2>
+              <p style={{ opacity: 0.5, marginBottom: 40, fontSize: '0.95rem' }}>
+                Ask me anything — I am your general AI assistant.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 10,
+                  maxWidth: 640,
+                  margin: '0 auto',
+                }}
+              >
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.text}
+                    onClick={() => onSend(suggestion.text)}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 12,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.4,
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(124,58,237,0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                    }}
+                  >
+                    <span style={{ fontSize: '1.1rem', display: 'block', marginBottom: 4 }}>{suggestion.icon}</span>
+                    {suggestion.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {messages.map((message, index) => (
+            <div
+              key={`${message.role}-${index}`}
+              className="group"
+              style={{
+                marginBottom: 24,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: message.role === 'user' ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.72rem',
+                  opacity: 0.45,
+                  marginBottom: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: message.role === 'assistant' ? 'space-between' : 'flex-end',
+                  width: message.role === 'assistant' ? '85%' : 'auto',
+                  gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {message.role === 'user' ? <>You <span>👤</span></> : <><span>🤖</span> Thinkior</>}
+                </div>
+                {message.role === 'assistant' && (
+                  <MessageActions messageText={message.content} />
+                )}
+              </div>
+              <div
+                style={{
+                  maxWidth: '85%',
+                  padding: '12px 16px',
+                  borderRadius: message.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
+                  background: message.role === 'user' ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.06)',
+                  border: message.role === 'user' ? '1px solid rgba(124,58,237,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                  fontSize: '0.925rem',
+                  lineHeight: 1.7,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                  {message.isPowerful && message.role === 'assistant' && <PowerfulModeBadge />}
+                  {message.content}
+              </div>
+              {message.isPowerful && message.role === 'assistant' && (
+                <div style={{ maxWidth: '85%', width: '100%' }}>
+                  <PowerfulModeSources sources={message.sources || null} />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {(isLoading || isPowerfulLoading) && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: '0.72rem', opacity: 0.45, marginBottom: 6 }}>
+                🤖 Thinkior
+              </div>
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '4px 18px 18px 18px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex',
+                  gap: 4,
+                  alignItems: 'center',
+                  width: 'fit-content',
+                }}
+              >
+                {[0, 1, 2].map((dot) => (
+                  <div
+                    key={dot}
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#a78bfa',
+                      animation: `bounce 1.2s ease-in-out ${dot * 0.2}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: '16px 24px 24px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: 'inherit',
+        }}
+      >
+        <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative' }}>
+          <PowerfulModeProgress isLoading={isPowerfulLoading} />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 10 }}>
+            <PowerfulModeToggle
+              isPowerfulMode={isPowerfulMode}
+              onToggle={onTogglePowerfulMode}
+              disabled={isLoading || isPowerfulLoading}
+            />
+          </div>
+
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Message Thinkior..."
+            rows={1}
+            style={{
+              width: '100%',
+              padding: '14px 52px 14px 18px',
+              borderRadius: 14,
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'inherit',
+              fontSize: '0.95rem',
+              lineHeight: 1.5,
+              resize: 'none',
+              outline: 'none',
+              minHeight: 52,
+              maxHeight: 200,
+              overflow: 'auto',
+              boxSizing: 'border-box',
+              fontFamily: 'inherit',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={(e) => { e.target.style.borderColor = 'rgba(124,58,237,0.5)'; }}
+            onBlur={(e) => { e.target.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+            onInput={(e) => {
+              const element = e.target as HTMLTextAreaElement;
+              element.style.height = 'auto';
+              element.style.height = `${Math.min(element.scrollHeight, 200)}px`;
+            }}
+          />
+
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isLoading || isPowerfulLoading}
+            style={{
+              position: 'absolute',
+              right: 10,
+              bottom: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              background: input.trim() && !isLoading && !isPowerfulLoading ? '#7c3aed' : 'rgba(255,255,255,0.08)',
+              border: 'none',
+              color: '#fff',
+              cursor: input.trim() && !isLoading && !isPowerfulLoading ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1rem',
+              transition: 'all 0.15s',
+            }}
+          >
+            ↑
+          </button>
+        </div>
+
+        <p style={{ textAlign: 'center', fontSize: '0.72rem', opacity: 0.3, marginTop: 8 }}>
+          Thinkior can make mistakes. Verify important information.
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40% { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default function ChatPage() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const {
+    isPowerfulMode,
+    togglePowerfulMode,
+    isPowerfulLoading,
+    askPowerful,
+  } = usePowerfulMode();
+
+  const loadSessions = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('id, title, created_at, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(100); // show up to 100 past chats
+
+      if (error) {
+        console.error('[Chat] Failed to load sessions:', error.message);
+        return;
+      }
+
+      console.log('[Chat] Loaded sessions:', data?.length || 0);
+      setSessions((data || []) as ChatSession[]);
+    } catch (err: unknown) {
+      console.error('[Chat] loadSessions error:', getErrorMessage(err));
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.push('/auth?role=general');
+        return;
+      }
+      setUser(data.user);
+      loadSessions(data.user.id); // load on mount
+    });
+  }, [loadSessions, router, supabase]);
+
+  const handleNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([]);
+    // Do NOT clear sessions — history must stay visible
+    // Sessions are already loaded and should remain in sidebar
+    console.log('[Chat] New chat started — sessions preserved in sidebar');
+  };
+
+  const handleSelectSession = async (sessionId: string) => {
+    setActiveSessionId(sessionId);
+    setMessages([]); // clear current messages first
+    setIsLoading(false);
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('role, content, created_at')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true }); // oldest first
+
+      if (error) {
+        console.error('[Chat] Failed to load messages:', error.message);
+        return;
+      }
+
+      console.log('[Chat] Loaded messages for session:', data?.length || 0);
+      setMessages(((data || []) as Array<{ role: 'user' | 'assistant'; content: string }>).map((message) => ({
+        role: message.role,
+        content: message.content,
+      })));
+
+    } catch (err: unknown) {
+      console.error('[Chat] handleSelectSession error:', getErrorMessage(err));
+    }
+  };
+
+  const handleShareSession = async (sessionId: string) => {
+    try {
+      const url = `${window.location.origin}/chat?session=${sessionId}`;
+      await navigator.clipboard.writeText(url);
+      alert('Chat link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to share:', err);
+    }
+  };
+
+  const handleRenameSession = async (sessionId: string) => {
+    const newTitle = prompt('Enter new chat title:');
+    if (!newTitle?.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_sessions')
+        .update({ title: newTitle.trim() })
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      await loadSessions(user?.id || '');
+    } catch (err) {
+      console.error('Failed to rename:', err);
+      alert('Failed to rename chat');
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this chat?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_sessions')
+        .delete()
+        .eq('id', sessionId);
+
+      if (error) throw error;
+      
+      if (activeSessionId === sessionId) {
+        handleNewChat();
+      }
+      
+      await loadSessions(user?.id || '');
+    } catch (err) {
+      console.error('Failed to delete:', err);
+      alert('Failed to delete chat');
+    }
+  };
+
+  const handleSend = async (userMessage: string) => {
+    if (!user || isLoading || isPowerfulLoading) return;
+
+    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage }];
+    setMessages(newMessages);
+
+    if (isPowerfulMode) {
+      try {
+        const powerfulResult = await askPowerful(newMessages, activeSessionId);
+
+        setMessages((previous) => [...previous, {
+          role: 'assistant',
+          content: powerfulResult.reply,
+          isPowerful: true,
+          sources: powerfulResult.sources,
+        }]);
+
+        if (powerfulResult.sessionId && !activeSessionId) {
+          setActiveSessionId(powerfulResult.sessionId);
+        }
+
+        await loadSessions(user.id);
+      } catch (err: unknown) {
+        console.error('[Chat] powerful handleSend error:', err);
+        setMessages((previous) => [...previous, {
+          role: 'assistant',
+          content: getErrorMessage(err) || 'Powerful Mode failed. Please try again.',
+        }]);
+      }
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/general-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          sessionId: activeSessionId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        if (response.status === 429) {
+          setMessages((previous) => [...previous, {
+            role: 'assistant',
+            content: `⚠️ ${data.message || 'Daily message limit reached. Come back tomorrow!'}`,
+          }]);
+          return;
+        }
+        throw new Error(data.error || 'Failed to get response');
+      }
+
+      // Add assistant reply to messages
+      setMessages((previous) => [...previous, { role: 'assistant', content: data.reply }]);
+
+      // Update active session ID if this was a new chat
+      if (data.sessionId && !activeSessionId) {
+        setActiveSessionId(data.sessionId);
+      }
+
+      // CRITICAL FIX: Always reload sessions after a message so sidebar stays current
+      await loadSessions(user.id);
+
+    } catch (err: unknown) {
+      console.error('[Chat] handleSend error:', err);
+      setMessages((previous) => [...previous, {
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div style={{ opacity: 0.5 }}>Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 9,
+            display: 'none',
+          }}
+          className="mobile-chat-overlay"
+        />
+      )}
+
+      <div className={`chat-sidebar-wrapper ${sidebarOpen ? 'open' : ''}`}>
+        <ChatSidebar
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={(id) => {
+            handleSelectSession(id);
+            setSidebarOpen(false);
+          }}
+          onNewChat={() => {
+            handleNewChat();
+            setSidebarOpen(false);
+          }}
+          onShareSession={handleShareSession}
+          onRenameSession={handleRenameSession}
+          onDeleteSession={handleDeleteSession}
+          user={user}
+        />
+      </div>
+
+      <button
+        className="chat-mobile-menu"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+      >
+        ☰
+      </button>
+
+      <ChatMain
+        messages={messages}
+        isLoading={isLoading}
+        isPowerfulMode={isPowerfulMode}
+        isPowerfulLoading={isPowerfulLoading}
+        onTogglePowerfulMode={togglePowerfulMode}
+        onSend={handleSend}
+      />
+
+      <style>{`
+        @media (max-width: 768px) {
+          .chat-sidebar-wrapper .chat-sidebar-panel {
+            transform: translateX(-260px);
+            transition: transform 0.25s ease;
+          }
+          .chat-sidebar-wrapper.open .chat-sidebar-panel { transform: translateX(0); }
+          .mobile-chat-overlay { display: block !important; }
+          .chat-mobile-menu {
+            display: flex; position: fixed; top: 12px; left: 12px;
+            z-index: 11; width: 40px; height: 40px;
+            align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; color: inherit; font-size: 1.2rem;
+            cursor: pointer;
+          }
+          .chat-main-wrapper { margin-left: 0 !important; padding-top: 52px; }
+        }
+        @media (min-width: 769px) {
+          .chat-mobile-menu { display: none !important; }
+          .chat-sidebar-wrapper .chat-sidebar-panel { transform: translateX(0); }
+        }
+      `}</style>
+    </div>
+  );
+}

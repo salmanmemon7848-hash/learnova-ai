@@ -7,7 +7,7 @@ import type { UserRole } from '@/contexts/RoleContext'
 
 const items = [
   { icon: LayoutDashboard, label: 'Home',     href: '/dashboard' },
-  { icon: MessageSquare,   label: 'Chat',     href: '/chat' },
+  { icon: MessageSquare,   label: 'Chat',     href: '/dashboard-chat' },
   { icon: Settings,        label: 'Settings', href: '/settings' },
 ]
 

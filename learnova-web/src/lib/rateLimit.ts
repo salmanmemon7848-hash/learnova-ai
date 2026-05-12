@@ -24,6 +24,15 @@ export const FEATURE_LIMITS: Record<string, FeatureLimit> = {
   'business-ideas': { limit: 5, resetType: 'monthly', displayName: 'Business Ideas', warningThreshold: 0.8, minGapSeconds: 30, maxInputChars: 800, newAccountMultiplier: 0.5 },
   validate: { limit: 5, resetType: 'monthly', displayName: 'Business Validator', warningThreshold: 0.8, minGapSeconds: 30, maxInputChars: 800, newAccountMultiplier: 0.5 },
   'competitor-research': { limit: 5, resetType: 'monthly', displayName: 'Competitor Research', warningThreshold: 0.8, minGapSeconds: 60, maxInputChars: 1000, newAccountMultiplier: 0.5 },
+  'general-chat': {
+    limit: 20, // TODO: update this when you decide the final limit
+    resetType: 'daily',
+    displayName: 'General Chat',
+    warningThreshold: 0.8,
+    minGapSeconds: 2,
+    maxInputChars: 2000,
+    newAccountMultiplier: 1.0,
+  },
 };
 
 export function getPeriodEnd(resetType: ResetType): Date {
@@ -65,165 +74,46 @@ export interface RateLimitResult {
   displayName: string;
 }
 
-async function isNewAccount(): Promise<boolean> {
-  try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.created_at) return false;
-    return Date.now() - new Date(user.created_at).getTime() < 3600000;
-  } catch {
-    return false;
-  }
-}
-
-function secondsSince(dateStr: string): number {
-  return (Date.now() - new Date(dateStr).getTime()) / 1000;
-}
-
+/**
+ * checkAndIncrementUsage - Disables rate limits globally by always returning allowed=true.
+ * The original implementation is bypassed to satisfy the "remove all rate limits" request.
+ */
 export async function checkAndIncrementUsage(
   userId: string,
   feature: string,
-  ipAddress?: string
+  _ipAddress?: string
 ): Promise<RateLimitResult> {
   const config = FEATURE_LIMITS[feature];
-  if (!config) {
-    const periodEnd = new Date(Date.now() + 86400000);
-    return {
-      allowed: true, blocked: false, currentCount: 0, limit: 999, remaining: 999,
-      resetType: 'daily', periodEnd, timeUntilReset: 'never', isWarning: false, percentUsed: 0, feature, displayName: feature,
-    };
-  }
-
-  const supabase = await createClient();
-  const now = new Date();
-  const periodEnd = getPeriodEnd(config.resetType);
-  const newAccount = await isNewAccount();
-  const effectiveLimit = newAccount ? Math.max(1, Math.floor(config.limit * config.newAccountMultiplier)) : config.limit;
-
-  try {
-    let { data: record } = await supabase
-      .from('user_usage')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('feature', feature)
-      .gte('period_end', now.toISOString())
-      .order('period_end', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    let createdUsageRecord = false;
-    if (!record) {
-      const { data: newRecord } = await supabase
-        .from('user_usage')
-        .upsert({
-          user_id: userId,
-          feature,
-          count: 0,
-          reset_type: config.resetType,
-          period_start: now.toISOString(),
-          period_end: periodEnd.toISOString(),
-          last_request_at: now.toISOString(),
-        }, { onConflict: 'user_id,feature,period_end' })
-        .select()
-        .single();
-      record = newRecord;
-      createdUsageRecord = true;
-    }
-
-    const currentCount = record?.count || 0;
-    if (!createdUsageRecord && currentCount > 0 && record?.last_request_at) {
-      const secondsAgo = secondsSince(record.last_request_at);
-      if (secondsAgo < config.minGapSeconds) {
-        const waitSeconds = Math.ceil(config.minGapSeconds - secondsAgo);
-        return {
-          allowed: false, blocked: true, currentCount, limit: effectiveLimit,
-          remaining: Math.max(0, effectiveLimit - currentCount), resetType: config.resetType, periodEnd,
-          timeUntilReset: getTimeUntilReset(periodEnd), isWarning: false,
-          percentUsed: Math.round((currentCount / effectiveLimit) * 100),
-          blockMessage: `Please wait ${waitSeconds} second${waitSeconds > 1 ? 's' : ''} before making another request.`,
-          feature, displayName: config.displayName,
-        };
-      }
-    }
-
-    if (currentCount >= effectiveLimit) {
-      const timeUntilReset = getTimeUntilReset(periodEnd);
-      const resetLabel = config.resetType === 'daily' ? 'today' : 'this month';
-      if (currentCount >= effectiveLimit * 1.5 && ipAddress) {
-        try {
-          await supabase.from('user_abuse_flags').upsert({
-            user_id: userId,
-            ip_address: ipAddress,
-            flag_type: 'limit_exceeded',
-            flagged_at: now.toISOString(),
-          }, { onConflict: 'user_id' });
-        } catch {
-          /* non-fatal */
-        }
-      }
-      return {
-        allowed: false, blocked: true, currentCount, limit: effectiveLimit, remaining: 0, resetType: config.resetType,
-        periodEnd, timeUntilReset, isWarning: false, percentUsed: 100,
-        blockMessage: `You have used all ${effectiveLimit} ${config.displayName} requests ${resetLabel}. Resets in ${timeUntilReset}.`,
-        feature, displayName: config.displayName,
-      };
-    }
-
-    const newCount = currentCount + 1;
-    await supabase
-      .from('user_usage')
-      .update({ count: newCount, last_request_at: now.toISOString() })
-      .eq('user_id', userId)
-      .eq('feature', feature)
-      .gte('period_end', now.toISOString());
-
-    const remaining = effectiveLimit - newCount;
-    const percentUsed = Math.round((newCount / effectiveLimit) * 100);
-    const isWarning = percentUsed >= config.warningThreshold * 100;
-    const timeUntilReset = getTimeUntilReset(periodEnd);
-    const resetLabel = config.resetType === 'daily' ? 'today' : 'this month';
-
-    return {
-      allowed: true, blocked: false, currentCount: newCount, limit: effectiveLimit, remaining,
-      resetType: config.resetType, periodEnd, timeUntilReset, isWarning, percentUsed,
-      warningMessage: isWarning
-        ? `⚠️ Only ${remaining} ${config.displayName} request${remaining !== 1 ? 's' : ''} left ${resetLabel}. Resets in ${timeUntilReset}.`
-        : undefined,
-      feature, displayName: config.displayName,
-    };
-  } catch (error: any) {
-    const fallbackEnd = getPeriodEnd(config.resetType);
-    console.error('[RateLimit] Error — allowing request:', error?.message || error);
-    return {
-      allowed: true, blocked: false, currentCount: 0, limit: config.limit, remaining: config.limit,
-      resetType: config.resetType, periodEnd: fallbackEnd, timeUntilReset: getTimeUntilReset(fallbackEnd),
-      isWarning: false, percentUsed: 0, feature, displayName: config.displayName,
-    };
-  }
+  const periodEnd = getPeriodEnd(config?.resetType || 'daily');
+  
+  // ALWAYS ALLOWED - Rate limits disabled
+  return {
+    allowed: true,
+    blocked: false,
+    currentCount: 0,
+    limit: 9999,
+    remaining: 9999,
+    resetType: config?.resetType || 'daily',
+    periodEnd,
+    timeUntilReset: 'Unlimited',
+    isWarning: false,
+    percentUsed: 0,
+    feature,
+    displayName: config?.displayName || feature,
+  };
 }
 
-export async function getUserUsageSummary(userId: string) {
-  const supabase = await createClient();
-  const now = new Date();
-  const { data: records } = await supabase
-    .from('user_usage')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('period_end', now.toISOString());
-
+export async function getUserUsageSummary(_userId: string) {
   const summary: Record<string, any> = {};
   for (const [feature, config] of Object.entries(FEATURE_LIMITS)) {
-    const record = records?.find((r) => r.feature === feature);
-    const count = record?.count || 0;
-    const periodEnd = record ? new Date(record.period_end) : getPeriodEnd(config.resetType);
     summary[feature] = {
-      count,
-      limit: config.limit,
-      remaining: Math.max(0, config.limit - count),
+      count: 0,
+      limit: 9999,
+      remaining: 9999,
       resetType: config.resetType,
-      timeUntilReset: getTimeUntilReset(periodEnd),
+      timeUntilReset: 'Unlimited',
       displayName: config.displayName,
-      percentUsed: Math.round((count / config.limit) * 100),
+      percentUsed: 0,
     };
   }
   return summary;

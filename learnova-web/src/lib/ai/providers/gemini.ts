@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 25_000;
 const VISION_TIMEOUT_MS = 30_000;
 
 interface GeminiResponse {
@@ -34,7 +34,7 @@ export async function call(
     throw new AIProviderError('gemini', 'configuration', 'Gemini API key is not configured');
   }
 
-  const model = taskComplexity === 'complex' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+  const model = taskComplexity === 'complex' ? 'gemini-pro-latest' : 'gemini-flash-latest';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

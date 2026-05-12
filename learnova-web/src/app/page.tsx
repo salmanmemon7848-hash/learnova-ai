@@ -21,6 +21,11 @@ function LandingContent() {
     router.push('/auth');
   };
 
+  const handleGeneralClick = () => {
+    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'general');
+    router.push('/auth?role=general');
+  };
+
   const handlePromptClick = (prompt: string) => {
     router.push(`/chat?prompt=${encodeURIComponent(prompt)}`);
   };
@@ -72,6 +77,36 @@ function LandingContent() {
       quote: '"Validated my startup idea in 5 minutes. Thinkior gave me insights about Indian market that I never considered. Launched last month!"',
       name: 'Rahul Gupta',
       role: 'Founder, Indore',
+    },
+  ];
+
+  const roleOptions = [
+    {
+      icon: '🎓',
+      title: "I'm a Student",
+      subtitle: 'Exam prep, doubts, and study tools',
+      description: 'Get help with JEE, NEET, CBSE, college prep, study plans, and step-by-step learning.',
+      buttonText: 'Start Learning',
+      onClick: handleStudentClick,
+      badge: 'Most Popular',
+    },
+    {
+      icon: '🚀',
+      title: "I'm a Founder",
+      subtitle: 'Startup tools for Indian builders',
+      description: 'Validate ideas, research competitors, practice pitches, and build better business plans.',
+      buttonText: 'Start Building',
+      onClick: handleFounderClick,
+      badge: null,
+    },
+    {
+      icon: '💬',
+      title: 'Just Chat',
+      subtitle: 'General AI assistant — ask anything',
+      description: 'No exam prep, no startup tools. Just a powerful AI you can talk to about anything.',
+      buttonText: 'Start Chatting',
+      onClick: handleGeneralClick,
+      badge: null,
     },
   ];
 
@@ -180,34 +215,71 @@ function LandingContent() {
             Your AI-powered companion for academic excellence and startup success — built exclusively for India.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="landing-cta-row flex flex-wrap items-center justify-center gap-3 mt-8">
-            <button
-              onClick={handleStudentClick}
-              className="text-[15px] font-medium text-white flex items-center gap-2 transition-all hover:brightness-110 hover:-translate-y-0.5"
-              style={{
-                background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
-                height: '48px',
-                padding: '0 28px',
-                borderRadius: '10px',
-                boxShadow: '0 4px 24px #7C3AED50',
-              }}
-            >
-              I'm a Student <ArrowRight size={18} />
-            </button>
-            <button
-              onClick={handleFounderClick}
-              className="text-[15px] font-medium transition-all hover:bg-[#1E1B4B] hover:-translate-y-0.5"
-              style={{
-                border: '1px solid #4338CA',
-                color: '#A78BFA',
-                height: '48px',
-                padding: '0 28px',
-                borderRadius: '10px',
-              }}
-            >
-              I'm a Founder →
-            </button>
+          {/* Role Cards */}
+          <div className="landing-role-grid grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 w-full" style={{ maxWidth: '960px' }}>
+            {roleOptions.map((option) => (
+              <button
+                key={option.title}
+                onClick={option.onClick}
+                className="relative text-left rounded-[16px] p-6 cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                  border: '1px solid #2D1B69',
+                  boxShadow: '0 0 30px #7C3AED18',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#7C3AED';
+                  e.currentTarget.style.boxShadow = '0 0 40px #7C3AED30';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#2D1B69';
+                  e.currentTarget.style.boxShadow = '0 0 30px #7C3AED18';
+                }}
+              >
+                {option.badge && (
+                  <span
+                    className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-[20px]"
+                    style={{
+                      background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                      color: 'white',
+                    }}
+                  >
+                    {option.badge}
+                  </span>
+                )}
+                <div
+                  className="w-[44px] h-[44px] rounded-[10px] flex items-center justify-center mb-4"
+                  style={{
+                    background: '#1E1B4B',
+                    border: '1px solid #4338CA',
+                    fontSize: '1.35rem',
+                  }}
+                >
+                  {option.icon}
+                </div>
+                <h4 className="text-[17px] font-semibold mb-1" style={{ color: '#F5F3FF' }}>
+                  {option.title}
+                </h4>
+                <p className="text-[13px] mb-3" style={{ color: '#A78BFA' }}>
+                  {option.subtitle}
+                </p>
+                <p className="text-[14px] leading-[1.6] mb-5" style={{ color: '#C4B5FD' }}>
+                  {option.description}
+                </p>
+                <span
+                  className="text-[14px] font-medium text-white inline-flex items-center justify-center gap-2 transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                    minHeight: '40px',
+                    padding: '0 18px',
+                    borderRadius: '10px',
+                    boxShadow: '0 4px 20px #7C3AED40',
+                  }}
+                >
+                  {option.buttonText} <ArrowRight size={16} />
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Social Proof */}

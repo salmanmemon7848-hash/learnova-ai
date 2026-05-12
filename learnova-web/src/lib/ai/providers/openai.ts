@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 25_000;
 
 interface OpenAIResponse {
   choices?: Array<{

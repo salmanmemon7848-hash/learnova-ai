@@ -27,12 +27,19 @@ function Spinner() {
   )
 }
 
-function getOAuthRedirectTo() {
+function getOAuthRedirectTo(nextPath = '/dashboard') {
   const origin = typeof window !== 'undefined'
     ? window.location.origin
     : process.env.NEXT_PUBLIC_SITE_URL
 
-  return `${origin || ''}/auth/callback`
+  return `${origin || ''}/auth/callback?next=${encodeURIComponent(nextPath)}`
+}
+
+const VALID_ROLES = ['student', 'founder', 'general'] as const
+type PendingRole = typeof VALID_ROLES[number]
+
+function getRedirectForRole(role: string | null | undefined) {
+  return role === 'general' ? '/chat' : '/dashboard'
 }
 
 // ─── Save role to Supabase ───────────────────────────────────────────────────
@@ -45,7 +52,7 @@ async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userI
     ? localStorage.getItem('thinkior_pending_role')
     : null
 
-  if (!pendingRole) return  // returning user, no CTA selection — keep existing role
+  if (!pendingRole || !VALID_ROLES.includes(pendingRole as PendingRole)) return null
 
   // User explicitly chose a role on the landing page → always apply it
   await supabase
@@ -53,6 +60,7 @@ async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userI
     .upsert({ id: userId, role: pendingRole }, { onConflict: 'id' })
 
   localStorage.removeItem('thinkior_pending_role')
+  return pendingRole
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -69,14 +77,19 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [pendingRole, setPendingRole] = useState<string | null>(null)
 
-  // Read pending role from localStorage on mount
+  // Read pending role from URL/localStorage on mount
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const roleFromUrl = params.get('role')
+    if (roleFromUrl && VALID_ROLES.includes(roleFromUrl as PendingRole)) {
+      localStorage.setItem('thinkior_pending_role', roleFromUrl)
+    }
     const stored = localStorage.getItem('thinkior_pending_role')
     setPendingRole(stored)
     // Default to signup when arriving from a CTA button
     if (stored) setTab('signup')
 
-    const authError = new URLSearchParams(window.location.search).get('error')
+    const authError = params.get('error')
     if (authError) {
       setError(
         authError === 'auth_failed'
@@ -91,8 +104,8 @@ export default function AuthPage() {
   useEffect(() => {
     if (authLoading) return
     if (!user) return
-    saveRoleIfNeeded(supabase, user.id).then(() => {
-      window.location.href = '/dashboard'
+    saveRoleIfNeeded(supabase, user.id).then((savedRole) => {
+      window.location.href = getRedirectForRole(savedRole)
     })
   }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -111,8 +124,8 @@ export default function AuthPage() {
         return
       }
       if (data.user) {
-        await saveRoleIfNeeded(supabase, data.user.id)
-        window.location.href = '/dashboard'
+        const savedRole = await saveRoleIfNeeded(supabase, data.user.id)
+        window.location.href = getRedirectForRole(savedRole)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -146,8 +159,8 @@ export default function AuthPage() {
           setLoading(false)
           return
         }
-        await saveRoleIfNeeded(supabase, data.user.id)
-        window.location.href = '/dashboard'
+        const savedRole = await saveRoleIfNeeded(supabase, data.user.id)
+        window.location.href = getRedirectForRole(savedRole)
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -161,10 +174,11 @@ export default function AuthPage() {
     if (role) {
       document.cookie = `thinkior_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
     }
+    const nextPath = getRedirectForRole(role)
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: getOAuthRedirectTo(),
+        redirectTo: getOAuthRedirectTo(nextPath),
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // 1. Pages that are always public — no auth check needed
@@ -55,11 +55,18 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublicPage) {
     console.log(`🛡️ Middleware: No session for ${pathname}, redirecting to /auth`);
     const url = new URL('/auth', request.url)
-    url.searchParams.set('next', pathname)
+    if (pathname === '/chat') {
+      url.searchParams.set('role', 'general')
+    } else {
+      url.searchParams.set('next', pathname)
+    }
     return NextResponse.redirect(url)
   }
 
   if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/auth')) {
+    if (pathname === '/auth' && request.nextUrl.searchParams.has('role')) {
+      return response
+    }
     console.log(`🛡️ Middleware: Session exists for ${pathname}, redirecting to /dashboard`);
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

@@ -42,7 +42,8 @@ const providerMap: Record<AIProviderName, ProviderDefinition> = {
 function getProviderChain(isSearchFeature: boolean): ProviderDefinition[] {
   const chain: AIProviderName[] = isSearchFeature
     ? ['groq', 'gemini', 'openai', 'searxng']
-    : ['groq', 'gemini', 'openai'];
+    : ['gemini', 'groq', 'openai'];
+
 
   return chain.map((provider) => providerMap[provider]);
 }

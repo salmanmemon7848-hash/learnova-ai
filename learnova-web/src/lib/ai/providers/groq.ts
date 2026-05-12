@@ -7,7 +7,7 @@ import {
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 25_000;
 
 interface GroqResponse {
   choices?: Array<{

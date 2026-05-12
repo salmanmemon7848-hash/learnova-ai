@@ -4,13 +4,12 @@ import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
+import { runPowerMode } from '@/lib/powerMode';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   THINKIOR_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
-  CAREER_GUIDE_KNOWLEDGE,
-  EDUFINDER_KNOWLEDGE,
   getLanguageInstruction,
 } from '@/lib/thinkiorKnowledge';
 import { sanitizeMessages, sanitizeString, validateLanguage } from '@/lib/validation';
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     const isMultipart = contentType.includes('multipart/form-data');
     
-    let body: any = {};
+    let body: Record<string, unknown> = {};
     let imageFile: File | null = null;
 
     if (isMultipart) {
@@ -54,6 +53,7 @@ export async function POST(req: NextRequest) {
     const mode = sanitizeString(body.mode, 64);
     const language = validateLanguage(body.language);
     const persona = sanitizeString(body.persona, 32);
+    const powerMode = !isMultipart && body.powerMode === true;
 
     let latestUserMessage = '';
 
@@ -77,13 +77,24 @@ export async function POST(req: NextRequest) {
     }
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
-    // Intelligent web search via getSearchContext
-    const searchContext = await getSearchContext(
-      latestUserMessage || (imageFile ? 'Please analyze this image' : ''),
-      'chat'
-    );
-    const usedWebSearch = !!searchContext;
-    const searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+// Intelligent web search via getSearchContext with graceful fallback
+let searchContext = '';
+let usedWebSearch = false;
+let searchUsageInstruction = '';
+try {
+  const sc = await getSearchContext(
+    latestUserMessage || (imageFile ? 'Please analyze this image' : ''),
+    'chat'
+  );
+  searchContext = sc ?? '';
+  usedWebSearch = !!searchContext;
+  if (searchContext) {
+    searchUsageInstruction = buildSearchUsageInstruction(searchContext);
+  }
+} catch (err) {
+  console.error('Search Context Error:', err);
+  // Keep defaults (no search context)
+}
 
     const { data: userPrefs } = await supabase
       .from('UserPreferences')
@@ -102,31 +113,13 @@ export async function POST(req: NextRequest) {
 
     // Add persona-specific system prompt
     let systemPrompt = basePrompt;
-    
+
     if (persona === 'student') {
-      systemPrompt = `${THINKIOR_FULL_CONTEXT}
-${STUDENT_KNOWLEDGE}
-
-LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
-
-You are Thinkior, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient.
-
-${basePrompt}`;
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
     } else if (persona === 'founder') {
-      systemPrompt = `${THINKIOR_FULL_CONTEXT}
-${FOUNDER_KNOWLEDGE}
-
-LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
-
-You are Thinkior, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context.
-
-${basePrompt}`; 
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
     } else {
-      systemPrompt = `${THINKIOR_FULL_CONTEXT}
-
-LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
-
-${basePrompt}`;
+      systemPrompt = `${THINKIOR_FULL_CONTEXT}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
     }
 
     // Append live search context + usage instructions to the enriched system prompt
@@ -137,6 +130,7 @@ ${basePrompt}`;
     }
 
     let responseText = '';
+    let powerModeResult: Awaited<ReturnType<typeof runPowerMode>> | null = null;
 
     if (imageFile) {
       const maxImageSize = 10 * 1024 * 1024;
@@ -153,14 +147,21 @@ ${basePrompt}`;
       
       const visionPrompt = `${systemPrompt}\n\nUser request: ${latestUserMessage || 'Please analyze this image and help me understand it.'}`;
       
-      const visionResponse = await aiVisionHandler({
-        prompt: visionPrompt,
-        imageBase64: base64Image,
-        mimeType: imageFile.type,
-        featureName: 'chat-image',
-        taskComplexity: 'complex',
-      });
-      responseText = visionResponse.result;
+      let visionResponse;
+      try {
+        visionResponse = await aiVisionHandler({
+          prompt: visionPrompt,
+          imageBase64: base64Image,
+          mimeType: imageFile.type,
+          featureName: 'chat-image',
+          taskComplexity: 'complex',
+        });
+        responseText = visionResponse.result;
+      } catch (err) {
+        console.error('Vision AI Error:', err);
+        // Fallback generic response when provider fails
+        responseText = 'Sorry, the image analysis service is currently unavailable. Please try again later.';
+      }
     } else {
       const aiMessages: AIChatMessage[] = messagesArray
         .filter((message) => message.role === 'user' || message.role === 'assistant')
@@ -168,14 +169,29 @@ ${basePrompt}`;
           role: message.role === 'assistant' ? 'assistant' : 'user',
           content: message.content,
         }));
-      const aiResponse = await aiHandler({
-        prompt: messagesToPrompt(aiMessages),
-        context: systemPrompt,
-        featureName: 'ai-chat',
-        isSearchFeature: false,
-        taskComplexity: 'simple',
-      });
-      responseText = aiResponse.result;
+
+      if (powerMode) {
+        powerModeResult = await runPowerMode(
+          `${systemPrompt}\n\nConversation:\n${messagesToPrompt(aiMessages)}`,
+          latestUserMessage
+        );
+        responseText = powerModeResult.final;
+      } else {
+        let aiResponse;
+        try {
+          aiResponse = await aiHandler({
+            prompt: messagesToPrompt(aiMessages),
+            context: systemPrompt,
+            featureName: 'ai-chat',
+            isSearchFeature: false,
+            taskComplexity: 'simple',
+          });
+          responseText = aiResponse.result;
+        } catch (err) {
+          console.error('Chat AI Error:', err);
+          responseText = 'Sorry, the chat service is currently unavailable. Please try again later.';
+        }
+      }
     }
 
     await logActivity(
@@ -187,15 +203,21 @@ ${basePrompt}`;
     );
 
     return NextResponse.json({
-      message: responseText, 
+      message: responseText,
+      content: responseText,
       role: 'assistant',
+      mode: powerModeResult ? 'power' : 'normal',
       metadata: {
         usedWebSearch,
         searchResultsCount: usedWebSearch ? searchContext.split('\n\n').length : 0,
+        ...(powerModeResult ? {
+          sources: powerModeResult.sources,
+          durationMs: powerModeResult.durationMs,
+        } : {}),
       }
     }, { headers: responseHeaders });
-  } catch (error: any) {
-    console.error('❌ Chat Error:', error?.message || error);
+  } catch (error: unknown) {
+    console.error('Chat Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Failed to process your message. Please try again.' }, { status: 500 });
   }
 }

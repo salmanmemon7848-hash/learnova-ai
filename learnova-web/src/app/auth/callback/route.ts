@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       // Read the pending role from cookie (set by client before OAuth redirect)
       const pendingRole = cookieStore.get('thinkior_pending_role')?.value
 
-      if (pendingRole && (pendingRole === 'student' || pendingRole === 'founder')) {
+      if (pendingRole && (pendingRole === 'student' || pendingRole === 'founder' || pendingRole === 'general')) {
         console.log('👤 Applying pending role:', pendingRole);
         await supabase
           .from('profiles')

@@ -21,6 +21,13 @@ interface DoubtResult {
   related_topics: string[]
 }
 
+interface DoubtSection {
+  emoji: string
+  title: string
+  content: string
+  accent: string
+}
+
 type Level = 'auto' | 'basic' | 'medium' | 'advanced'
 
 const levels: { value: Level; label: string }[] = [
@@ -30,12 +37,10 @@ const levels: { value: Level; label: string }[] = [
   { value: 'advanced', label: '🔴 Advanced (JEE/NEET/UPSC)' },
 ]
 
-// ── Helper: try to parse JSON from raw AI string ──────────────────────────────
+// ── Helper: try to parse JSON from raw AI string (legacy/backward compat) ─────
 function parseDoubtResult(raw: string): DoubtResult | null {
   try {
-    // Strip markdown code fences if present
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
-    // Find first { … } block
     const start = cleaned.indexOf('{')
     const end = cleaned.lastIndexOf('}')
     if (start === -1 || end === -1) return null
@@ -43,6 +48,38 @@ function parseDoubtResult(raw: string): DoubtResult | null {
   } catch {
     return null
   }
+}
+
+// ── Helper: parse emoji-sectioned plain text into styled cards ────────────────
+function parseSectionedResponse(raw: string): { intro: string; sections: DoubtSection[] } | null {
+  const sectionPatterns = [
+    { emoji: '💡', title: 'The Simple Version',    accent: '#10b981' },
+    { emoji: '📘', title: 'The Actual Explanation', accent: '#3b82f6' },
+    { emoji: '🧪', title: 'Example',                accent: '#f59e0b' },
+    { emoji: '⚠️', title: 'Watch Out',              accent: '#ef4444' },
+    { emoji: '🔁', title: '3-Line Summary',         accent: '#8b5cf6' },
+  ]
+  const regex = new RegExp(
+    `(${sectionPatterns.map(p => `${p.emoji}\\s*${p.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[:：]?`).join('|')})`,
+    'g'
+  )
+  const matches = [...raw.matchAll(regex)]
+  if (matches.length === 0) return null
+
+  const sections: DoubtSection[] = []
+  let intro = raw.slice(0, matches[0].index).trim()
+
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index!
+    const end = i < matches.length - 1 ? matches[i + 1].index! : raw.length
+    const block = raw.slice(start, end).trim()
+    const matchedHeader = matches[i][1]
+    const pattern = sectionPatterns.find(p => matchedHeader.startsWith(p.emoji))!
+    const content = block.slice(matchedHeader.length).trim()
+    sections.push({ emoji: pattern.emoji, title: pattern.title, content, accent: pattern.accent })
+  }
+
+  return { intro, sections }
 }
 
 export default function DoubtSolverPage() {
@@ -53,6 +90,7 @@ export default function DoubtSolverPage() {
   const [loading, setLoading] = useState(false)
   const [rawSolution, setRawSolution] = useState<string>('')
   const [result, setResult] = useState<DoubtResult | null>(null)
+  const [sectioned, setSectioned] = useState<{ intro: string; sections: DoubtSection[] } | null>(null)
   const [error, setError] = useState<string>('')
   const [language, setLanguage] = useState<'en' | 'hi' | 'hinglish'>('en')
   const [level, setLevel] = useState<Level>('auto')
@@ -73,6 +111,7 @@ export default function DoubtSolverPage() {
     setError('')
     setRawSolution('')
     setResult(null)
+    setSectioned(null)
 
     try {
       let response: Response
@@ -113,12 +152,16 @@ export default function DoubtSolverPage() {
 
       const data = await response.json()
       const solutionText = data.answer || data.solution || ''
-      const parsed = parseDoubtResult(solutionText)
-      if (parsed) {
-        setResult(parsed)
+      const parsedJson = parseDoubtResult(solutionText)
+      if (parsedJson) {
+        setResult(parsedJson)
       } else {
-        // Fallback: show raw markdown
-        setRawSolution(solutionText)
+        const parsedSections = parseSectionedResponse(solutionText)
+        if (parsedSections) {
+          setSectioned(parsedSections)
+        } else {
+          setRawSolution(solutionText)
+        }
       }
     } catch (err: any) {
       setError(err.message)
@@ -133,10 +176,11 @@ export default function DoubtSolverPage() {
     setQuestionText('')
     setRawSolution('')
     setResult(null)
+    setSectioned(null)
     setError('')
   }
 
-  const hasOutput = !!result || !!rawSolution
+  const hasOutput = !!result || !!sectioned || !!rawSolution
 
   return (
     <div className="page-container doubt-page max-w-6xl mx-auto">
@@ -487,8 +531,50 @@ export default function DoubtSolverPage() {
             </div>
           )}
 
-          {/* Fallback: raw text if JSON parse failed */}
-          {rawSolution && !result && (
+          {/* Sectioned plain-text response */}
+          {sectioned && !result && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                  <Target className="w-5 h-5" style={{ color: 'var(--accent-purple)' }} />
+                  Solution
+                </h3>
+              </div>
+              {sectioned.intro && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '14px', whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
+                  {sectioned.intro}
+                </div>
+              )}
+              {sectioned.sections.map((s, i) => (
+                <div key={i} style={{
+                  background: 'linear-gradient(135deg, #160D2E, #1E1040)',
+                  border: `1px solid ${s.accent}30`,
+                  borderRadius: '14px',
+                  padding: '20px',
+                }}>
+                  <span style={{
+                    display: 'inline-block',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: s.accent,
+                    background: `${s.accent}18`,
+                    border: `1px solid ${s.accent}40`,
+                    borderRadius: '20px',
+                    padding: '4px 12px',
+                    marginBottom: '10px',
+                  }}>
+                    {s.emoji} {s.title}
+                  </span>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                    {s.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Fallback: raw text if no structured parse worked */}
+          {rawSolution && !result && !sectioned && (
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from './AuthContext'
 
-export type UserRole = 'student' | 'founder' | null
+export type UserRole = 'student' | 'founder' | 'general' | null
 
 interface RoleContextType {
   role: UserRole

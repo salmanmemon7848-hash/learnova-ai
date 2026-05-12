@@ -68,18 +68,18 @@ export async function POST(req: NextRequest) {
     if (!rateLimitResult.allowed) return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
     const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
-    console.log('ðŸ“¥ Business Ideas API called');
+    console.log('📬 Business Ideas API called');
 
     // Build context string from MCQ answers for backward compatibility
     const labelMap: Record<string, Record<string, string>> = {
       '1': { tech: 'Technology & Apps', education: 'Education & Coaching', health: 'Health & Wellness', lifestyle: 'Fashion & Beauty', food: 'Food & Agriculture', finance: 'Finance & Investment' },
       '2': { communication: 'Communication & Talking', creative: 'Creative Work', technical: 'Technical/Coding', organizing: 'Planning & Organizing', teaching: 'Teaching & Explaining', problem_solving: 'Problem Solving' },
       '3': { minimal: 'Less than 1 hour/day', part_time: '1-3 hours/day', serious: '3-6 hours/day', full_time: 'Full time 8+ hours/day' },
-      '4': { zero: 'Zero budget', low: 'Under â‚¹10,000', medium: 'â‚¹10,000 to â‚¹1 Lakh', high: 'â‚¹1 Lakh or more' },
+      '4': { zero: 'Zero budget', low: 'Under ₹10,000', medium: '₹10,000 to ₹1 Lakh', high: '₹1 Lakh or more' },
       '5': { students: 'Students & Young People', professionals: 'Working Professionals', small_business: 'Small Business Owners', rural: 'Rural Communities', families: 'Parents & Families', everyone: 'Mass Market' },
       '6': { product: 'Sell physical products', service: 'Offer a service', platform: 'Build app or platform', content: 'Content or courses', resell: 'Resell or franchise' },
       '7': { financial_risk: 'Losing money', time: 'Not enough time', market_risk: 'Nobody will buy', skills_gap: 'Lacks skills', competition: 'Too much competition', fearless: 'Not afraid at all' },
-      '8': { side_income: 'â‚¹20-50K side income/month', full_income: 'Replace full-time salary', exit: 'Build and sell company', scale: 'Scale to 100+ crore', impact: 'Social impact' },
+      '8': { side_income: '₹20-50K side income/month', full_income: 'Replace full-time salary', exit: 'Build and sell company', scale: 'Scale to 100+ crore', impact: 'Social impact' },
     };
 
     const qNames: Record<string, string> = {
@@ -118,7 +118,7 @@ ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Thinkior's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
+You are Thinkior's Business Mentor — a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
 
 Everything you know about this founder:
 ${JSON.stringify(ctx, null, 2)}
@@ -126,7 +126,7 @@ ${JSON.stringify(ctx, null, 2)}
 Rules:
 - Every idea must be deeply personalized to their specific profile
 - If budget is low or zero, suggest only bootstrappable ideas
-- Factor in their time availability â€” part-time means low-maintenance ideas
+- Factor in their time availability — part-time means low-maintenance ideas
 - Reference real Indian startups and specific Indian market realities
 - Be specific about Indian rupee amounts
 - Never suggest ideas that contradict their budget or time constraints
@@ -137,27 +137,34 @@ Respond ONLY in this exact JSON with no extra text or markdown:
 {
   "ideas": [
     {
-      "rank": 1,
-      "idea_name": "string",
-      "one_line": "string â€” elevator pitch in one sentence",
-      "problem_solved": "string",
-      "target_customer": "string â€” specific, not generic",
-      "why_now": "string â€” why this idea makes sense in India right now",
-      "startup_cost": "â‚¹X â€“ â‚¹Y",
-      "revenue_model": "string",
-      "time_to_first_revenue": "string",
-      "real_indian_example": "string â€” similar successful startup or entrepreneur in India",
-      "biggest_risk": "string",
-      "founder_fit_score": 85,
-      "founder_fit_reason": "string â€” based on their specific skills and background",
-      "first_3_steps": ["string", "string", "string"],
-      "market_size_india": "string"
+      "name": "string",
+      "category": "string",
+      "description": "string",
+      "difficulty": "Easy | Medium | Hard",
+      "viabilityScore": 85,
+      "scores": {
+        "market_demand": 85,
+        "profit_potential": 80,
+        "ease_of_execution": 75,
+        "india_fit": 90
+      },
+      "revenue": "₹X – ₹Y per month",
+      "investment": "₹X – ₹Y",
+      "timeToRevenue": "string (e.g. 2-3 weeks)",
+      "whyPerfect": "string — based on founder profile",
+      "howItWorks": "string",
+      "revenueModel": "string",
+      "firstSteps": ["step 1", "step 2", "step 3", "step 4", "step 5", "step 6", "step 7"],
+      "indianExamples": "string — real companies",
+      "toolsNeeded": ["tool 1", "tool 2"],
+      "risks": "string",
+      "competitiveEdge": "string"
     }
   ],
-  "mentor_observation": "string â€” personal observation about this founder's strengths",
-  "honest_warning": "string â€” one honest risk specific to their situation",
-  "recommended_idea": 1,
-  "why_recommended": "string â€” specific reason based on their full profile"
+  "mentor_observation": "string",
+  "honest_warning": "string",
+  "recommended_idea": "name of recommended idea",
+  "why_recommended": "string"
 }
 
 Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
@@ -178,7 +185,7 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
       taskComplexity: 'complex',
     });
     const text = aiResponse.result;
-    console.log('ðŸ“¤ Raw AI response length:', text?.length);
+    console.log('📤 Raw AI response length:', text?.length);
 
     let result: any = null;
 
@@ -187,7 +194,7 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
       const trimmed = text?.trim();
       if (trimmed?.startsWith('{')) {
         result = JSON.parse(trimmed);
-        console.log('âœ… Strategy 1 worked');
+        console.log('✅ Strategy 1 worked');
       }
     } catch (_) {}
 
@@ -197,7 +204,7 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
         const match = text?.match(/\{[\s\S]*\}/);
         if (match) {
           result = JSON.parse(match[0]);
-          console.log('âœ… Strategy 2 worked');
+          console.log('✅ Strategy 2 worked');
         }
       } catch (_) {}
     }
@@ -209,7 +216,7 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
         const match = cleaned?.match(/\{[\s\S]*\}/);
         if (match) {
           result = JSON.parse(match[0]);
-          console.log('âœ… Strategy 3 worked');
+          console.log('✅ Strategy 3 worked');
         }
       } catch (_) {}
     }
@@ -221,13 +228,13 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
         const match = fixed?.match(/\{[\s\S]*\}/);
         if (match) {
           result = JSON.parse(match[0]);
-          console.log('âœ… Strategy 4 worked');
+          console.log('✅ Strategy 4 worked');
         }
       } catch (_) {}
     }
 
     if (!result || !result.ideas || result.ideas.length === 0) {
-      console.error('âŒ All parse strategies failed.');
+      console.error('❌ All parse strategies failed.');
       return NextResponse.json(
         { error: 'AI response could not be parsed. Please try again.' },
         { status: 500 }
@@ -242,11 +249,11 @@ Generate exactly ${count || 5} ideas. All ideas must be different industries.`;
       { count: result.ideas.length }
     );
     console.log('[BusinessIdeas] Fixed: generated ideas now appear in founder dashboard activity');
-    console.log(`âœ… Successfully parsed ${result.ideas.length} ideas`);
+    console.log(`✅ Successfully parsed ${result.ideas.length} ideas`);
     return NextResponse.json({ result }, { headers: responseHeaders });
 
   } catch (error: any) {
-    console.error('âŒ Business Ideas Route Error:', error?.message || error);
+    console.error('❌ Business Ideas Route Error:', error?.message || error);
     return NextResponse.json(
       { error: 'Server error. Please try again.' },
       { status: 500 }

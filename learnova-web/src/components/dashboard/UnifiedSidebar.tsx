@@ -64,7 +64,7 @@ function UnifiedSidebar({
   const pathname = usePathname()
 
   const tools: SidebarNavItem[] = [
-    { icon: Globe, label: 'Chat', path: '/chat' },
+    { icon: Globe, label: 'Chat', path: '/dashboard-chat' },
     { icon: BookOpen, label: 'Exam Simulator', path: '/exam' },
     { icon: Lightbulb, label: 'Business Validator', path: '/tools/business-validator' },
   ]

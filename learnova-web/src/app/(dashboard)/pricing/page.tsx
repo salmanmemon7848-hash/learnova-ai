@@ -2,7 +2,9 @@
 
 import { Check, Lock, Star } from 'lucide-react'
 import { useRole } from '@/contexts/RoleContext'
-
+import { useSubscription } from '@/hooks/useSubscription'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 type Audience = 'student' | 'founder'
 
 type Feature = {
@@ -172,7 +174,10 @@ function FeatureRow({ feature }: { feature: Feature }) {
   )
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({ plan, currentPlan, onUpgrade, isProcessing }: { plan: Plan; currentPlan: string; onUpgrade: (planName: string) => void; isProcessing: boolean }) {
+  const normalizedCardPlan = plan.name.toLowerCase().replace(' ', '_')
+  const isCurrentPlan = currentPlan === normalizedCardPlan || (currentPlan === 'free' && plan.price === '₹0')
+  const isFreePlan = plan.price === '₹0'
   return (
     <article
       className="relative flex h-full flex-col rounded-2xl p-5 transition-all"
@@ -219,15 +224,17 @@ function PlanCard({ plan }: { plan: Plan }) {
       </ul>
 
       <button
-        className="mt-auto w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all hover:brightness-110"
+        onClick={() => !isCurrentPlan && !isFreePlan && onUpgrade(plan.name)}
+        disabled={isCurrentPlan || isProcessing}
+        className="mt-auto w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
-          background: plan.featured ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#1E1040',
-          border: plan.featured ? '1px solid #7C3AED' : '1px solid #2D1B69',
-          color: '#FFFFFF',
-          boxShadow: plan.featured ? '0 4px 20px #7C3AED40' : 'none',
+          background: isCurrentPlan ? '#374151' : plan.featured ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#1E1040',
+          border: isCurrentPlan ? '1px solid #4B5563' : plan.featured ? '1px solid #7C3AED' : '1px solid #2D1B69',
+          color: isCurrentPlan ? '#9CA3AF' : '#FFFFFF',
+          boxShadow: plan.featured && !isCurrentPlan ? '0 4px 20px #7C3AED40' : 'none',
         }}
       >
-        {plan.cta}
+        {isCurrentPlan ? 'Current Plan' : isProcessing ? 'Processing...' : plan.cta}
       </button>
     </article>
   )
@@ -235,11 +242,20 @@ function PlanCard({ plan }: { plan: Plan }) {
 
 export default function PricingPage() {
   const { role, roleLoading } = useRole()
+  const { plan: currentPlan, isLoading: planLoading } = useSubscription()
+  const router = useRouter()
+  const [processingPlan, setProcessingPlan] = useState<string | null>(null)
   const audience: Audience = role === 'founder' ? 'founder' : 'student'
   const plans = audience === 'student' ? studentPlans : founderPlans
   const copy = pricingCopy[audience]
 
-  if (roleLoading) {
+  const handleUpgrade = async (planType: string) => {
+    if (planType === 'Free' || planType === 'Starter') return
+    
+    alert('Payment integration is currently disabled.')
+  }
+
+  if (roleLoading || planLoading) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
         <div
@@ -274,7 +290,13 @@ export default function PricingPage() {
 
       <section className="grid gap-4 lg:grid-cols-3">
         {plans.map((plan) => (
-          <PlanCard key={plan.name} plan={plan} />
+          <PlanCard 
+            key={plan.name} 
+            plan={plan} 
+            currentPlan={currentPlan}
+            onUpgrade={handleUpgrade}
+            isProcessing={processingPlan === plan.name}
+          />
         ))}
       </section>
 

@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import Script from "next/script";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-heading",

@@ -1953,3 +1953,66 @@ textarea, select, option {
     overflow-y: auto;
   }
 }
+
+/* General Chat page responsive */
+@media (max-width: 768px) {
+  .chat-sidebar-wrapper {
+    position: fixed !important;
+    left: -260px;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    transition: left 0.25s ease;
+  }
+
+  .chat-sidebar-wrapper.open {
+    left: 0 !important;
+  }
+
+  .chat-main-wrapper {
+    margin-left: 0 !important;
+    padding-top: 52px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .landing-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .landing-role-grid > :last-child {
+    grid-column: 1 / -1;
+    justify-self: center;
+    max-width: 472px;
+    width: 100%;
+  }
+}
+
+@keyframes powerfulGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(247, 201, 72, 0.35), 0 0 24px rgba(247, 201, 72, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(247, 201, 72, 0.6), 0 0 40px rgba(247, 201, 72, 0.25);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}

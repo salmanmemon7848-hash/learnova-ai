@@ -8,6 +8,8 @@ Configure these in `learnova-web/.env.local` (local) or your host’s environmen
 |----------|-------------|
 | `GROQ_API_KEY` | From [console.groq.com](https://console.groq.com) — primary LLM on the server |
 | `GOOGLE_AI_API_KEY` | From [Google AI Studio](https://aistudio.google.com) — Gemini fallback (`GOOGLE_AI_STUDIO_API_KEY` still supported as alias) |
+| `OPENAI_API_KEY` | OpenAI model used by Power Mode for deep reasoning |
+| `OPENROUTER_API_KEY` | OpenRouter judge layer used by Power Mode synthesis |
 | `SEARXNG_URL` | Your SearXNG instance base/search URL (e.g. `https://learnova-searxng.onrender.com/search`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API — server-only; used for admin operations (e.g. auth security logging) |
 | `ANTHROPIC_API_KEY` | For `/api/learnova` (Claude) — optional if that route is unused |

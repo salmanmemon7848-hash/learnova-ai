@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
-          // SECURITY: Legacy XSS filter — OWASP A03:2021 Injection
+          // SECURITY: Legacy XSS filter
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
@@ -57,23 +57,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(self), geolocation=()',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
-              "media-src 'self' blob:",
-              "connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://learnova-searxng.onrender.com https://*.supabase.co",
-              "font-src 'self' data:",
-              "frame-src 'none'",
-            ].join('; '),
           },
         ],
       },
