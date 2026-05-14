@@ -1,4 +1,7 @@
+import nextVitals from "eslint-config-next/core-web-vitals.js";
+
 const eslintConfig = [
+  ...nextVitals,
   {
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
