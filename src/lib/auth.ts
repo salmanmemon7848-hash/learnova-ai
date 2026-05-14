@@ -1,4 +1,4 @@
-import { type AuthOptions } from 'next-auth'
+import { type AuthOptions, getServerSession } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
@@ -65,4 +65,8 @@ export const authOptions: AuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+}
+
+export async function auth() {
+  return await getServerSession(authOptions)
 }
