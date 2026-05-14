@@ -2,53 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import { runGeneralChat } from '@/lib/generalChatAI';
 import { sanitizeString, sanitizeMessages, checkBodySize } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkAndTrackUsage, checkPowerfulModeLimit, checkImageLimit, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import type { AIMessage } from '@/lib/generalChatAI';
 
-const DAILY_MESSAGE_LIMIT = 20;
-type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-// Generate a good title from the first user message
-const generateTitle = (message: string): string => {
-  const cleaned = message
-    .replace(/[^\w\s\u0900-\u097F\u0980-\u09FF]/g, ' ') // keep Hindi chars too
-    .trim();
-
-  if (cleaned.length <= 45) return cleaned;
-
-  // Try to cut at a word boundary
-  const truncated = cleaned.slice(0, 45);
-  const lastSpace = truncated.lastIndexOf(' ');
-  return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + '...';
-};
-
-async function checkGeneralChatLimit(userId: string, supabase: SupabaseServerClient): Promise<{
-  allowed: boolean;
-  remaining: number;
-  message?: string;
-}> {
-  const today = new Date().toISOString().split('T')[0];
-
-  const { count } = await supabase
-    .from('chat_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('role', 'user')
-    .gte('created_at', `${today}T00:00:00.000Z`)
-    .lt('created_at', `${today}T23:59:59.999Z`);
-
-  const used = count || 0;
-  const remaining = Math.max(0, DAILY_MESSAGE_LIMIT - used);
-
-  if (used >= DAILY_MESSAGE_LIMIT) {
-    return {
-      allowed: false,
-      remaining: 0,
-      message: `You have used all ${DAILY_MESSAGE_LIMIT} daily messages. Come back tomorrow!`,
-    };
-  }
-
-  return { allowed: true, remaining };
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,37 +14,103 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let rawBody: unknown = {};
-    try {
-      rawBody = await req.json();
-    } catch {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    const contentType = req.headers.get('content-type') || '';
+    const isImageRequest = contentType.includes('multipart/form-data');
+
+    let body: any = {};
+    let imageFile: File | null = null;
+    let sessionId: string | null = null;
+
+    if (isImageRequest) {
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch {
+        return NextResponse.json({ error: 'Failed to read form data' }, { status: 400 });
+      }
+      imageFile = formData.get('image') as File | null;
+      body.message = formData.get('message') as string || '';
+      sessionId = formData.get('sessionId') as string || null;
+      
+      if (!imageFile) {
+        return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      }
+
+      // Use a local constant to help TypeScript narrowing
+      const currentImageFile = imageFile;
+      
+      // Check image limit
+      const imageCheck = await checkImageLimit(session.user.id);
+      if (!imageCheck.allowed) {
+        return NextResponse.json({
+          error: 'image_limit_reached',
+          message: imageCheck.message,
+        }, { status: 429 });
+      }
+      
+      // Support all image types
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png',
+        'image/webp', 'image/gif', 'image/bmp',
+        'image/tiff', 'image/svg+xml',
+      ];
+    
+      const geminiSupportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const mimeType = geminiSupportedTypes.includes(currentImageFile.type)
+        ? currentImageFile.type
+        : 'image/jpeg';
+    
+      if (!allowedTypes.some(t => currentImageFile.type.startsWith('image/'))) {
+        return NextResponse.json({
+          error: 'Please upload an image file (JPG, PNG, WebP, or GIF).'
+        }, { status: 400 });
+      }
+
+      if (imageFile.size > 4 * 1024 * 1024) {
+        return NextResponse.json({ error: 'Image too large. Please use an image under 4MB.' }, { status: 413 });
+      }
+
+    } else {
+      let rawBody: unknown = {};
+      try {
+        rawBody = await req.json();
+      } catch {
+        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+      }
+
+      if (!checkBodySize(rawBody, 100000)) {
+        return NextResponse.json({ error: 'Request too large' }, { status: 413 });
+      }
+
+      body = rawBody && typeof rawBody === 'object' ? rawBody as Record<string, unknown> : {};
+      sessionId = typeof body.sessionId === 'string' ? sanitizeString(body.sessionId, 36) : null;
     }
 
-    if (!checkBodySize(rawBody, 100000)) {
-      return NextResponse.json({ error: 'Request too large' }, { status: 413 });
-    }
-
-    const body = rawBody && typeof rawBody === 'object'
-      ? rawBody as Record<string, unknown>
-      : {};
-
-    const messages = sanitizeMessages(body.messages)
+    const messages = sanitizeMessages(body.messages || [])
       .filter((message) => message.role === 'user' || message.role === 'assistant');
-    const sessionId = typeof body.sessionId === 'string'
-      ? sanitizeString(body.sessionId, 36)
-      : null;
+    
+    if (isImageRequest) {
+      messages.push({ role: 'user', content: body.message });
+    }
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
     }
 
-    const limitCheck = await checkGeneralChatLimit(session.user.id, supabase);
-    if (!limitCheck.allowed) {
-      return NextResponse.json({
-        error: 'rate_limit_exceeded',
-        message: limitCheck.message,
-      }, { status: 429 });
+    const isPowerfulMode = body.powerfulMode === true;
+    if (isPowerfulMode && !isImageRequest) {
+      const powerfulCheck = await checkPowerfulModeLimit(session.user.id);
+      if (!powerfulCheck.allowed) {
+        return NextResponse.json({
+          error: 'powerful_mode_limit',
+          message: powerfulCheck.message,
+        }, { status: 429 });
+      }
+    }
+
+    const usageResult = await checkAndTrackUsage(session.user.id, 'general-chat');
+    if (!usageResult.allowed) {
+      return NextResponse.json(buildUsageBlockedResponse(usageResult), { status: usageResult.reason === 'locked' ? 403 : 429 });
     }
 
     const lastUserMessage = messages.filter((message) => message.role === 'user').at(-1)?.content || '';
@@ -113,23 +135,52 @@ Rules:
 - For math or code, show your work clearly
 - If web search results are provided, use them to give current and accurate answers`;
 
-    const fullMessages: AIMessage[] = [
-      { role: 'system' as const, content: systemPrompt },
-      ...messages.map((m: any) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ];
+    let aiReply = '';
+    let aiProvider = '';
 
-    const aiResult = await runGeneralChat(fullMessages, lastUserMessage, 1500);
+    if (isImageRequest && imageFile) {
+      const buffer = await imageFile.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
+      const geminiBody = {
+        contents: [{
+          parts: [
+            { text: body.message || 'What do you see in this image? Describe and analyze it.' },
+            { inline_data: { mime_type: imageFile.type, data: base64 } },
+          ],
+        }],
+        generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+      };
+      
+      const geminiRes = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody),
+      });
+      const geminiData = await geminiRes.json();
+      aiReply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not analyze image.';
+      aiProvider = 'gemini-vision';
+    } else {
+      const fullMessages: AIMessage[] = [
+        { role: 'system' as const, content: systemPrompt },
+        ...messages.map((m: any) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+      ];
 
-    if (!aiResult.text || aiResult.provider === 'failed') {
-      return NextResponse.json({
-        error: 'AI service unavailable. Please try again in a moment.',
-      }, { status: 500 });
+      const aiResult = await runGeneralChat(fullMessages, lastUserMessage, 1500);
+
+      if (!aiResult.text || aiResult.provider === 'failed') {
+        return NextResponse.json({
+          error: 'AI service unavailable. Please try again in a moment.',
+        }, { status: 500 });
+      }
+      aiReply = aiResult.text;
+      aiProvider = aiResult.provider;
     }
 
-    console.log(`[GeneralChat] Provider: ${aiResult.provider} | Search: ${aiResult.searchUsed}`);
+    console.log(`[GeneralChat] Provider: ${aiProvider}`);
 
     let currentSessionId = sessionId;
 
@@ -145,7 +196,8 @@ Rules:
     }
 
     if (!currentSessionId) {
-      const title = generateTitle(lastUserMessage);
+      const cleaned = lastUserMessage.replace(/[^\w\s\u0900-\u097F\u0980-\u09FF]/g, ' ').trim();
+      const title = cleaned.length <= 45 ? cleaned : (cleaned.slice(0, 45).lastIndexOf(' ') > 20 ? cleaned.slice(0, cleaned.slice(0, 45).lastIndexOf(' ')) : cleaned.slice(0, 45)) + '...';
 
       const { data: newSession, error: sessionError } = await supabase
         .from('chat_sessions')
@@ -176,7 +228,7 @@ Rules:
           session_id: currentSessionId,
           user_id: session.user.id,
           role: 'assistant' as const,
-          content: aiResult.text,
+          content: aiReply,
           created_at: new Date(Date.now() + 1).toISOString(), // 1ms later to preserve order
         },
       ];
@@ -197,10 +249,10 @@ Rules:
     }
 
     return NextResponse.json({
-      reply: aiResult.text,
+      reply: aiReply,
       sessionId: currentSessionId,
-      provider: aiResult.provider,
-      remaining: limitCheck.remaining - 1,
+      provider: aiProvider,
+      remaining: usageResult.remaining,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

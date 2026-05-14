@@ -1,4 +1,4 @@
-import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
+﻿import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch'
 import { getAIResponse } from '@/lib/aiRouter'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/dashboardHelpers'
@@ -85,7 +85,7 @@ ALWAYS structure your validation response exactly like this:
 [1-2 sentence restatement of the idea]
 
 ## Market Reality Check (India-specific)
-- Target customer: [who exactly, city tier, income range in ₹]
+- Target customer: [who exactly, city tier, income range in â‚¹]
 - Market size: [TAM estimate in Indian context]
 - What do Indians currently use for this problem?
 
@@ -93,10 +93,10 @@ ALWAYS structure your validation response exactly like this:
 [Honest score with one-line reason]
 
 ## Green Flags
-[What's genuinely promising in India — be specific]
+[What's genuinely promising in India â€” be specific]
 
 ## Red Flags
-[Honest problems — don't sugarcoat]
+[Honest problems â€” don't sugarcoat]
 
 ## India-Specific Challenges
 [Regulatory, cultural, infrastructure barriers]
@@ -107,7 +107,7 @@ ALWAYS structure your validation response exactly like this:
 ## Your next 48-hour action:
 [Single most important thing to do right now]
 
-Always use ₹ for pricing. Always think about UPI and cash-on-delivery. Always consider whether this works in a city of 5 lakh population.`
+Always use â‚¹ for pricing. Always think about UPI and cash-on-delivery. Always consider whether this works in a city of 5 lakh population.`
 
     // Enrich system prompt with live market intelligence for this idea
     const searchContext = await getSearchContext(idea, 'validate', { industry: industry || '' })
@@ -144,7 +144,7 @@ Please analyse this thoroughly using your India expertise.`
     )
     console.log('[BusinessValidator] Fixed: validation now appears in founder dashboard activity')
 
-    return NextResponse.json({ result }, { headers: responseHeaders })
+    return NextResponse.json({ result }, {})
   } catch (error: unknown) {
     console.error('Validate Error:', error)
 
@@ -154,3 +154,4 @@ Please analyse this thoroughly using your India expertise.`
     )
   }
 }
+

@@ -49,7 +49,7 @@ export async function call(
     throw new AIProviderError('gemini', 'configuration', 'Gemini API key is not configured');
   }
 
-  const primaryModel = taskComplexity === 'complex' ? 'gemini-pro-latest' : 'gemini-flash-latest';
+  const primaryModel = taskComplexity === 'complex' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
   const fallbackModel = 'gemini-1.5-flash';
 
   const makeCall = async (model: string) => {
@@ -99,7 +99,7 @@ export async function call(
   try {
     return await makeCall(primaryModel);
   } catch (error) {
-    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.code === 'rate_limit') {
+    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.reason === 'rate_limit') {
       console.warn(`[Gemini] Primary model ${primaryModel} failed with 429, falling back to ${fallbackModel}`);
       return await makeCall(fallbackModel);
     }
@@ -174,7 +174,7 @@ export async function callVision(
   try {
     return await makeCall(primaryModel);
   } catch (error) {
-    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.code === 'rate_limit') {
+    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.reason === 'rate_limit') {
       console.warn(`[Gemini] Vision primary model ${primaryModel} failed with 429, falling back to ${fallbackModel}`);
       return await makeCall(fallbackModel);
     }

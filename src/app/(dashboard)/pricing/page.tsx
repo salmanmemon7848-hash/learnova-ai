@@ -5,6 +5,7 @@ import { useRole } from '@/contexts/RoleContext'
 import { useSubscription } from '@/hooks/useSubscription'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import RazorpayCheckout from '@/components/RazorpayCheckout'
 type Audience = 'student' | 'founder'
 
 type Feature = {
@@ -174,7 +175,7 @@ function FeatureRow({ feature }: { feature: Feature }) {
   )
 }
 
-function PlanCard({ plan, currentPlan, onUpgrade, isProcessing }: { plan: Plan; currentPlan: string; onUpgrade: (planName: string) => void; isProcessing: boolean }) {
+function PlanCard({ plan, currentPlan, audience, onUpgrade, isProcessing }: { plan: Plan; currentPlan: string; audience: string; onUpgrade: (planName: string) => void; isProcessing: boolean }) {
   const normalizedCardPlan = plan.name.toLowerCase().replace(' ', '_')
   const isCurrentPlan = currentPlan === normalizedCardPlan || (currentPlan === 'free' && plan.price === '₹0')
   const isFreePlan = plan.price === '₹0'
@@ -223,19 +224,30 @@ function PlanCard({ plan, currentPlan, onUpgrade, isProcessing }: { plan: Plan; 
         ))}
       </ul>
 
-      <button
-        onClick={() => !isCurrentPlan && !isFreePlan && onUpgrade(plan.name)}
-        disabled={isCurrentPlan || isProcessing}
-        className="mt-auto w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          background: isCurrentPlan ? '#374151' : plan.featured ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#1E1040',
-          border: isCurrentPlan ? '1px solid #4B5563' : plan.featured ? '1px solid #7C3AED' : '1px solid #2D1B69',
-          color: isCurrentPlan ? '#9CA3AF' : '#FFFFFF',
-          boxShadow: plan.featured && !isCurrentPlan ? '0 4px 20px #7C3AED40' : 'none',
-        }}
-      >
-        {isCurrentPlan ? 'Current Plan' : isProcessing ? 'Processing...' : plan.cta}
-      </button>
+      {!isCurrentPlan && !isFreePlan ? (
+        <div className="mt-auto">
+          <RazorpayCheckout
+            plan={normalizedCardPlan}
+            role={audience}
+            planLabel={`${plan.price}/month`}
+            onSuccess={() => onUpgrade('success')}
+            onClose={() => console.log('Payment cancelled')}
+          />
+        </div>
+      ) : (
+        <button
+          disabled={isCurrentPlan || isProcessing}
+          className="mt-auto w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background: isCurrentPlan ? '#374151' : plan.featured ? 'linear-gradient(135deg, #7C3AED, #4F46E5)' : '#1E1040',
+            border: isCurrentPlan ? '1px solid #4B5563' : plan.featured ? '1px solid #7C3AED' : '1px solid #2D1B69',
+            color: isCurrentPlan ? '#9CA3AF' : '#FFFFFF',
+            boxShadow: plan.featured && !isCurrentPlan ? '0 4px 20px #7C3AED40' : 'none',
+          }}
+        >
+          {isCurrentPlan ? 'Current Plan' : isProcessing ? 'Processing...' : plan.cta}
+        </button>
+      )}
     </article>
   )
 }
@@ -245,14 +257,16 @@ export default function PricingPage() {
   const { plan: currentPlan, isLoading: planLoading } = useSubscription()
   const router = useRouter()
   const [processingPlan, setProcessingPlan] = useState<string | null>(null)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
   const audience: Audience = role === 'founder' ? 'founder' : 'student'
   const plans = audience === 'student' ? studentPlans : founderPlans
   const copy = pricingCopy[audience]
 
   const handleUpgrade = async (planType: string) => {
-    if (planType === 'Free' || planType === 'Starter') return
-    
-    alert('Payment integration is currently disabled.')
+    if (planType === 'success') {
+      setPaymentSuccess(true);
+      setTimeout(() => window.location.reload(), 2000);
+    }
   }
 
   if (roleLoading || planLoading) {
@@ -294,11 +308,43 @@ export default function PricingPage() {
             key={plan.name} 
             plan={plan} 
             currentPlan={currentPlan}
+            audience={audience}
             onUpgrade={handleUpgrade}
             isProcessing={processingPlan === plan.name}
           />
         ))}
       </section>
+
+      {paymentSuccess && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 100,
+        }}>
+          <div style={{
+            background: '#1a1a2e', borderRadius: 16,
+            padding: '40px', textAlign: 'center', maxWidth: 400,
+            border: '1px solid rgba(124,58,237,0.4)',
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: 16 }}>🎉</div>
+            <h2 style={{ marginBottom: 8, color: '#F5F3FF', fontSize: '1.5rem', fontWeight: 'bold' }}>Payment Successful!</h2>
+            <p style={{ opacity: 0.7, marginBottom: 20, color: '#C4B5FD' }}>
+              Your plan has been activated. Enjoy your upgraded features!
+            </p>
+            <button
+              onClick={() => { setPaymentSuccess(false); window.location.reload(); }}
+              style={{
+                padding: '12px 32px', borderRadius: 10,
+                background: '#7c3aed', border: 'none',
+                color: '#fff', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Start Using Features →
+            </button>
+          </div>
+        </div>
+      )}
 
       <p className="mt-5 text-center text-xs" style={{ color: '#9CA3AF' }}>
         All limits are strictly per day and reset at midnight IST.

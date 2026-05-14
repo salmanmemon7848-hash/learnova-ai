@@ -77,7 +77,7 @@ export async function call(prompt: string, context?: string): Promise<string> {
   try {
     return await makeCall(GROQ_MODEL);
   } catch (error) {
-    if (error instanceof AIProviderError && error.code === 'rate_limit') {
+    if (error instanceof AIProviderError && error.reason === 'rate_limit') {
       console.warn(`[Groq] Primary model ${GROQ_MODEL} failed with 429, falling back to ${FALLBACK_MODEL}`);
       return await makeCall(FALLBACK_MODEL);
     }

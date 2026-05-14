@@ -86,7 +86,7 @@ async function callOpenAI(content: OpenAIMessageContent, taskComplexity: TaskCom
   try {
     return await makeCall(primaryModel);
   } catch (error) {
-    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.code === 'rate_limit') {
+    if (primaryModel !== fallbackModel && error instanceof AIProviderError && error.reason === 'rate_limit') {
       console.warn(`[OpenAI] Primary model ${primaryModel} failed with 429, falling back to ${fallbackModel}`);
       return await makeCall(fallbackModel);
     }

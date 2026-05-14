@@ -230,9 +230,12 @@ function ChatMain({
   isPowerfulLoading: boolean;
   currentStatus: string;
   onTogglePowerfulMode: () => void;
-  onSend: (message: string) => void;
+  onSend: (message: string, imageFile?: File | null) => void;
 }) {
   const [input, setInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -240,9 +243,25 @@ function ChatMain({
   }, [messages, isLoading]);
 
   const handleSend = () => {
-    if (!input.trim() || isLoading || isPowerfulLoading) return;
-    onSend(input.trim());
+    if ((!input.trim() && !selectedImage) || isLoading || isPowerfulLoading) return;
+    onSend(input.trim(), selectedImage);
     setInput('');
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        alert('Image too large. Please select an image under 4MB.');
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -441,18 +460,56 @@ function ChatMain({
             />
           </div>
 
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message Thinkior..."
-            className="chat-input-box"
-            rows={1}
-            style={{
-              width: '100%',
-              padding: '14px 52px 14px 18px',
-              borderRadius: 14,
-              background: 'rgba(255,255,255,0.07)',
+          {imagePreview && (
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
+              <img src={imagePreview} alt="Preview" style={{ height: 80, borderRadius: 8, objectFit: 'cover' }} />
+              <button
+                onClick={() => { setSelectedImage(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                style={{
+                  position: 'absolute', top: -6, right: -6,
+                  background: '#ef4444', color: '#fff', border: 'none',
+                  borderRadius: '50%', width: 20, height: 20,
+                  fontSize: '12px', cursor: 'pointer', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                position: 'absolute', left: 12, zIndex: 1,
+                background: 'none', border: 'none', color: '#9ca3af',
+                fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center'
+              }}
+              title="Upload image (max 4MB)"
+            >
+              📎
+            </button>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              style={{ display: 'none' }}
+            />
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Message Thinkior..."
+              className="chat-input-box"
+              rows={1}
+              style={{
+                width: '100%',
+                padding: '14px 52px 14px 44px',
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.07)',
               border: '1px solid rgba(255,255,255,0.12)',
               color: 'inherit',
               fontSize: '0.95rem',
@@ -477,7 +534,7 @@ function ChatMain({
 
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading || isPowerfulLoading}
+            disabled={(!input.trim() && !selectedImage) || isLoading || isPowerfulLoading}
             className="send-button"
             style={{
               position: 'absolute',
@@ -486,10 +543,10 @@ function ChatMain({
               width: 34,
               height: 34,
               borderRadius: 8,
-              background: input.trim() && !isLoading && !isPowerfulLoading ? '#7c3aed' : 'rgba(255,255,255,0.08)',
+              background: (input.trim() || selectedImage) && !isLoading && !isPowerfulLoading ? '#7c3aed' : 'rgba(255,255,255,0.08)',
               border: 'none',
               color: '#fff',
-              cursor: input.trim() && !isLoading && !isPowerfulLoading ? 'pointer' : 'not-allowed',
+              cursor: (input.trim() || selectedImage) && !isLoading && !isPowerfulLoading ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -499,6 +556,7 @@ function ChatMain({
           >
             ↑
           </button>
+          </div>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.72rem', opacity: 0.3, marginTop: 8 }}>
@@ -653,13 +711,14 @@ export default function ChatPage() {
     }
   };
 
-  const handleSend = async (userMessage: string) => {
+  const handleSend = async (userMessage: string, imageFile?: File | null) => {
     if (!user || isLoading || isPowerfulLoading) return;
 
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage }];
+    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage || '📷 [Image attached]' }];
     setMessages(newMessages);
 
-    if (isPowerfulMode) {
+    // Powerful mode doesn't support images natively yet. Bypass for images.
+    if (isPowerfulMode && !imageFile) {
       try {
         const powerfulResult = await askPowerful(newMessages, activeSessionId);
 
@@ -690,14 +749,28 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/general-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: newMessages,
-          sessionId: activeSessionId,
-        }),
-      });
+      let response;
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        formData.append('message', userMessage);
+        if (activeSessionId) formData.append('sessionId', activeSessionId);
+        
+        response = await fetch('/api/general-chat', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        response = await fetch('/api/general-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: newMessages,
+            sessionId: activeSessionId,
+            powerfulMode: isPowerfulMode,
+          }),
+        });
+      }
 
       const data = await response.json();
 

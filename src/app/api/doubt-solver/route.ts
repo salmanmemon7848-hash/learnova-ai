@@ -1,6 +1,6 @@
 import { aiHandler, aiVisionHandler } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
-import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
+import { checkAndTrackUsage, buildUsageBlockedResponse, checkImageLimit } from '@/lib/usageTracker';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -105,11 +105,13 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'doubt-solver', ipAddress);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const usageResult = await checkAndTrackUsage(session.user.id, 'doubt-solver');
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        buildUsageBlockedResponse(usageResult),
+        { status: usageResult.reason === 'locked' ? 403 : 429 }
+      );
     }
-    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
     const userId = session.user.id;
 
     const contentType = req.headers.get('content-type') || '';
@@ -127,22 +129,41 @@ export async function POST(req: NextRequest) {
       const subject = sanitizeString(formData.get('subject'), 100);
 
       if (!imageFile) {
-        return NextResponse.json({ error: 'No image file received' }, { status: 400 });
+        return NextResponse.json({ error: 'No image provided' }, { status: 400 });
       }
 
-      const maxImageSize = 10 * 1024 * 1024;
+      const imageCheck = await checkImageLimit(session.user.id);
+      if (!imageCheck.allowed) {
+        return NextResponse.json({
+          error: 'image_limit_reached',
+          message: imageCheck.message,
+        }, { status: 429 });
+      }
+
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png',
+        'image/webp', 'image/gif', 'image/bmp',
+        'image/tiff', 'image/svg+xml',
+      ];
+
+      const geminiSupportedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const mimeType = geminiSupportedTypes.includes(imageFile.type)
+        ? imageFile.type
+        : 'image/jpeg';
+
+      if (!allowedTypes.some(t => imageFile.type.startsWith('image/'))) {
+        return NextResponse.json({
+          error: 'Please upload an image file (JPG, PNG, WebP, or GIF).'
+        }, { status: 400 });
+      }
+
+      const maxImageSize = 4 * 1024 * 1024;
       if (imageFile.size > maxImageSize) {
-        return NextResponse.json({ error: 'Please upload an image under 10MB.' }, { status: 413 });
-      }
-
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-      if (!allowedTypes.includes(imageFile.type)) {
-        return NextResponse.json({ error: 'Invalid file type. Please upload a JPG, PNG, WebP, or GIF image.' }, { status: 400 });
+        return NextResponse.json({ error: 'Image too large. Please use an image under 4MB.' }, { status: 413 });
       }
 
       const imageBytes = await imageFile.arrayBuffer();
       const base64Image = Buffer.from(imageBytes).toString('base64');
-      const mimeType = imageFile.type;
 
       const prompt = `You are Thinkior's Doubt Solver — the best tutor a student could have at 2am before their exam.
 
@@ -197,7 +218,7 @@ For the response, follow these rules:
         console.warn('[DoubtSolver] Supabase log failed:', logErr);
       }
 
-      return NextResponse.json({ answer: responseText }, { headers: responseHeaders });
+      return NextResponse.json({ answer: responseText }, { });
     }
 
     let rawBody: unknown = {};
@@ -279,7 +300,7 @@ For the response, follow these rules:
       console.warn('[Doubt Solver] Failed to save to Supabase:', saveErr);
     }
 
-    return NextResponse.json({ solution }, { headers: responseHeaders });
+    return NextResponse.json({ solution }, { });
   } catch (error: unknown) {
     console.error('❌ Doubt Solver Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Failed to solve doubt.' }, { status: 500 });

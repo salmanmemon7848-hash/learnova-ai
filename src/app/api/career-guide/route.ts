@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { aiHandler } from '@/lib/ai/aiHandler';
-import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
+import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import {
   THINKIOR_FULL_CONTEXT,
   CAREER_GUIDE_KNOWLEDGE,
@@ -352,6 +352,13 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    const usageResult = await checkAndTrackUsage(session.user.id, 'career-guide');
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        buildUsageBlockedResponse(usageResult),
+        { status: usageResult.reason === 'locked' ? 403 : 429 }
+      );
+    }
     const responseHeaders = {};
 
     const systemPrompt = `${THINKIOR_FULL_CONTEXT}

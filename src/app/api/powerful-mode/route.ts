@@ -2,8 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { runPowerMode } from '@/lib/powerMode';
 import { checkBodySize, sanitizeMessages, sanitizeString } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
-
-const DAILY_MESSAGE_LIMIT = 20;
+import { checkAndTrackUsage, checkPowerfulModeLimit } from '@/lib/usageTracker';
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -16,34 +15,6 @@ const generateTitle = (message: string): string => {
   return `${lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated}...`;
 };
 
-async function checkGeneralChatLimit(userId: string, supabase: SupabaseServerClient): Promise<{
-  allowed: boolean;
-  remaining: number;
-  message?: string;
-}> {
-  const today = new Date().toISOString().split('T')[0];
-
-  const { count } = await supabase
-    .from('chat_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('role', 'user')
-    .gte('created_at', `${today}T00:00:00.000Z`)
-    .lt('created_at', `${today}T23:59:59.999Z`);
-
-  const used = count || 0;
-  const remaining = Math.max(0, DAILY_MESSAGE_LIMIT - used);
-
-  if (used >= DAILY_MESSAGE_LIMIT) {
-    return {
-      allowed: false,
-      remaining: 0,
-      message: `You have used all ${DAILY_MESSAGE_LIMIT} daily messages. Come back tomorrow!`,
-    };
-  }
-
-  return { allowed: true, remaining };
-}
 
 function buildPowerfulPrompt(messages: Array<{ role: string; content: string }>) {
   const conversation = messages
@@ -180,12 +151,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
     }
 
-    const limitCheck = await checkGeneralChatLimit(session.user.id, supabase);
-    if (!limitCheck.allowed) {
+    const powerfulCheck = await checkPowerfulModeLimit(session.user.id);
+    if (!powerfulCheck.allowed) {
+      return NextResponse.json({
+        error: 'powerful_mode_limit',
+        message: powerfulCheck.message,
+      }, { status: 429 });
+    }
+
+    const usageResult = await checkAndTrackUsage(session.user.id, 'general-chat');
+    if (!usageResult.allowed) {
       return NextResponse.json({
         error: 'rate_limit_exceeded',
-        message: limitCheck.message,
-      }, { status: 429 });
+        message: usageResult.message || `Limit reached. Please upgrade your plan.`,
+      }, { status: usageResult.reason === 'locked' ? 403 : 429 });
     }
 
     const { lastUserMessage, prompt } = buildPowerfulPrompt(messages);
@@ -243,7 +222,7 @@ export async function POST(request: NextRequest) {
             sessionId: currentSessionId,
             provider: result.provider,
             durationMs: result.durationMs,
-            remaining: limitCheck.remaining - 1,
+            remaining: usageResult.remaining,
           });
 
           controller.close();

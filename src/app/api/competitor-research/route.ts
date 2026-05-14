@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { aiHandler } from '@/lib/ai/aiHandler';
 import { searchWebMultiple } from '@/lib/searxng';
-import { checkAndIncrementUsage, buildBlockedResponse } from '@/lib/rateLimit';
+import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import { sanitizeString, sanitizeEnum, stripUnexpectedFields, checkBodySize } from '@/lib/validation';
 import { THINKIOR_FULL_CONTEXT, FOUNDER_KNOWLEDGE } from '@/lib/thinkiorKnowledge';
 import { NextRequest, NextResponse } from 'next/server';
@@ -93,14 +93,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Rate Limit ────────────────────────────────────────────────────────
-    const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rateLimitResult = await checkAndIncrementUsage(
-      session.user.id,
-      'competitor-research',
-      ipAddress
-    );
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const usageResult = await checkAndTrackUsage(session.user.id, 'competitor-research');
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        buildUsageBlockedResponse(usageResult),
+        { status: usageResult.reason === 'locked' ? 403 : 429 }
+      );
     }
 
     // ── Parse + Validate Body ─────────────────────────────────────────────
@@ -349,9 +347,9 @@ Include exactly 10 rows in comparisonTable for: Pricing, Mobile App, AI Features
       success: true,
       data: result.researchData,
       rateLimitInfo: {
-        remaining: rateLimitResult.remaining,
-        isWarning: rateLimitResult.isWarning,
-        warningMessage: rateLimitResult.warningMessage,
+        remaining: usageResult.remaining,
+        isWarning: false,
+        warningMessage: '',
       },
       jobStatus: 'completed'
     });

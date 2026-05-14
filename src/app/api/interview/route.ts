@@ -1,6 +1,7 @@
 import { aiHandler, messagesToPrompt, type AIChatMessage } from '@/lib/ai/aiHandler';
 import { generateInterviewQuestions } from '@/lib/groqInterviewService';
 import { createClient } from '@/lib/supabase/server';
+import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       ? `${THINKIOR_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}`
       : `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n${CAREER_GUIDE_KNOWLEDGE}`;
 
-    // ── VOICE MODE: conversational turn ────────────────────────────────────
+    // â”€â”€ VOICE MODE: conversational turn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'voice_turn') {
       const VOICE_FALLBACKS: Record<'english' | 'hindi' | 'hinglish', string[]> = {
         english: [
@@ -118,18 +119,18 @@ export async function POST(req: NextRequest) {
           'What questions would you like to ask me about this role?',
         ],
         hindi: [
-          'कृपया अपने बैकग्राउंड और हाल के अनुभव के बारे में बताइए।',
-          'इस भूमिका के लिए आपको मजबूत उम्मीदवार क्या बनाता है?',
-          'किसी चुनौतीपूर्ण प्रोजेक्ट का उदाहरण दीजिए।',
-          'कड़े समय-सीमा में आप कामों की प्राथमिकता कैसे तय करते हैं?',
-          'टीम में मतभेद होने पर आपने उसे कैसे सुलझाया?',
-          'किस तकनीकी क्षेत्र में आप सुधार करना चाहते हैं?',
-          'काम में लिया गया कोई कठिन निर्णय बताइए।',
-          'अपने क्षेत्र में अपडेट रहने के लिए आप क्या करते हैं?',
-          'कोई गलती बताइए जो आपने की और आपने क्या सीखा।',
-          'जब आप किसी फीडबैक से सहमत नहीं होते, तब आप कैसे प्रतिक्रिया देते हैं?',
-          'आपका मैनेजर आपकी सबसे बड़ी ताकत के बारे में क्या कहेगा?',
-          'इस भूमिका के बारे में आप मुझसे कोई प्रश्न पूछना चाहेंगे?',
+          'à¤•à¥ƒà¤ªà¤¯à¤¾ à¤…à¤ªà¤¨à¥‡ à¤¬à¥ˆà¤•à¤—à¥à¤°à¤¾à¤‰à¤‚à¤¡ à¤”à¤° à¤¹à¤¾à¤² à¤•à¥‡ à¤…à¤¨à¥à¤­à¤µ à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤¬à¤¤à¤¾à¤‡à¤à¥¤',
+          'à¤‡à¤¸ à¤­à¥‚à¤®à¤¿à¤•à¤¾ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤ªà¤•à¥‹ à¤®à¤œà¤¬à¥‚à¤¤ à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤° à¤•à¥à¤¯à¤¾ à¤¬à¤¨à¤¾à¤¤à¤¾ à¤¹à¥ˆ?',
+          'à¤•à¤¿à¤¸à¥€ à¤šà¥à¤¨à¥Œà¤¤à¥€à¤ªà¥‚à¤°à¥à¤£ à¤ªà¥à¤°à¥‹à¤œà¥‡à¤•à¥à¤Ÿ à¤•à¤¾ à¤‰à¤¦à¤¾à¤¹à¤°à¤£ à¤¦à¥€à¤œà¤¿à¤à¥¤',
+          'à¤•à¤¡à¤¼à¥‡ à¤¸à¤®à¤¯-à¤¸à¥€à¤®à¤¾ à¤®à¥‡à¤‚ à¤†à¤ª à¤•à¤¾à¤®à¥‹à¤‚ à¤•à¥€ à¤ªà¥à¤°à¤¾à¤¥à¤®à¤¿à¤•à¤¤à¤¾ à¤•à¥ˆà¤¸à¥‡ à¤¤à¤¯ à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚?',
+          'à¤Ÿà¥€à¤® à¤®à¥‡à¤‚ à¤®à¤¤à¤­à¥‡à¤¦ à¤¹à¥‹à¤¨à¥‡ à¤ªà¤° à¤†à¤ªà¤¨à¥‡ à¤‰à¤¸à¥‡ à¤•à¥ˆà¤¸à¥‡ à¤¸à¥à¤²à¤à¤¾à¤¯à¤¾?',
+          'à¤•à¤¿à¤¸ à¤¤à¤•à¤¨à¥€à¤•à¥€ à¤•à¥à¤·à¥‡à¤¤à¥à¤° à¤®à¥‡à¤‚ à¤†à¤ª à¤¸à¥à¤§à¤¾à¤° à¤•à¤°à¤¨à¤¾ à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚?',
+          'à¤•à¤¾à¤® à¤®à¥‡à¤‚ à¤²à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾ à¤•à¥‹à¤ˆ à¤•à¤ à¤¿à¤¨ à¤¨à¤¿à¤°à¥à¤£à¤¯ à¤¬à¤¤à¤¾à¤‡à¤à¥¤',
+          'à¤…à¤ªà¤¨à¥‡ à¤•à¥à¤·à¥‡à¤¤à¥à¤° à¤®à¥‡à¤‚ à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤°à¤¹à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤ª à¤•à¥à¤¯à¤¾ à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚?',
+          'à¤•à¥‹à¤ˆ à¤—à¤²à¤¤à¥€ à¤¬à¤¤à¤¾à¤‡à¤ à¤œà¥‹ à¤†à¤ªà¤¨à¥‡ à¤•à¥€ à¤”à¤° à¤†à¤ªà¤¨à¥‡ à¤•à¥à¤¯à¤¾ à¤¸à¥€à¤–à¤¾à¥¤',
+          'à¤œà¤¬ à¤†à¤ª à¤•à¤¿à¤¸à¥€ à¤«à¥€à¤¡à¤¬à¥ˆà¤• à¤¸à¥‡ à¤¸à¤¹à¤®à¤¤ à¤¨à¤¹à¥€à¤‚ à¤¹à¥‹à¤¤à¥‡, à¤¤à¤¬ à¤†à¤ª à¤•à¥ˆà¤¸à¥‡ à¤ªà¥à¤°à¤¤à¤¿à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤¦à¥‡à¤¤à¥‡ à¤¹à¥ˆà¤‚?',
+          'à¤†à¤ªà¤•à¤¾ à¤®à¥ˆà¤¨à¥‡à¤œà¤° à¤†à¤ªà¤•à¥€ à¤¸à¤¬à¤¸à¥‡ à¤¬à¤¡à¤¼à¥€ à¤¤à¤¾à¤•à¤¤ à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤•à¥à¤¯à¤¾ à¤•à¤¹à¥‡à¤—à¤¾?',
+          'à¤‡à¤¸ à¤­à¥‚à¤®à¤¿à¤•à¤¾ à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤†à¤ª à¤®à¥à¤à¤¸à¥‡ à¤•à¥‹à¤ˆ à¤ªà¥à¤°à¤¶à¥à¤¨ à¤ªà¥‚à¤›à¤¨à¤¾ à¤šà¤¾à¤¹à¥‡à¤‚à¤—à¥‡?',
         ],
         hinglish: [
           'Please apne background aur recent experience ke baare mein batao.',
@@ -153,8 +154,8 @@ export async function POST(req: NextRequest) {
       const extractQuestion = (raw: string): string => {
         const t = sanitizeVoiceText(raw);
         if (!t) return '';
-        const segs = t.split(/\s*(?:[.!?।]+|\n)\s+/).map(s => s.trim()).filter(Boolean);
-        const qLike = /[?？]|describe|explain|tell me|what |why |how |which |batao|kaise|kya/i;
+        const segs = t.split(/\s*(?:[.!?à¥¤]+|\n)\s+/).map(s => s.trim()).filter(Boolean);
+        const qLike = /[?ï¼Ÿ]|describe|explain|tell me|what |why |how |which |batao|kaise|kya/i;
         for (let i = segs.length - 1; i >= 0; i--) {
           if (qLike.test(segs[i]) && segs[i].length >= 12) return segs[i];
         }
@@ -213,10 +214,10 @@ Voice rules: max 2 sentences, no bullets or markdown.
 Never repeat a question already asked.`;
 
       const studentPrompt = `${knowledgeBlock}\n${strictLangRule}
-You are Thinkior's AI Interviewer — strict, professional, conducting a voice interview.
+You are Thinkior's AI Interviewer â€” strict, professional, conducting a voice interview.
 Interview type: ${roleLabel}
 ${candidateName !== 'the candidate' ? `Address the candidate as ${candidateName}.` : ''}
-Voice rules — responses will be spoken aloud:
+Voice rules â€” responses will be spoken aloud:
 - Maximum 2 sentences per response
 - First sentence: brief reaction to candidate's answer (5-8 words)
 - Second sentence: the next question
@@ -225,19 +226,19 @@ Voice rules — responses will be spoken aloud:
 Interview structure:
 - Q1: Introduce yourself and ask the candidate to introduce their background.
 - Q2-Q4: Core questions based on ${roleLabel}
-- Q5-Q6: Behavioral — "Tell me about a time when..."
+- Q5-Q6: Behavioral â€” "Tell me about a time when..."
 - Q7: One deeper challenging question
 - Q8: "Do you have any questions for me?"
 - After Q8: Spoken evaluation under 80 words. End with "All the best, thank you for your time."
 Never repeat a question already asked.`;
 
       const hindiPrompt = `${knowledgeBlock}\n${strictLangRule}
-आप Thinkior के AI इंटरव्यूअर हैं। इंटरव्यू प्रकार: ${roleLabel}
-${candidateName !== 'the candidate' ? `उम्मीदवार को ${candidateName} नाम से संबोधित करें।` : ''}
-हर जवाब 2 वाक्यों में, कोई formatting नहीं। पहले से पूछे सवाल दोबारा न पूछें।`;
+à¤†à¤ª Thinkior à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚à¥¤ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤ªà¥à¤°à¤•à¤¾à¤°: ${roleLabel}
+${candidateName !== 'the candidate' ? `à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤° à¤•à¥‹ ${candidateName} à¤¨à¤¾à¤® à¤¸à¥‡ à¤¸à¤‚à¤¬à¥‹à¤§à¤¿à¤¤ à¤•à¤°à¥‡à¤‚à¥¤` : ''}
+à¤¹à¤° à¤œà¤µà¤¾à¤¬ 2 à¤µà¤¾à¤•à¥à¤¯à¥‹à¤‚ à¤®à¥‡à¤‚, à¤•à¥‹à¤ˆ formatting à¤¨à¤¹à¥€à¤‚à¥¤ à¤ªà¤¹à¤²à¥‡ à¤¸à¥‡ à¤ªà¥‚à¤›à¥‡ à¤¸à¤µà¤¾à¤² à¤¦à¥‹à¤¬à¤¾à¤°à¤¾ à¤¨ à¤ªà¥‚à¤›à¥‡à¤‚à¥¤`;
 
       const hinglishPrompt = `${knowledgeBlock}
-CRITICAL: Respond in HINGLISH ONLY — mix Hindi and English naturally.
+CRITICAL: Respond in HINGLISH ONLY â€” mix Hindi and English naturally.
 You are Thinkior's AI Interviewer. Interview type: ${roleLabel}
 ${candidateName !== 'the candidate' ? `Address the candidate as ${candidateName}.` : ''}
 Max 2 sentences, no bullets. Never repeat a question.`;
@@ -246,13 +247,13 @@ Max 2 sentences, no bullets. Never repeat a question.`;
 
         english: `${knowledgeBlock}
 
-You are Thinkior's AI Interviewer — a professional interviewer conducting a real voice interview in Indian English.
+You are Thinkior's AI Interviewer â€” a professional interviewer conducting a real voice interview in Indian English.
 
 CRITICAL LANGUAGE RULE: You MUST respond ONLY in English. Every single word must be English.
 
 Interview type: ${interviewType || 'General'}
 
-Voice rules — responses will be spoken aloud:
+Voice rules â€” responses will be spoken aloud:
 - Maximum 2 sentences per response
 - First sentence: brief reaction to candidate's answer (5-8 words)
 - Second sentence: the next question
@@ -262,7 +263,7 @@ Voice rules — responses will be spoken aloud:
 Interview structure:
 - Q1: "Please introduce your background and what motivates your career choices."
 - Q2-Q4: Core questions based on ${interviewType || 'General'}
-- Q5-Q6: Behavioral — "Tell me about a time when..."
+- Q5-Q6: Behavioral â€” "Tell me about a time when..."
 - Q7: One deeper challenging question
 - Q8: "Do you have any questions for me?"
 - After Q8: Spoken evaluation under 80 words. End with "All the best, thank you for your time."
@@ -271,38 +272,38 @@ Never repeat a question already asked. Track conversation history carefully.`,
 
         hindi: `${knowledgeBlock}
 
-आप Thinkior के AI इंटरव्यूअर हैं — एक पेशेवर इंटरव्यूअर जो पूरी तरह हिंदी में इंटरव्यू ले रहे हैं।
+à¤†à¤ª Thinkior à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚ â€” à¤à¤• à¤ªà¥‡à¤¶à¥‡à¤µà¤° à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤œà¥‹ à¤ªà¥‚à¤°à¥€ à¤¤à¤°à¤¹ à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤²à¥‡ à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚à¥¤
 
-अत्यंत महत्वपूर्ण भाषा नियम: आपको केवल और केवल हिंदी में जवाब देना है। एक भी अंग्रेजी शब्द नहीं। हर शब्द हिंदी में होना चाहिए।
+à¤…à¤¤à¥à¤¯à¤‚à¤¤ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤­à¤¾à¤·à¤¾ à¤¨à¤¿à¤¯à¤®: à¤†à¤ªà¤•à¥‹ à¤•à¥‡à¤µà¤² à¤”à¤° à¤•à¥‡à¤µà¤² à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤œà¤µà¤¾à¤¬ à¤¦à¥‡à¤¨à¤¾ à¤¹à¥ˆà¥¤ à¤à¤• à¤­à¥€ à¤…à¤‚à¤—à¥à¤°à¥‡à¤œà¥€ à¤¶à¤¬à¥à¤¦ à¤¨à¤¹à¥€à¤‚à¥¤ à¤¹à¤° à¤¶à¤¬à¥à¤¦ à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤¹à¥‹à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤à¥¤
 
-इंटरव्यू प्रकार: ${interviewType || 'General'}
+à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤ªà¥à¤°à¤•à¤¾à¤°: ${interviewType || 'General'}
 
-आवाज़ के नियम — जवाब ज़ोर से बोले जाएंगे:
-- हर जवाब अधिकतम 2 वाक्यों में होना चाहिए
-- पहला वाक्य: उम्मीदवार के जवाब पर संक्षिप्त प्रतिक्रिया
-- दूसरा वाक्य: अगला सवाल
-- कोई bullet points या formatting नहीं
-- एक असली इंटरव्यूअर की तरह बोलें
+à¤†à¤µà¤¾à¤œà¤¼ à¤•à¥‡ à¤¨à¤¿à¤¯à¤® â€” à¤œà¤µà¤¾à¤¬ à¤œà¤¼à¥‹à¤° à¤¸à¥‡ à¤¬à¥‹à¤²à¥‡ à¤œà¤¾à¤à¤‚à¤—à¥‡:
+- à¤¹à¤° à¤œà¤µà¤¾à¤¬ à¤…à¤§à¤¿à¤•à¤¤à¤® 2 à¤µà¤¾à¤•à¥à¤¯à¥‹à¤‚ à¤®à¥‡à¤‚ à¤¹à¥‹à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤
+- à¤ªà¤¹à¤²à¤¾ à¤µà¤¾à¤•à¥à¤¯: à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤° à¤•à¥‡ à¤œà¤µà¤¾à¤¬ à¤ªà¤° à¤¸à¤‚à¤•à¥à¤·à¤¿à¤ªà¥à¤¤ à¤ªà¥à¤°à¤¤à¤¿à¤•à¥à¤°à¤¿à¤¯à¤¾
+- à¤¦à¥‚à¤¸à¤°à¤¾ à¤µà¤¾à¤•à¥à¤¯: à¤…à¤—à¤²à¤¾ à¤¸à¤µà¤¾à¤²
+- à¤•à¥‹à¤ˆ bullet points à¤¯à¤¾ formatting à¤¨à¤¹à¥€à¤‚
+- à¤à¤• à¤…à¤¸à¤²à¥€ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤•à¥€ à¤¤à¤°à¤¹ à¤¬à¥‹à¤²à¥‡à¤‚
 
-इंटरव्यू संरचना:
-- Q1: "तो, अपने बारे में बताइए और यहाँ क्यों आए?"
-- Q2-Q4: ${interviewType || 'General'} से संबंधित मुख्य सवाल
-- Q5-Q6: "एक ऐसा समय बताइए जब आपने..."
-- Q7: एक गहरा चुनौतीपूर्ण सवाल
-- Q8: "क्या आपके कोई सवाल हैं मेरे लिए?"
-- Q8 के बाद: 80 शब्दों में बोलकर मूल्यांकन। अंत में: "बहुत धन्यवाद और शुभकामनाएं।"
+à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤¸à¤‚à¤°à¤šà¤¨à¤¾:
+- Q1: "à¤¤à¥‹, à¤…à¤ªà¤¨à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ à¤¬à¤¤à¤¾à¤‡à¤ à¤”à¤° à¤¯à¤¹à¤¾à¤ à¤•à¥à¤¯à¥‹à¤‚ à¤†à¤?"
+- Q2-Q4: ${interviewType || 'General'} à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤®à¥à¤–à¥à¤¯ à¤¸à¤µà¤¾à¤²
+- Q5-Q6: "à¤à¤• à¤à¤¸à¤¾ à¤¸à¤®à¤¯ à¤¬à¤¤à¤¾à¤‡à¤ à¤œà¤¬ à¤†à¤ªà¤¨à¥‡..."
+- Q7: à¤à¤• à¤—à¤¹à¤°à¤¾ à¤šà¥à¤¨à¥Œà¤¤à¥€à¤ªà¥‚à¤°à¥à¤£ à¤¸à¤µà¤¾à¤²
+- Q8: "à¤•à¥à¤¯à¤¾ à¤†à¤ªà¤•à¥‡ à¤•à¥‹à¤ˆ à¤¸à¤µà¤¾à¤² à¤¹à¥ˆà¤‚ à¤®à¥‡à¤°à¥‡ à¤²à¤¿à¤?"
+- Q8 à¤•à¥‡ à¤¬à¤¾à¤¦: 80 à¤¶à¤¬à¥à¤¦à¥‹à¤‚ à¤®à¥‡à¤‚ à¤¬à¥‹à¤²à¤•à¤° à¤®à¥‚à¤²à¥à¤¯à¤¾à¤‚à¤•à¤¨à¥¤ à¤…à¤‚à¤¤ à¤®à¥‡à¤‚: "à¤¬à¤¹à¥à¤¤ à¤§à¤¨à¥à¤¯à¤µà¤¾à¤¦ à¤”à¤° à¤¶à¥à¤­à¤•à¤¾à¤®à¤¨à¤¾à¤à¤‚à¥¤"
 
-पहले से पूछे गए सवाल दोबारा मत पूछें।`,
+à¤ªà¤¹à¤²à¥‡ à¤¸à¥‡ à¤ªà¥‚à¤›à¥‡ à¤—à¤ à¤¸à¤µà¤¾à¤² à¤¦à¥‹à¤¬à¤¾à¤°à¤¾ à¤®à¤¤ à¤ªà¥‚à¤›à¥‡à¤‚à¥¤`,
 
         hinglish: `${knowledgeBlock}
 
-You are Thinkior's AI Interviewer — a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
+You are Thinkior's AI Interviewer â€” a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
 
-CRITICAL LANGUAGE RULE: You MUST respond in Hinglish ONLY — every response must mix Hindi and English naturally. Example: "Accha, that's a good point. Ab batao, aapne koi challenging project handle kiya hai?" Never respond in pure English or pure Hindi.
+CRITICAL LANGUAGE RULE: You MUST respond in Hinglish ONLY â€” every response must mix Hindi and English naturally. Example: "Accha, that's a good point. Ab batao, aapne koi challenging project handle kiya hai?" Never respond in pure English or pure Hindi.
 
 Interview type: ${interviewType || 'General'}
 
-Voice rules — responses will be spoken aloud:
+Voice rules â€” responses will be spoken aloud:
 - Maximum 2 sentences per response
 - First sentence: brief Hinglish reaction (5-8 words mixing Hindi+English)
 - Second sentence: next question in Hinglish
@@ -312,7 +313,7 @@ Voice rules — responses will be spoken aloud:
 Natural Hinglish phrases to use: "Accha", "Theek hai", "Bahut achha", "Bilkul", "Samajh gaya", "Tell me more yaar", "Interesting point hai"
 
 Interview structure:
-- Q1: "Toh apne baare mein batao — background kya hai aur yahan kyun aaye?"
+- Q1: "Toh apne baare mein batao â€” background kya hai aur yahan kyun aaye?"
 - Q2-Q4: ${interviewType || 'General'} related core questions in Hinglish
 - Q5-Q6: "Ek situation batao jab tumne..." behavioral questions
 - Q7: Ek challenging deeper question in Hinglish
@@ -330,13 +331,13 @@ Never repeat a question already asked.`,
 
       try {
         const response = await runInterviewAI(rawHistory, systemPrompt, 'mock-interview-voice-turn');
-        return NextResponse.json({ text: ensureVoice(response, nextSlot, prevAsked) }, { headers: responseHeaders });
+        return NextResponse.json({ text: ensureVoice(response, nextSlot, prevAsked) }, {});
       } catch {
         return NextResponse.json({ text: pickFallback(normalizedLang, nextSlot, prevAsked) }, { status: 200, headers: responseHeaders });
       }
     }
 
-    // ── VOICE MODE: final evaluation ───────────────────────────────────────
+    // â”€â”€ VOICE MODE: final evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'voice_evaluate') {
       const conversationHistory = messages || [];
       const candidateName = userName || 'the candidate';
@@ -375,7 +376,7 @@ Return exactly this JSON structure:
   "genuine_strengths": [{ "strength": "Only if genuinely observed.", "evidence": "Specific moment." }],
   "red_flags": ["Things that would eliminate this candidate."],
   "green_flags": ["Things that genuinely impressed."],
-  "interview_ready": "Almost — 2-4 weeks more practice",
+  "interview_ready": "Almost â€” 2-4 weeks more practice",
   "30_day_improvement_plan": [{ "week": "Week 1", "focus": "Area.", "daily_practice": "Exercise.", "goal": "Achievement." }],
   "resources_to_study": [{ "resource": "Book or method.", "why": "Specific to weakness.", "time_needed": "Estimate." }],
   "senior_judge_message": "3-4 sentences speaking directly to ${candidateName}. Reference specific moments."
@@ -389,7 +390,7 @@ Return exactly this JSON structure:
         executive_summary: 'The candidate demonstrated basic familiarity with the interview format.',
         dimension_scores: {}, question_by_question_review: [], critical_weaknesses: [],
         genuine_strengths: [], red_flags: [], green_flags: [],
-        interview_ready: 'Almost — 2-4 weeks more practice',
+        interview_ready: 'Almost â€” 2-4 weeks more practice',
         '30_day_improvement_plan': [], resources_to_study: [],
         senior_judge_message: 'Keep practicing and focus on giving concrete examples.',
       };
@@ -412,7 +413,7 @@ Return exactly this JSON structure:
           feedback: (evalResult as {executive_summary?:string}).executive_summary || '',
         });
         await logActivity(supabase, session.user.id, 'interview',
-          `${roleLabel} Interview — Score: ${overallScore}/10 — ${evalResult.hiring_decision}`,
+          `${roleLabel} Interview â€” Score: ${overallScore}/10 â€” ${evalResult.hiring_decision}`,
           { language: normalizedLang, overall_score: overallScore, hiring_decision: evalResult.hiring_decision }
         );
       } catch (saveErr) { console.warn('[Interview] Supabase save failed:', saveErr); }
@@ -420,7 +421,7 @@ Return exactly this JSON structure:
       return NextResponse.json(evalResult);
     }
 
-    // ── CHAT MODE: generate questions ──────────────────────────────────────
+    // â”€â”€ CHAT MODE: generate questions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'generate_questions') {
       const roleQuery = role || topicOrRole || interviewType || 'general interview';
       const searchContext = await getSearchContext(roleQuery, 'interview', { role: role || '' });
@@ -432,10 +433,10 @@ Return exactly this JSON structure:
         numberOfQuestions: totalQuestions,
         language: selectedLanguage,
       });
-      return NextResponse.json({ questions, language: selectedLanguage, total: questions.length }, { headers: responseHeaders });
+      return NextResponse.json({ questions, language: selectedLanguage, total: questions.length }, {});
     }
 
-    // ── CHAT MODE: evaluate answer ─────────────────────────────────────────
+    // â”€â”€ CHAT MODE: evaluate answer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'evaluate_answer') {
       const evalPrompt = `${langInstruction}
 CRITICAL: Your ENTIRE response must be in ${selectedLanguage} only.
@@ -464,7 +465,7 @@ Return ONLY this JSON (all values in ${selectedLanguage}):
       return NextResponse.json({ score: 5, strengths: 'Good attempt.', improvements: 'Use the STAR method.', idealAnswer: '', overallFeedback: 'Good attempt.', feedback: 'Good attempt.', improvement: 'Use the STAR method.' });
     }
 
-    // ── LEGACY: voice_turn alias kept for backward compat ─────────────────
+    // â”€â”€ LEGACY: voice_turn alias kept for backward compat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     void mode; void langConfig; void schoolClass;
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
@@ -474,3 +475,4 @@ Return ONLY this JSON (all values in ${selectedLanguage}):
     return NextResponse.json({ text: 'The session paused unexpectedly. Please continue.', error: msg }, { status: 200 });
   }
 }
+

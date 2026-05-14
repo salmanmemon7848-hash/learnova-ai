@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
+import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { getAIResponse } from '@/lib/aiRouter';
 import {
@@ -59,11 +59,13 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'edufinder', ipAddress);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const usageResult = await checkAndTrackUsage(session.user.id, 'edufinder');
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        buildUsageBlockedResponse(usageResult),
+        { status: usageResult.reason === 'locked' ? 403 : 429 }
+      );
     }
-    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
     const fieldStr = Array.isArray(fields) && fields.length > 0 ? fields.join(' ') : 'general';
     const location = [userCity, userState].filter(Boolean).join(', ') || locationFallback;
@@ -203,14 +205,15 @@ Respond ONLY in this exact JSON â€” no markdown, no extra text:
     console.log('[EduFinder] âœ… Recommendations generated successfully');
 
     if (recommendations) {
-      return NextResponse.json({ recommendations, structured: true }, { headers: responseHeaders });
+      return NextResponse.json({ recommendations, structured: true }, {});
     }
 
     // Fallback: return raw text
-    return NextResponse.json({ recommendations: rawContent, structured: false }, { headers: responseHeaders });
+    return NextResponse.json({ recommendations: rawContent, structured: false }, {});
 
   } catch (error: any) {
     console.error('[EduFinder] Route error:', error?.message || error);
     return NextResponse.json({ error: 'Server error. Please try again.' }, { status: 500 });
   }
 }
+

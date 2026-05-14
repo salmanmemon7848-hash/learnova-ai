@@ -1,7 +1,7 @@
 import { aiHandler, aiVisionHandler, messagesToPrompt, type AIChatMessage } from '@/lib/ai/aiHandler';
 import { createClient } from '@/lib/supabase/server';
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
-import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit';
+import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import { getBasePrompt } from '@/lib/prompts/basePrompt';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { runPowerMode } from '@/lib/powerMode';
@@ -71,11 +71,13 @@ export async function POST(req: NextRequest) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-    const rateLimitResult = await checkAndIncrementUsage(session.user.id, 'chat', ipAddress);
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(buildBlockedResponse(rateLimitResult), { status: 429 });
+    const usageResult = await checkAndTrackUsage(session.user.id, 'chat');
+    if (!usageResult.allowed) {
+      return NextResponse.json(
+        buildUsageBlockedResponse(usageResult),
+        { status: usageResult.reason === 'locked' ? 403 : 429 }
+      );
     }
-    const responseHeaders = buildRateLimitHeaders(rateLimitResult);
 
 // Intelligent web search via getSearchContext with graceful fallback
 let searchContext = '';
@@ -245,7 +247,7 @@ try {
           durationMs: powerModeResult.durationMs,
         } : {}),
       }
-    }, { headers: responseHeaders });
+    }, { });
   } catch (error: unknown) {
     console.error('Chat Error:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Failed to process your message. Please try again.' }, { status: 500 });
