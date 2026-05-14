@@ -10,7 +10,8 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // Fix: Explicitly use the .js extension to bypass Vercel strict ESM resolution
+  ...compat.extends("eslint-config-next/core-web-vitals.js", "next/typescript"),
   {
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
@@ -22,7 +23,7 @@ const eslintConfig = [
     },
   },
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"],
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "node_modules/**"],
   },
 ];
 

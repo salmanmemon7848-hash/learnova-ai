@@ -16,7 +16,7 @@ function getStripe() {
     throw new Error('STRIPE_SECRET_KEY is not configured')
   }
   return new Stripe(key, {
-    // @ts-ignore - API version mismatch between Stripe package and dashboard
+    // @ts-expect-error - API version mismatch between Stripe package and dashboard
     apiVersion: '2024-12-18.acacia',
   })
 }
