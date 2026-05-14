@@ -193,45 +193,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
     }
 
-    // Upgrade 2: Always trigger SearXNG in Powerful Mode
-    let searchContext = '';
-    try {
-      const searxRes = await fetch(
-        `${process.env.SEARXNG_URL}/search?q=${encodeURIComponent(lastUserMessage)}&format=json&categories=general`,
-        { headers: { 'Accept': 'application/json' } }
-      );
-      const searxData = await searxRes.json();
-      const topResults = (searxData.results || []).slice(0, 5).map((r: any) => ({
-        title: r.title,
-        url: r.url,
-        snippet: r.content
-      }));
-      
-      searchContext = `[WEB CONTEXT — Live Search Results]\n${topResults.map((r: any, i: number) => `[${i+1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n')}`;
-    } catch (err) {
-      console.error('Search Context Error:', err);
-    }
+    const encoder = new TextEncoder();
 
-    const enrichedPrompt = searchContext ? `${searchContext}\n\n${prompt}` : prompt;
+    return new Response(new ReadableStream({
+      async start(controller) {
+        function emit(data: Record<string, any>) {
+          controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
+        }
 
-    const result = await runPowerMode(enrichedPrompt);
+        try {
+          // Upgrade 2: Always trigger SearXNG in Powerful Mode
+          let searchContext = '';
+          try {
+            emit({ type: 'status', status: 'searching_web' });
+            const searxRes = await fetch(
+              `${process.env.SEARXNG_URL}/search?q=${encodeURIComponent(lastUserMessage)}&format=json&categories=general`,
+              { headers: { 'Accept': 'application/json' } }
+            );
+            const searxData = await searxRes.json();
+            const topResults = (searxData.results || []).slice(0, 5).map((r: any) => ({
+              title: r.title,
+              url: r.url,
+              snippet: r.content
+            }));
+            
+            searchContext = `[WEB CONTEXT — Live Search Results]\n${topResults.map((r: any, i: number) => `[${i+1}] ${r.title}\nURL: ${r.url}\n${r.snippet}`).join('\n\n')}`;
+          } catch (err) {
+            console.error('Search Context Error:', err);
+          }
 
-    const currentSessionId = await saveConversation({
-      supabase,
-      userId: session.user.id,
-      sessionId,
-      userMessage: lastUserMessage,
-      assistantMessage: result.final,
+          const enrichedPrompt = searchContext ? `${searchContext}\n\n${prompt}` : prompt;
+
+          const result = await runPowerMode(enrichedPrompt, (status) => {
+            emit({ type: 'status', status });
+          });
+
+          const currentSessionId = await saveConversation({
+            supabase,
+            userId: session.user.id,
+            sessionId,
+            userMessage: lastUserMessage,
+            assistantMessage: result.final,
+          });
+
+          emit({
+            type: 'result',
+            reply: result.final,
+            answer: result.final,
+            sessionId: currentSessionId,
+            provider: result.provider,
+            durationMs: result.durationMs,
+            remaining: limitCheck.remaining - 1,
+          });
+
+          controller.close();
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[PowerMode] Fatal error:', message);
+          emit({
+            type: 'error',
+            error: 'Power Mode failed. Please try again.',
+            message: process.env.NODE_ENV === 'development' ? message : 'Power Mode failed. Please try again.',
+          });
+          controller.close();
+        }
+      }
+    }), {
+      headers: {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
     });
 
-    return NextResponse.json({
-      reply: result.final,
-      answer: result.final,
-      sessionId: currentSessionId,
-      provider: result.provider,
-      durationMs: result.durationMs,
-      remaining: limitCheck.remaining - 1,
-    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[PowerMode] Fatal error:', message);
