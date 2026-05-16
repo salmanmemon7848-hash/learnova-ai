@@ -105,6 +105,12 @@ export async function aiHandler(input: AIHandlerInput): Promise<AIHandlerOutput>
     }
   }
 
+  console.error('[AI Handler] All providers in chain failed or loop broken early.', {
+    failedProviders,
+    featureName: input.featureName,
+    isSearch: input.isSearchFeature
+  });
+
   return {
     result: UNAVAILABLE_MESSAGE,
     provider: null,

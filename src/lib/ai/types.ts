@@ -95,9 +95,11 @@ export function classifyProviderFailure(
   }
 
   if (status >= 400 && status < 500) {
+    // Context length exceeded is often a 400. We should allow fallback.
+    const isContextError = lower.includes('context') || lower.includes('length') || lower.includes('token');
     return new AIProviderError(provider, 'bad_request', `${provider} rejected request`, {
       status,
-      shouldFallback: false,
+      shouldFallback: isContextError || status === 408 || status === 429,
     });
   }
 

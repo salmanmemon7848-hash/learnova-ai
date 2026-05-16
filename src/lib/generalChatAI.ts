@@ -178,10 +178,14 @@ async function callGroq(messages: AIMessage[], maxTokens: number): Promise<strin
 
 // ── GEMINI CALL ───────────────────────────────────────────────────────────
 async function callGemini(messages: AIMessage[], maxTokens: number): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY?.trim() ||
+    process.env.GOOGLE_AI_API_KEY?.trim() ||
+    process.env.GOOGLE_AI_STUDIO_API_KEY?.trim();
+
   if (!apiKey) throw new Error('Gemini API key not configured');
 
-  const primaryModel = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
+  const primaryModel = process.env.GOOGLE_AI_MODEL || 'gemini-1.5-flash';
   const fallbackModel = 'gemini-1.5-flash';
 
   const makeCall = async (model: string) => {
