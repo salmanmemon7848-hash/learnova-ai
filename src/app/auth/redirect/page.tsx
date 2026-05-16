@@ -51,6 +51,20 @@ export default function AuthRedirect() {
         }
 
         // Check database for user preferences
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        if (profileData?.role) {
+          console.log('✅ User has a role set (profiles check), redirecting...')
+          setRedirecting(true)
+          router.replace(profileData.role === 'general' ? '/chat' : '/dashboard')
+          return
+        }
+
+        // Fallback check database for user preferences (old table name if exists)
         const { data: userData, error } = await supabase
           .from('users')
           .select('userType, toneMode, language')
@@ -70,15 +84,15 @@ export default function AuthRedirect() {
           setRedirecting(true)
           router.replace('/chat')
         } else {
-          console.log('🆕 New user or incomplete onboarding, redirecting to persona selection...')
+          console.log('🆕 New user or incomplete onboarding, redirecting to onboarding...')
           setRedirecting(true)
-          router.replace('/persona')
+          router.replace('/onboarding')
         }
       } catch (err) {
         console.error('❌ Error checking user status:', err)
-        // On error, default to persona selection for safety
+        // On error, default to onboarding for safety
         setRedirecting(true)
-        router.replace('/persona')
+        router.replace('/onboarding')
       }
     }
 

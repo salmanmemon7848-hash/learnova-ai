@@ -27,7 +27,7 @@ function Spinner() {
   )
 }
 
-function getOAuthRedirectTo(nextPath = '/dashboard') {
+function getOAuthRedirectTo(nextPath = '/auth/redirect') {
   const origin = typeof window !== 'undefined'
     ? window.location.origin
     : process.env.NEXT_PUBLIC_SITE_URL
@@ -99,13 +99,13 @@ export default function AuthPage() {
     }
   }, [])
 
-  // Already logged in → save role then hard-navigate to dashboard
+  // Already logged in → save role then hard-navigate to redirect handler
   // Hard navigation (window.location) ensures RoleContext fully re-initializes
   useEffect(() => {
     if (authLoading) return
     if (!user) return
-    saveRoleIfNeeded(supabase, user.id).then((savedRole) => {
-      window.location.href = getRedirectForRole(savedRole)
+    saveRoleIfNeeded(supabase, user.id).then(() => {
+      window.location.href = '/auth/redirect'
     })
   }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 

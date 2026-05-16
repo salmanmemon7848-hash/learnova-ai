@@ -1,22 +1,5 @@
 import { useCallback, useState } from 'react';
-
-export interface PowerfulModeSources {
-  openai: string;
-  gemini: string;
-  groq: string;
-}
-
-export interface PowerfulModeMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-export interface PowerfulModeResponse {
-  reply: string;
-  sessionId: string | null;
-  provider: string;
-  durationMs?: number;
-}
+import { handleApiResponse, isRateLimitError, type PowerfulModeResponse, type PowerfulModeMessage } from '@/lib/rateLimitHandler';
 
 export function usePowerfulMode() {
   const [isPowerfulMode, setIsPowerfulMode] = useState(false);
@@ -39,11 +22,21 @@ export function usePowerfulMode() {
     setCurrentStatus('searching_web');
 
     try {
-      const response = await fetch('/api/powerful-mode', {
+      const initialResponse = await fetch('/api/powerful-mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages, sessionId }),
       });
+
+      const response = await handleApiResponse(initialResponse, 'Powerful Mode');
+      
+      if (isRateLimitError(response)) {
+        return {
+          reply: `⚠️ ${response.message}`,
+          sessionId: sessionId,
+          provider: 'system',
+        };
+      }
 
       if (!response.ok) {
         throw new Error(`Powerful Mode request failed: ${response.status}`);

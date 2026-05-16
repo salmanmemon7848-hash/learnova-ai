@@ -27,13 +27,6 @@ const nextConfig: NextConfig = {
   // Turbopack configuration
   turbopack: {},
   
-  // Optimize webpack for faster builds
-  webpack: (config) => {
-    // Reduce bundle size by tree shaking
-    config.optimization.usedExports = true;
-    return config;
-  },
-  
   async headers() {
     return [
       {

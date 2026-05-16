@@ -75,8 +75,8 @@ export default function SignupPage() {
           setError('An account with this email already exists. Please login instead.')
           setLoading(false)
         } else {
-          // Redirect directly to chat — skip onboarding
-          router.replace('/chat')
+          // Redirect directly to redirect handler
+          router.replace('/auth/redirect')
         }
       } else {
         setError('Sign up failed. Please try again.')

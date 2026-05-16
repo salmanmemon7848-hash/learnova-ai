@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { runGeneralChat } from '@/lib/generalChatAI';
+import { analyzeImageWithGemini } from '@/lib/gemini-vision';
 import { sanitizeString, sanitizeMessages, checkBodySize } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAndTrackUsage, checkPowerfulModeLimit, checkImageLimit, buildUsageBlockedResponse } from '@/lib/usageTracker';
@@ -110,22 +111,37 @@ export async function POST(req: NextRequest) {
 
     const usageResult = await checkAndTrackUsage(session.user.id, 'general-chat');
     if (!usageResult.allowed) {
-      return NextResponse.json(buildUsageBlockedResponse(usageResult), { status: usageResult.reason === 'locked' ? 403 : 429 });
+      return NextResponse.json({
+        success: false,
+        error: usageResult.reason === 'locked' ? 'feature_locked' : 'rate_limit_exceeded',
+        message: usageResult.message,
+      }, { status: usageResult.reason === 'locked' ? 403 : 429 });
     }
 
     const lastUserMessage = messages.filter((message) => message.role === 'user').at(-1)?.content || '';
 
-    const systemPrompt = `You are Thinkior — a helpful, intelligent, and friendly AI assistant built for Indian users.
+    const systemPrompt = `You are Thinkior — an intelligent AI assistant built for Indian students and founders.
 
-You can help with anything: general knowledge, science, math, history, current events, writing, coding, career advice, business, education, and more.
+For STUDENTS you help with:
+- Explaining complex concepts in simple language
+- Homework, essays, research, and study plans
+- Career advice, internships, and skill building
+- Exam preparation and learning strategies
+
+For FOUNDERS you help with:
+- Startup ideas, validation, and business models
+- Pitch decks, investor questions, and fundraising
+- Marketing, growth strategies, and GTM planning
+- Product thinking, MVPs, and roadmaps
+- Financial basics and unit economics
 
 Your personality:
 - Warm, clear, and direct — like a knowledgeable friend
 - Use simple language unless the user asks for technical depth
-- Give complete, useful answers
+- Give complete, actionable advice. Avoid fluff.
 - Use Indian context naturally — ₹ for currency, Indian examples where relevant
 - Respond in the same language the user writes in (English, Hindi, or Hinglish)
-- Be honest when you don't know something
+- Be the smartest friend they have.
 
 Rules:
 - Never refuse to answer general knowledge questions
@@ -139,26 +155,12 @@ Rules:
     let aiProvider = '';
 
     if (isImageRequest && imageFile) {
-      const buffer = await imageFile.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString('base64');
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
-      const geminiBody = {
-        contents: [{
-          parts: [
-            { text: body.message || 'What do you see in this image? Describe and analyze it.' },
-            { inline_data: { mime_type: imageFile.type, data: base64 } },
-          ],
-        }],
-        generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
-      };
-      
-      const geminiRes = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody),
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      aiReply = await analyzeImageWithGemini({
+        imageBuffer: buffer,
+        imageMimeType: imageFile.type,
+        userQuestion: body.message || 'What do you see in this image? Describe and analyze it.',
       });
-      const geminiData = await geminiRes.json();
-      aiReply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not analyze image.';
       aiProvider = 'gemini-vision';
     } else {
       const fullMessages: AIMessage[] = [
@@ -257,6 +259,10 @@ Rules:
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[GeneralChat] Fatal error:', message);
-    return NextResponse.json({ error: 'Service unavailable' }, { status: 500 });
+    return NextResponse.json({ 
+      success: false,
+      error: 'service_unavailable',
+      message: 'The AI service is currently unavailable. Please try again later.' 
+    }, { status: 500 });
   }
 }

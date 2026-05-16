@@ -1,4 +1,4 @@
-export type AIProviderName = 'groq' | 'gemini' | 'openai' | 'searxng';
+export type AIProviderName = 'groq' | 'gemini' | 'openai' | 'openrouter' | 'searxng';
 
 export type TaskComplexity = 'simple' | 'complex';
 

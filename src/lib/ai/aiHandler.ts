@@ -9,6 +9,7 @@ import { AIProviderError, normalizeThrownError } from './types';
 import * as groq from './providers/groq';
 import * as gemini from './providers/gemini';
 import * as openai from './providers/openai';
+import * as openrouter from './providers/openrouter';
 import * as searxng from './providers/searxng';
 
 export type { AIHandlerInput, AIHandlerOutput, AIProviderName, TaskComplexity };
@@ -33,6 +34,10 @@ const providerMap: Record<AIProviderName, ProviderDefinition> = {
     name: 'openai',
     call: (prompt, context, taskComplexity) => openai.call(prompt, context, taskComplexity),
   },
+  openrouter: {
+    name: 'openrouter',
+    call: (prompt, context, taskComplexity) => openrouter.call(prompt, context, taskComplexity),
+  },
   searxng: {
     name: 'searxng',
     call: (prompt) => searxng.call(prompt),
@@ -41,8 +46,8 @@ const providerMap: Record<AIProviderName, ProviderDefinition> = {
 
 function getProviderChain(isSearchFeature: boolean): ProviderDefinition[] {
   const chain: AIProviderName[] = isSearchFeature
-    ? ['groq', 'gemini', 'openai', 'searxng']
-    : ['gemini', 'groq', 'openai'];
+    ? ['groq', 'gemini', 'openai', 'openrouter', 'searxng']
+    : ['groq', 'gemini', 'openai', 'openrouter'];
 
 
   return chain.map((provider) => providerMap[provider]);

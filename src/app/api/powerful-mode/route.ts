@@ -154,7 +154,8 @@ export async function POST(request: NextRequest) {
     const powerfulCheck = await checkPowerfulModeLimit(session.user.id);
     if (!powerfulCheck.allowed) {
       return NextResponse.json({
-        error: 'powerful_mode_limit',
+        success: false,
+        error: 'rate_limit_exceeded',
         message: powerfulCheck.message,
       }, { status: 429 });
     }
@@ -162,7 +163,8 @@ export async function POST(request: NextRequest) {
     const usageResult = await checkAndTrackUsage(session.user.id, 'general-chat');
     if (!usageResult.allowed) {
       return NextResponse.json({
-        error: 'rate_limit_exceeded',
+        success: false,
+        error: usageResult.reason === 'locked' ? 'feature_locked' : 'rate_limit_exceeded',
         message: usageResult.message || `Limit reached. Please upgrade your plan.`,
       }, { status: usageResult.reason === 'locked' ? 403 : 429 });
     }

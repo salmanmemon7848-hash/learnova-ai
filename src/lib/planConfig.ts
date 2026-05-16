@@ -13,6 +13,7 @@ export interface PlanLimits {
 // ── STUDENT PLAN LIMITS ───────────────────────────────────────────────────
 export const STUDENT_PLANS: Record<StudentPlan, PlanLimits> = {
   free: {
+    'general-chat': 5,
     'chat': 10,
     'doubt-solver': 3,
     'exam': 1,
@@ -25,6 +26,7 @@ export const STUDENT_PLANS: Record<StudentPlan, PlanLimits> = {
     'support': 'included',
   },
   pro: {
+    'general-chat': 10,
     'chat': 20,
     'doubt-solver': 5,
     'exam': 10,
@@ -37,6 +39,7 @@ export const STUDENT_PLANS: Record<StudentPlan, PlanLimits> = {
     'support': 'included',
   },
   max: {
+    'general-chat': 20,
     'chat': 20,
     'doubt-solver': 10,
     'exam': 20,
@@ -53,6 +56,7 @@ export const STUDENT_PLANS: Record<StudentPlan, PlanLimits> = {
 // ── FOUNDER PLAN LIMITS ───────────────────────────────────────────────────
 export const FOUNDER_PLANS: Record<FounderPlan, PlanLimits> = {
   free: {
+    'general-chat': 5,
     'chat': 10,
     'business-ideas': 'one-time',
     'validate': 'locked',
@@ -64,6 +68,7 @@ export const FOUNDER_PLANS: Record<FounderPlan, PlanLimits> = {
     'support': 'included',
   },
   builder: {
+    'general-chat': 10,
     'chat': 20,
     'business-ideas': 10,
     'validate': 10,
@@ -75,6 +80,7 @@ export const FOUNDER_PLANS: Record<FounderPlan, PlanLimits> = {
     'support': 'included',
   },
   founder_pro: {
+    'general-chat': 20,
     'chat': 20,
     'business-ideas': 10,
     'validate': 10,

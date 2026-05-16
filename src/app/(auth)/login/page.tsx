@@ -22,9 +22,9 @@ export default function LoginPage() {
     if (authLoading) return // wait for auth to initialize
     if (!user) return       // no user, stay on login page
 
-    // User is already logged in — always send them to /chat
-    router.replace('/chat')
-  }, [user, authLoading]) // IMPORTANT: minimal deps — do NOT add router or supabase here
+    // User is already logged in — always send them to /auth/redirect
+    router.replace('/auth/redirect')
+  }, [user, authLoading, router]) // IMPORTANT: minimal deps — do NOT add supabase here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,10 +96,11 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${origin}/auth/callback?next=/auth/redirect`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',

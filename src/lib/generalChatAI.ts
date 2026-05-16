@@ -9,7 +9,7 @@ export interface AIMessage {
 
 export interface GeneralChatResult {
   text: string;
-  provider: 'groq' | 'gemini' | 'openai' | 'failed';
+  provider: 'groq' | 'gemini' | 'openai' | 'openrouter' | 'failed';
   searchUsed: boolean;
   searchQuery?: string;
 }
@@ -178,7 +178,7 @@ async function callGroq(messages: AIMessage[], maxTokens: number): Promise<strin
 
 // ── GEMINI CALL ───────────────────────────────────────────────────────────
 async function callGemini(messages: AIMessage[], maxTokens: number): Promise<string> {
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || process.env.GOOGLE_AI_STUDIO_API_KEY;
   if (!apiKey) throw new Error('Gemini API key not configured');
 
   const primaryModel = process.env.GOOGLE_AI_MODEL || 'gemini-2.0-flash';
@@ -304,6 +304,57 @@ async function callOpenAI(messages: AIMessage[], maxTokens: number): Promise<str
   }
 }
 
+// ── OPENROUTER CALL ───────────────────────────────────────────────────────
+async function callOpenRouter(messages: AIMessage[], maxTokens: number): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OpenRouter API key not configured');
+
+  const primaryModel = 'meta-llama/llama-3.1-70b-instruct';
+
+  const makeCall = async (model: string) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://learnova-ai.com',
+          'X-Title': 'Learnova AI',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          temperature: 0.7,
+          messages,
+        }),
+      }, 'OpenRouter');
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`OpenRouter ${res.status}: ${err.slice(0, 100)}`);
+      }
+
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || '';
+      if (!text.trim()) throw new Error('OpenRouter returned empty response');
+      return text;
+    } finally {
+      clearTimeout(timeout);
+    }
+  };
+
+  try {
+    const text = await makeCall(primaryModel);
+    console.log('[AI] OpenRouter succeeded');
+    return text;
+  } catch (err: any) {
+    throw err;
+  }
+}
+
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────
 export async function runGeneralChat(
   messages: AIMessage[],
@@ -335,7 +386,7 @@ export async function runGeneralChat(
     return m;
   });
 
-  // Step 3 — Try Groq → Gemini → OpenAI in sequence
+  // Step 3 — Try Groq → Gemini → OpenAI → OpenRouter in sequence
   // Try Groq first
   try {
     const text = await callGroq(finalMessages, maxTokens);
@@ -357,7 +408,15 @@ export async function runGeneralChat(
     const text = await callOpenAI(finalMessages, maxTokens);
     return { text, provider: 'openai', searchUsed: needsSearch, searchQuery };
   } catch (openaiErr) {
-    console.error('[AI] All 3 providers failed');
+    console.warn('[AI] OpenAI failed — trying OpenRouter...');
+  }
+
+  // Try OpenRouter
+  try {
+    const text = await callOpenRouter(finalMessages, maxTokens);
+    return { text, provider: 'openrouter', searchUsed: needsSearch, searchQuery };
+  } catch (openrouterErr) {
+    console.error('[AI] All 4 providers failed');
   }
 
   // All failed

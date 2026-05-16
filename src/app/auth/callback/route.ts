@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Clear the pending role cookie and redirect
-      const response = NextResponse.redirect(`${origin}${next}`)
+      const redirectTo = next.startsWith('/') ? `${origin}${next}` : next
+      const response = NextResponse.redirect(redirectTo)
       response.cookies.set('thinkior_pending_role', '', { maxAge: 0, path: '/' })
       return response
     }

@@ -11,6 +11,8 @@ import {
 } from '@/components/PowerfulModeToggle';
 import { MessageActions } from '@/components/chat/MessageActions';
 import { ChatItem } from '@/components/chat/ChatItem';
+import { handleApiError } from '@/lib/errorHandlers';
+import { handleApiResponse, isRateLimitError } from '@/lib/rateLimitHandler';
 
 interface ChatSession {
   id: string;
@@ -756,12 +758,13 @@ export default function ChatPage() {
         formData.append('message', userMessage);
         if (activeSessionId) formData.append('sessionId', activeSessionId);
         
-        response = await fetch('/api/general-chat', {
+        const initialResponse = await fetch('/api/general-chat', {
           method: 'POST',
           body: formData,
         });
+        response = await handleApiResponse(initialResponse, imageFile ? 'Image Upload' : 'General Chat');
       } else {
-        response = await fetch('/api/general-chat', {
+        const initialResponse = await fetch('/api/general-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -770,19 +773,28 @@ export default function ChatPage() {
             powerfulMode: isPowerfulMode,
           }),
         });
+        response = await handleApiResponse(initialResponse, isPowerfulMode ? 'Powerful Mode' : 'General Chat');
+      }
+
+      if (isRateLimitError(response)) {
+        setMessages((previous) => [...previous, {
+          role: 'assistant',
+          content: `⚠️ ${response.message}`,
+        }]);
+        return;
       }
 
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        if (response.status === 429) {
-          setMessages((previous) => [...previous, {
-            role: 'assistant',
-            content: `⚠️ ${data.message || 'Daily message limit reached. Come back tomorrow!'}`,
-          }]);
-          return;
-        }
-        throw new Error(data.error || 'Failed to get response');
+        // Handle specific error codes gracefully without throwing
+        const errorMessage = handleApiError(data.error || 'default');
+        
+        setMessages((previous) => [...previous, {
+          role: 'assistant',
+          content: errorMessage,
+        }]);
+        return;
       }
 
       // Add assistant reply to messages
