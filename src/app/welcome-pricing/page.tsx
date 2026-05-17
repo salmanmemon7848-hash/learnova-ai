@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Lock, Star } from 'lucide-react'
+import RazorpayCheckout from '@/components/RazorpayCheckout'
 
 // ─── Types (mirrored from pricing page) ──────────────────────────────────────
 type Feature = {
@@ -247,6 +248,7 @@ export default function WelcomePricingPage() {
   const [role, setRole] = useState<'student' | 'founder' | null>(null)
   const [loading, setLoading] = useState(false)
   const [resolving, setResolving] = useState(true)
+  const [selectedCheckoutPlan, setSelectedCheckoutPlan] = useState<{ plan: string; planLabel: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -298,45 +300,32 @@ export default function WelcomePricingPage() {
     const selectedRole = role ?? 'student'
 
     if (!isFree) {
-      // Paid plan — trigger Razorpay first, update Supabase only on success
-      const razorpay = new (window as any).Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        name: 'Thinkior AI',
-        description: `${plan.name} Plan`,
-        theme: { color: '#7C3AED' },
-        handler: async function (response: any) {
-          await supabase.from('profiles').update({
-            has_seen_pricing: true,
-            role: selectedRole,
-            plan: plan.name.toLowerCase().replace(' ', '_'),
-            razorpay_subscription_id: response.razorpay_subscription_id ?? null,
-          }).eq('id', user.id)
-
-          // Clear pending role from localStorage
-          localStorage.removeItem('thinkior_pending_role')
-
-          // Redirect to role-specific welcome then dashboard
-          router.push(`/welcome?role=${selectedRole}`)
-        },
-        modal: {
-          ondismiss: () => setLoading(false),
-        },
+      // Set state to trigger the Razorpay Checkout component overlay safely
+      setSelectedCheckoutPlan({
+        plan: plan.name.toLowerCase().replace(' ', '_'),
+        planLabel: plan.name,
       })
-      razorpay.open()
+      setLoading(false)
       return
     }
 
-    // Free plan — update directly
+    // Free plan — update profiles and initialize user_plans
     await supabase.from('profiles').update({
-      has_seen_pricing: true,
       role: selectedRole,
-      plan: plan.name.toLowerCase().replace(' ', '_'),
     }).eq('id', user.id)
+
+    await supabase.from('user_plans').upsert({
+      user_id: user.id,
+      role: selectedRole,
+      plan: 'free',
+      is_active: true,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' })
 
     // Clear pending role from localStorage
     localStorage.removeItem('thinkior_pending_role')
 
-    // ── KEY FIX: Redirect based on role ──
+    // Redirect to welcome
     router.push(`/welcome?role=${selectedRole}`)
   }
 
@@ -348,10 +337,16 @@ export default function WelcomePricingPage() {
     const selectedRole = role ?? 'student'
 
     await supabase.from('profiles').update({
-      has_seen_pricing: true,
+      role: selectedRole,
+    }).eq('id', user.id)
+
+    await supabase.from('user_plans').upsert({
+      user_id: user.id,
       role: selectedRole,
       plan: 'free',
-    }).eq('id', user.id)
+      is_active: true,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' })
 
     localStorage.removeItem('thinkior_pending_role')
     router.push(`/welcome?role=${selectedRole}`)
@@ -409,6 +404,77 @@ export default function WelcomePricingPage() {
           Skip for now — start with Free plan
         </button>
       </div>
+
+      {/* Razorpay Checkout Simulation Overlay */}
+      {selectedCheckoutPlan && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(15,15,26,0.85)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+          <div style={{
+            background: '#13151e', borderRadius: 24,
+            padding: '36px', maxWidth: 440, width: '90%',
+            border: '1px solid rgba(124,58,237,0.3)',
+            boxShadow: '0 20px 50px rgba(124,58,237,0.15)',
+            color: '#F5F3FF',
+            fontFamily: 'system-ui, sans-serif'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#f5f3ff', margin: 0 }}>
+                  Complete Upgrading
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: '#c4b5fd', marginTop: 4, marginBottom: 0 }}>
+                  to {selectedCheckoutPlan.planLabel} Plan
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedCheckoutPlan(null)}
+                style={{ 
+                  background: 'rgba(255,255,255,0.05)', 
+                  border: 'none', 
+                  color: '#9ca3af', 
+                  width: 32, height: 32,
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <RazorpayCheckout
+                plan={selectedCheckoutPlan.plan}
+                role={role || 'student'}
+                planLabel={selectedCheckoutPlan.planLabel}
+                onSuccess={async () => {
+                  const selectedRole = role || 'student'
+                  
+                  // Set role on profiles table
+                  await supabase.from('profiles').update({
+                    role: selectedRole
+                  }).eq('id', (await supabase.auth.getUser()).data.user?.id)
+
+                  setSelectedCheckoutPlan(null)
+                  localStorage.removeItem('thinkior_pending_role')
+                  router.push(`/welcome?role=${selectedRole}`)
+                }}
+                onClose={() => {
+                  setSelectedCheckoutPlan(null)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

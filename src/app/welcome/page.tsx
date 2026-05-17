@@ -60,18 +60,17 @@ export default function WelcomePage() {
   }, [])
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(timer)
-          router.push('/dashboard')
-          return 0
-        }
-        return c - 1
-      })
+    if (countdown <= 0) {
+      router.push('/dashboard')
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown(countdown - 1)
     }, 1000)
-    return () => clearInterval(timer)
-  }, [router])
+
+    return () => clearTimeout(timer)
+  }, [countdown, router])
 
   const normalizedPlan = plan.toLowerCase().replace(' ', '_')
   const planLabel = plan

@@ -27,6 +27,13 @@ export async function POST(req: NextRequest) {
       ? process.env.RAZORPAY_LIVE_KEY_SECRET!
       : process.env.RAZORPAY_KEY_SECRET!;
 
+    const isPlaceholder = !keyId || keyId.includes('your_key_here') || !keySecret || keySecret.includes('your_secret_here') || keySecret.includes('secret_here');
+    if (isPlaceholder) {
+      return NextResponse.json({
+        error: 'Placeholder Keys Detected: Please replace "rzp_test_your_key_here" and "your_secret_here" in your .env.local with real Test Keys from your Razorpay Dashboard.'
+      }, { status: 400 });
+    }
+
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
     // Create order
@@ -61,10 +68,11 @@ export async function POST(req: NextRequest) {
         ? process.env.NEXT_PUBLIC_RAZORPAY_LIVE_KEY_ID
         : process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       planLabel: pricingData.label,
+      isMock: false,
     });
 
   } catch (err: any) {
-    console.error('[Payment] Create order error:', err.message);
-    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+    console.error('[Payment] Create order error:', err);
+    return NextResponse.json({ error: err.description || err.message || 'Failed to create order' }, { status: 500 });
   }
 }

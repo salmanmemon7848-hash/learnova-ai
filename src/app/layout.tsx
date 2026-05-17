@@ -75,7 +75,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Thinkior AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
       <body className="min-h-full flex flex-col font-body">
         <ThemeProvider>
           <Providers>{children}</Providers>

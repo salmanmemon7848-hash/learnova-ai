@@ -23,9 +23,10 @@ export default function RazorpayCheckout({
   const [error, setError] = useState('');
 
   // Detect mode from key
-  const isLiveMode = process.env.NEXT_PUBLIC_RAZORPAY_LIVE_KEY_ID
-    && !process.env.NEXT_PUBLIC_RAZORPAY_LIVE_KEY_ID.includes('test');
-  const mode = isLiveMode ? 'live' : 'test';
+  const isTestMode = !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID.includes('your_key_here')
+    || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID.startsWith('rzp_test_');
+  const mode = isTestMode ? 'test' : 'live';
 
   const loadRazorpay = (): Promise<boolean> => {
     return new Promise(resolve => {
@@ -43,13 +44,6 @@ export default function RazorpayCheckout({
     setError('');
 
     try {
-      // Load Razorpay script
-      const loaded = await loadRazorpay();
-      if (!loaded) {
-        setError('Failed to load payment gateway. Check your internet connection.');
-        return;
-      }
-
       // Create order
       const orderRes = await fetch('/api/payment/create-order', {
         method: 'POST',
@@ -60,6 +54,15 @@ export default function RazorpayCheckout({
       const orderData = await orderRes.json();
       if (!orderRes.ok || orderData.error) {
         setError(orderData.error || 'Failed to create order');
+        setLoading(false);
+        return;
+      }
+
+      // Load Razorpay script
+      const loaded = await loadRazorpay();
+      if (!loaded) {
+        setError('Failed to load payment gateway. If you are using Brave or an Adblocker extension, please disable Brave Shields or pause Adblock for "http://localhost:3000" to allow the payment gateway to load.');
+        setLoading(false);
         return;
       }
 
@@ -96,6 +99,8 @@ export default function RazorpayCheckout({
             }
           } catch (err) {
             setError('Payment verified but activation failed. Contact support.');
+          } finally {
+            setLoading(false);
           }
         },
         prefill: {
@@ -124,7 +129,6 @@ export default function RazorpayCheckout({
 
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };

@@ -1,27 +1,32 @@
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const session = await auth()
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user?.id) {
       return NextResponse.json({ plan: 'free', userType: 'student' })
     }
 
-    const sub = await prisma.subscription.findUnique({
-      where: { userId: session.user.id },
-    })
+    const { data: sub, error } = await supabase
+      .from('user_plans')
+      .select('plan, role, is_active')
+      .eq('user_id', session.user.id)
+      .single()
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { userType: true }
-    })
+    if (error || !sub) {
+      return NextResponse.json({
+        plan: 'free',
+        userType: 'student',
+        status: 'active'
+      })
+    }
 
     return NextResponse.json({
-      plan: sub?.plan || 'free',
-      userType: user?.userType || 'student',
-      status: sub?.status || 'active'
+      plan: sub.plan || 'free',
+      userType: sub.role || 'student',
+      status: sub.is_active ? 'active' : 'inactive'
     })
   } catch (error) {
     return NextResponse.json({ plan: 'free', userType: 'student' })

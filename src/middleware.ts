@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
 
   const publicRoutes = ['/', '/login', '/signup', '/auth', '/auth/callback', '/about', '/privacy', '/terms', '/beta-disclaimer']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth'))
-  const pricingBypassRoutes = ['/welcome-pricing', '/welcome', '/chat', '/auth/redirect']
+  const pricingBypassRoutes = ['/welcome-pricing', '/welcome', '/chat', '/auth/redirect', '/api']
   const shouldBypassPricingGate = pricingBypassRoutes.some(route => pathname === route || pathname.startsWith(route))
 
   let response = NextResponse.next({
@@ -48,16 +48,25 @@ export async function middleware(request: NextRequest) {
   // Logged in + first-time user (no plan set) → redirect to /welcome-pricing
   // EXCEPT if they are already on /welcome-pricing to avoid redirect loop
   if (user && !isPublicRoute && !shouldBypassPricingGate) {
+    // 1. Query user_plans for active plan and role
+    const { data: planData } = await supabase
+      .from('user_plans')
+      .select('plan, role')
+      .eq('user_id', user.id)
+      .single()
+
+    // 2. Query profiles table safely for role only
     const { data: profile } = await supabase
       .from('profiles')
-      .select('has_seen_pricing, plan, role')
+      .select('role')
       .eq('id', user.id)
       .single()
 
-    const isGeneralRole = profile?.role === 'general'
-    const hasSeen = profile?.has_seen_pricing === true
+    const userRole = planData?.role || profile?.role || 'student'
+    const isGeneralRole = userRole === 'general'
 
-    if (profile && !hasSeen && !isGeneralRole) {
+    // If user_plans is not initialized yet and they are not a general user, redirect to onboarding pricing
+    if (!planData && !isGeneralRole) {
       return NextResponse.redirect(new URL('/welcome-pricing', request.url))
     }
   }
