@@ -2,23 +2,20 @@
 
 import { useRouter } from 'next/navigation';
 import { BookOpen, Lightbulb, Telescope, ArrowRight } from 'lucide-react';
-import { usePersonaStore } from '@/lib/stores/personaStore';
 import { Suspense } from 'react';
+
 
 function LandingContent() {
   const router = useRouter();
-  const { setPersona } = usePersonaStore();
 
   const handleStudentClick = () => {
-    setPersona('student');
     if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'student');
-    router.push('/auth');
+    router.push('/auth?role=student');
   };
 
   const handleFounderClick = () => {
-    setPersona('founder');
     if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'founder');
-    router.push('/auth');
+    router.push('/auth?role=founder');
   };
 
   const handleGeneralClick = () => {

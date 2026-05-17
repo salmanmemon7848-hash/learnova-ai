@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
-import { usePowerfulMode, type PowerfulModeSources as PowerfulModeSourcesType } from '@/hooks/usePowerfulMode';
+import { usePowerfulMode } from '@/hooks/usePowerfulMode';
 import {
   PowerfulModeBadge,
   PowerfulModeToggle,
@@ -232,12 +232,9 @@ function ChatMain({
   isPowerfulLoading: boolean;
   currentStatus: string;
   onTogglePowerfulMode: () => void;
-  onSend: (message: string, imageFile?: File | null) => void;
+  onSend: (message: string) => void;
 }) {
   const [input, setInput] = useState('');
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -245,25 +242,9 @@ function ChatMain({
   }, [messages, isLoading]);
 
   const handleSend = () => {
-    if ((!input.trim() && !selectedImage) || isLoading || isPowerfulLoading) return;
-    onSend(input.trim(), selectedImage);
+    if ((!input.trim()) || isLoading || isPowerfulLoading) return;
+    onSend(input.trim());
     setInput('');
-    setSelectedImage(null);
-    setImagePreview(null);
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        alert('Image too large. Please select an image under 4MB.');
-        return;
-      }
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -298,10 +279,10 @@ function ChatMain({
           {messages.length === 0 && !isLoading && (
             <div style={{ textAlign: 'center', paddingTop: '15vh' }}>
               <div style={{ fontSize: '3rem', marginBottom: 16 }}>💬</div>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 600, marginBottom: 8 }}>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 600, marginBottom: 8, color: 'rgba(255,255,255,0.9)' }}>
                 How can I help you today?
               </h2>
-              <p style={{ opacity: 0.5, marginBottom: 40, fontSize: '0.95rem' }}>
+              <p style={{ color: 'rgba(255,255,255,0.45)', marginBottom: 40, fontSize: '0.95rem' }}>
                 Ask me anything — I am your general AI assistant.
               </p>
 
@@ -323,7 +304,7 @@ function ChatMain({
                       borderRadius: 12,
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.1)',
-                      color: 'inherit',
+                      color: 'rgba(255,255,255,0.8)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       fontSize: '0.85rem',
@@ -339,8 +320,8 @@ function ChatMain({
                       e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
                     }}
                   >
-                    <span style={{ fontSize: '1.1rem', display: 'block', marginBottom: 4 }}>{suggestion.icon}</span>
-                    {suggestion.text}
+                    <span style={{ fontSize: '1.1rem', display: 'block', marginBottom: 4, color: 'inherit' }}>{suggestion.icon}</span>
+                    <span style={{ color: 'rgba(255,255,255,0.8)' }}>{suggestion.text}</span>
                   </button>
                 ))}
               </div>
@@ -462,44 +443,7 @@ function ChatMain({
             />
           </div>
 
-          {imagePreview && (
-            <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
-              <img src={imagePreview} alt="Preview" style={{ height: 80, borderRadius: 8, objectFit: 'cover' }} />
-              <button
-                onClick={() => { setSelectedImage(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                style={{
-                  position: 'absolute', top: -6, right: -6,
-                  background: '#ef4444', color: '#fff', border: 'none',
-                  borderRadius: '50%', width: 20, height: 20,
-                  fontSize: '12px', cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                ×
-              </button>
-            </div>
-          )}
-
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                position: 'absolute', left: 12, zIndex: 1,
-                background: 'none', border: 'none', color: '#9ca3af',
-                fontSize: '1.2rem', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center'
-              }}
-              title="Upload image (max 4MB)"
-            >
-              📎
-            </button>
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleImageSelect}
-              style={{ display: 'none' }}
-            />
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -509,7 +453,7 @@ function ChatMain({
               rows={1}
               style={{
                 width: '100%',
-                padding: '14px 52px 14px 44px',
+                padding: '14px 52px 14px 14px',
                 borderRadius: 14,
                 background: 'rgba(255,255,255,0.07)',
               border: '1px solid rgba(255,255,255,0.12)',
@@ -536,7 +480,7 @@ function ChatMain({
 
           <button
             onClick={handleSend}
-            disabled={(!input.trim() && !selectedImage) || isLoading || isPowerfulLoading}
+            disabled={(!input.trim()) || isLoading || isPowerfulLoading}
             className="send-button"
             style={{
               position: 'absolute',
@@ -545,10 +489,10 @@ function ChatMain({
               width: 34,
               height: 34,
               borderRadius: 8,
-              background: (input.trim() || selectedImage) && !isLoading && !isPowerfulLoading ? '#7c3aed' : 'rgba(255,255,255,0.08)',
+              background: (input.trim()) && !isLoading && !isPowerfulLoading ? '#7c3aed' : 'rgba(255,255,255,0.08)',
               border: 'none',
               color: '#fff',
-              cursor: (input.trim() || selectedImage) && !isLoading && !isPowerfulLoading ? 'pointer' : 'not-allowed',
+              cursor: (input.trim()) && !isLoading && !isPowerfulLoading ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -713,14 +657,14 @@ export default function ChatPage() {
     }
   };
 
-  const handleSend = async (userMessage: string, imageFile?: File | null) => {
+  const handleSend = async (userMessage: string) => {
     if (!user || isLoading || isPowerfulLoading) return;
 
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage || '📷 [Image attached]' }];
+    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userMessage }];
     setMessages(newMessages);
 
     // Powerful mode doesn't support images natively yet. Bypass for images.
-    if (isPowerfulMode && !imageFile) {
+    if (isPowerfulMode) {
       try {
         const powerfulResult = await askPowerful(newMessages, activeSessionId);
 
@@ -751,30 +695,16 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      let response;
-      if (imageFile) {
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        formData.append('message', userMessage);
-        if (activeSessionId) formData.append('sessionId', activeSessionId);
-        
-        const initialResponse = await fetch('/api/general-chat', {
-          method: 'POST',
-          body: formData,
-        });
-        response = await handleApiResponse(initialResponse, imageFile ? 'Image Upload' : 'General Chat');
-      } else {
-        const initialResponse = await fetch('/api/general-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: newMessages,
-            sessionId: activeSessionId,
-            powerfulMode: isPowerfulMode,
-          }),
-        });
-        response = await handleApiResponse(initialResponse, isPowerfulMode ? 'Powerful Mode' : 'General Chat');
-      }
+      const initialResponse = await fetch('/api/general-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          sessionId: activeSessionId,
+          powerfulMode: isPowerfulMode,
+        }),
+      });
+      let response = await handleApiResponse(initialResponse, isPowerfulMode ? 'Powerful Mode' : 'General Chat');
 
       if (isRateLimitError(response)) {
         setMessages((previous) => [...previous, {

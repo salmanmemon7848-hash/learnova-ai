@@ -143,18 +143,22 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-slideUp">
+      <div
+        className="relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-slideUp"
+        style={{ background: '#13151e', border: '1px solid #2a2d3a' }}
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full transition-colors"
+          style={{ background: 'rgba(255,255,255,0.05)' }}
         >
-          <X className="w-5 h-5 text-gray-600" />
+          <X className="w-5 h-5" style={{ color: '#9ca3af' }} />
         </button>
 
         {/* Progress Bar */}
         {!completed && (
-          <div className="h-1 bg-gray-200">
+          <div className="h-1" style={{ background: '#2a2d3a' }}>
             <div
               className="h-full transition-all duration-500 ease-out"
               style={{
@@ -173,7 +177,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6 animate-bounce">
                 <CheckCircle className="w-10 h-10 text-green-600" />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">
+                <h2 className="text-3xl font-bold text-white mb-3">
                 You're all set! 🎉
               </h2>
               <p className="text-gray-300 text-lg">
@@ -187,10 +191,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#EEEDFE] mb-4">
                   <Sparkles className="w-8 h-8" style={{ color: '#534AB7' }} />
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#F5F3FF' }}>
                   Welcome to Thinkior! 👋
                 </h2>
-                <p className="text-gray-300">
+                <p style={{ color: '#9ca3af' }}>
                   Let's personalize your experience. What best describes you?
                 </p>
               </div>
@@ -198,28 +202,28 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <button
                   onClick={() => setUserType('student')}
-                  className={`p-6 border-2 rounded-2xl text-left transition-all hover:shadow-md ${
-                    userType === 'student'
-                      ? 'border-[#534AB7] bg-[#EEEDFE]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className="p-6 border-2 rounded-2xl text-left transition-all hover:shadow-md"
+                  style={{
+                    borderColor: userType === 'student' ? '#534AB7' : '#2a2d3a',
+                    background: userType === 'student' ? 'rgba(83,74,183,0.15)' : '#0f1117',
+                  }}
                 >
                   <div className="text-4xl mb-3">📚</div>
-                  <h3 className="text-xl font-semibold mb-2 text-white">Student</h3>
-                  <p className="text-gray-600">I want to learn better and faster</p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#F5F3FF' }}>Student</h3>
+                  <p style={{ color: '#9ca3af' }}>I want to learn better and faster</p>
                 </button>
 
                 <button
                   onClick={() => setUserType('business')}
-                  className={`p-6 border-2 rounded-2xl text-left transition-all hover:shadow-md ${
-                    userType === 'business'
-                      ? 'border-[#534AB7] bg-[#EEEDFE]'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                  className="p-6 border-2 rounded-2xl text-left transition-all hover:shadow-md"
+                  style={{
+                    borderColor: userType === 'business' ? '#534AB7' : '#2a2d3a',
+                    background: userType === 'business' ? 'rgba(83,74,183,0.15)' : '#0f1117',
+                  }}
                 >
                   <div className="text-4xl mb-3">🚀</div>
-                  <h3 className="text-xl font-semibold mb-2 text-white">Business Builder</h3>
-                  <p className="text-gray-600">I want to turn ideas into real businesses</p>
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#F5F3FF' }}>Business Builder</h3>
+                  <p style={{ color: '#9ca3af' }}>I want to turn ideas into real businesses</p>
                 </button>
               </div>
             </div>
@@ -227,10 +231,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
             /* Step 2: Tone Mode */
             <div>
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#F5F3FF' }}>
                   How should I explain things? 🎨
                 </h2>
-                <p className="text-gray-300">
+                <p style={{ color: '#9ca3af' }}>
                   Choose your preferred communication style
                 </p>
               </div>
@@ -244,8 +248,8 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                       toneMode === tone.id ? 'shadow-lg' : 'hover:shadow-md'
                     }`}
                     style={{
-                      borderColor: toneMode === tone.id ? tone.color : 'rgba(83,74,183,0.12)',
-                      backgroundColor: toneMode === tone.id ? `${tone.color}10` : 'white',
+                      borderColor: toneMode === tone.id ? tone.color : '#2a2d3a',
+                      backgroundColor: toneMode === tone.id ? `${tone.color}15` : '#0f1117',
                     }}
                   >
                     <div className="flex items-start gap-3">
@@ -268,10 +272,10 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
             /* Step 3: Language */
             <div>
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#F5F3FF' }}>
                   What's your preferred language? 🌍
                 </h2>
-                <p className="text-gray-300">
+                <p style={{ color: '#9ca3af' }}>
                   I'll respond in your chosen language
                 </p>
               </div>
@@ -281,14 +285,14 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                   <button
                     key={lang.id}
                     onClick={() => setLanguage(lang.id)}
-                    className={`w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-4 hover:shadow-md ${
-                      language === lang.id
-                        ? 'border-[#534AB7] bg-[#EEEDFE]'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className="w-full p-4 border-2 rounded-xl text-left transition-all flex items-center gap-4"
+                    style={{
+                      borderColor: language === lang.id ? '#534AB7' : '#2a2d3a',
+                      background: language === lang.id ? 'rgba(83,74,183,0.15)' : '#0f1117',
+                    }}
                   >
                     <span className="text-3xl">{lang.flag}</span>
-                    <span className="text-lg font-semibold text-white">
+                    <span className="text-lg font-semibold" style={{ color: '#F5F3FF' }}>
                       {lang.name}
                     </span>
                   </button>
@@ -299,12 +303,13 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
 
           {/* Navigation Buttons */}
           {!completed && (
-            <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <div className="flex gap-3 pt-4 border-t" style={{ borderColor: '#2a2d3a' }}>
               {step > 1 && (
                 <button
                   onClick={handleBack}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className="flex items-center gap-2 px-6 py-3 border-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  style={{ borderColor: '#2a2d3a', color: '#9ca3af', background: 'transparent' }}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Back

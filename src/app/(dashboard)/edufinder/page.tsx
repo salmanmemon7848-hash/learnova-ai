@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { GraduationCap, RotateCcw, Loader2 } from 'lucide-react'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -230,6 +231,7 @@ export default function EduFinderPage() {
   const [structured, setStructured] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const resetWizard = () => {
     setStep(1)
@@ -260,8 +262,12 @@ export default function EduFinderPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        if (res.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
-        throw new Error(data.error || 'Something went wrong.')
+        if (res.status === 429 || data?.error === 'limit_reached' || data?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
+        } else {
+          throw new Error(data.error || 'Something went wrong.')
+        }
+        return
       }
       const headerWarning = res.headers.get('X-RateLimit-Warning')
       if (headerWarning) setWarning(headerWarning)
@@ -494,6 +500,16 @@ export default function EduFinderPage() {
       <p className="text-[14px] mb-8" style={{ color: '#C4B5FD' }}>
         Discover the right school, college, or coaching institute across India
       </p>
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="EduFinder"
+        currentLimit={1}
+        upgradeLimit={5}
+        upgradePlan="Pro"
+        upgradePrice="₹299/mo"
+      />
 
       <div className="rounded-[16px] p-7" style={CARD_BASE}>
         <ProgressBar step={step} />

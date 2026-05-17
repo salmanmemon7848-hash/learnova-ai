@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient';
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal';
 
 // ============================================
 // 8 POWERFUL MCQ QUESTIONS
@@ -521,6 +522,7 @@ export default function BusinessIdeasPage() {
   const [loadingSeconds, setLoadingSeconds] = useState(0);
   const [rateWarning, setRateWarning] = useState('');
   const [rateError, setRateError] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Loading timeout tracker
   useEffect(() => {
@@ -585,8 +587,10 @@ export default function BusinessIdeasPage() {
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
-      if (res.status === 429 || errData?.error === 'rate_limit_exceeded') {
-        throw new Error(buildRateLimitMessage(errData));
+      if (res.status === 429 || errData?.error === 'limit_reached' || errData?.error === 'rate_limit_exceeded') {
+        setShowUpgradeModal(true);
+        if (!isMore) setStage('intro');
+        return;
       }
       throw new Error(errData?.error || `API returned ${res.status}`);
     }
@@ -663,6 +667,15 @@ export default function BusinessIdeasPage() {
   // ─────────────────────────────
   if (stage === 'intro') return (
     <div className="min-h-screen bg-[#0F0F10] text-white flex items-center justify-center p-6">
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Business Ideas"
+        currentLimit={1}
+        upgradeLimit={5}
+        upgradePlan="Builder"
+        upgradePrice="₹299/mo"
+      />
       <div className="max-w-2xl w-full text-center">
 
         <div className="w-28 h-28 bg-gradient-to-br from-purple-600 to-purple-900 rounded-3xl flex items-center justify-center text-6xl mx-auto mb-8 shadow-2xl shadow-purple-500/30">

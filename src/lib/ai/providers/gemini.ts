@@ -49,8 +49,8 @@ export async function call(
     throw new AIProviderError('gemini', 'configuration', 'Gemini API key is not configured');
   }
 
-  const primaryModel = taskComplexity === 'complex' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
-  const fallbackModel = 'gemini-1.5-flash';
+  const primaryModel: string = taskComplexity === 'complex' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
+  const fallbackModel: string = 'gemini-1.5-flash';
 
   const makeCall = async (model: string) => {
     const controller = new AbortController();
@@ -91,6 +91,7 @@ export async function call(
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[Gemini Text] API error — Status: ${response.status}, Model: ${model}, Body: ${errorText}`);
         throw classifyProviderFailure('gemini', response.status, errorText);
       }
 
@@ -131,41 +132,50 @@ export async function callVision(
     throw new AIProviderError('gemini', 'configuration', 'Gemini API key is not configured');
   }
 
-  const primaryModel = taskComplexity === 'complex' ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
-  const fallbackModel = 'gemini-1.5-flash';
+  const primaryModel: string = 'gemini-1.5-flash';
+  const fallbackModel: string = 'gemini-2.0-flash';
 
   const makeCall = async (model: string) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), VISION_TIMEOUT_MS);
     try {
+      const body: any = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: imageBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 4096,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
+      };
+
       const response = await fetchWithRetry(`${GEMINI_BASE_URL}/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                {
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: imageBase64,
-                  },
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
-          },
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[Gemini Vision] API error — Status: ${response.status}, Model: ${model}, Body: ${errorText}`);
         throw classifyProviderFailure('gemini', response.status, errorText);
       }
 

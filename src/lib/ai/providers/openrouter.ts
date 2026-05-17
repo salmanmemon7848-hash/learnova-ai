@@ -42,9 +42,8 @@ export async function call(
     throw new AIProviderError('openrouter', 'configuration', 'OPENROUTER_API_KEY is not configured');
   }
 
-  // Use high-performance models via OpenRouter
-  const primaryModel = taskComplexity === 'complex' ? 'anthropic/claude-3.5-sonnet' : 'meta-llama/llama-3.1-70b-instruct';
-  const fallbackModel = 'mistralai/mistral-7b-instruct:free';
+  const primaryModel: string = taskComplexity === 'complex' ? 'anthropic/claude-3.5-sonnet' : 'meta-llama/llama-3.1-70b-instruct';
+  const fallbackModel: string = 'mistralai/mistral-7b-instruct:free';
 
   const makeCall = async (model: string) => {
     const controller = new AbortController();

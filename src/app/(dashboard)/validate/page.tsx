@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Copy, Check, ArrowLeft } from 'lucide-react'
+import { Search, Copy, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getBusinessWhatsAppLink } from '@/lib/utils/streak'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 
 export default function ValidatePage() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function ValidatePage() {
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
   const [warning, setWarning] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const targetMarkets = ['Metro City', 'Tier 1', 'Tier 2', 'Tier 3', 'Pan-India']
   const budgets = ['Under ₹50K', '₹50K–5L', '₹5L–50L', '₹50L+']
@@ -51,8 +53,10 @@ export default function ValidatePage() {
         const headerWarning = response.headers.get('X-RateLimit-Warning')
         if (headerWarning) setWarning(headerWarning)
         setResult(data.result)
+      } else if (response.status === 429 || data?.error === 'limit_reached' || data?.error === 'rate_limit_exceeded') {
+        setShowUpgradeModal(true)
       } else {
-        setError(response.status === 429 || data?.error === 'rate_limit_exceeded' ? buildRateLimitMessage(data) : (data.error || 'Failed to validate idea'))
+        setError(data.error || 'Failed to validate idea')
       }
     } catch (error: any) {
       console.error('Validation failed:', error)
@@ -416,6 +420,16 @@ export default function ValidatePage() {
           </div>
         </div>
       )}
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Business Idea Validator"
+        currentLimit={3}
+        upgradeLimit={10}
+        upgradePlan="Builder"
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 }

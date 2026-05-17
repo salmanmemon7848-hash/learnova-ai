@@ -5,33 +5,28 @@ import Providers from "@/components/Providers";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Script from "next/script";
-
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-heading",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
 });
-
 const dmSans = DM_Sans({
   variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
 export const viewport: Viewport = {
   themeColor: '#4f46e5',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
 };
-
 export const metadata: Metadata = {
   title: "Thinkior AI - The AI built for India's students and builders",
   description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Free to start.",
@@ -62,7 +57,6 @@ export const metadata: Metadata = {
     description: "The AI built for India's students and builders",
   },
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -81,6 +75,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Thinkior AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       <body className="min-h-full flex flex-col font-body">
         <ThemeProvider>
           <Providers>{children}</Providers>

@@ -182,11 +182,16 @@ try {
           imageBase64: base64Image,
           mimeType: imageFile.type,
           featureName: 'chat-image',
-          taskComplexity: 'complex',
+          taskComplexity: 'simple',
         });
         responseText = visionResponse.result;
-      } catch (err) {
-        console.error('Vision AI Error:', err);
+      } catch (err: any) {
+        console.error('[Chat Route] Vision AI Error — full details:', {
+          message: err?.message,
+          reason: err?.reason,
+          status: err?.status,
+          stack: err?.stack,
+        });
         // Fallback generic response when provider fails
         responseText = 'Sorry, the image analysis service is currently unavailable. Please try again later.';
       }
@@ -249,7 +254,20 @@ try {
       }
     }, { });
   } catch (error: unknown) {
-    console.error('Chat Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Failed to process your message. Please try again.' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+    
+    console.error('[Chat API] Fatal error:', {
+      message: errorMessage,
+      stack: errorStack,
+      timestamp: new Date().toISOString()
+    });
+
+    return NextResponse.json({ 
+      success: false,
+      error: 'internal_server_error',
+      message: 'Failed to process your message. Please try again.',
+      debug: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 });
   }
 }

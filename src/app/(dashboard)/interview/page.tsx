@@ -7,6 +7,7 @@ import { useRole } from '@/contexts/RoleContext'
 import { validateLanguage } from '@/lib/languageConfig'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
 import { startVoiceSession, getOpeningQuestion, type InterviewConfig, type VoiceSession } from '@/lib/voice/voiceHandler'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 
 type Step = 'setup' | 'voice-interview' | 'chat-interview' | 'voice-results' | 'chat-results'
 type InterviewMode = 'voice' | 'chat'
@@ -87,6 +88,7 @@ export default function InterviewPage() {
   const [voiceResultsTab, setVoiceResultsTab] = useState<VoiceResultsTab>('overview')
   const [voiceResultsExpandedQ, setVoiceResultsExpandedQ] = useState<number | null>(null)
   const [rateWarning, setRateWarning] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const TOTAL_QUESTIONS = 8
 
@@ -328,8 +330,8 @@ export default function InterviewPage() {
       // Check if response is OK before parsing JSON
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}))
-        if (res.status === 429 || errJson?.error === 'rate_limit_exceeded') {
-          setVoiceError(buildRateLimitMessage(errJson))
+        if (res.status === 429 || errJson?.error === 'limit_reached' || errJson?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
         }
         return getFallbackQuestion(fullHistory.filter(m => m.role === 'assistant').length, currentLanguage)
       }
@@ -742,7 +744,10 @@ export default function InterviewPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        if (res.status === 429 || data?.error === 'rate_limit_exceeded') throw new Error(buildRateLimitMessage(data))
+        if (res.status === 429 || data?.error === 'limit_reached' || data?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
+          return
+        }
         throw new Error(data?.error || 'Failed to start interview.')
       }
 
@@ -958,6 +963,16 @@ export default function InterviewPage() {
           {loading ? '⏳ Starting...' : '✨ Start Interview'}
         </button>
       </div>
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Mock Interviews"
+        currentLimit={1}
+        upgradeLimit={5}
+        upgradePlan={role === 'founder' ? 'Builder' : 'Pro'}
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 
@@ -1139,6 +1154,16 @@ export default function InterviewPage() {
             {isListening ? '⏹' : isDisabled ? '⏳' : '🎤'}
           </button>
         </div>
+
+        <UpgradeNudgeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          featureName="Mock Interviews"
+          currentLimit={1}
+          upgradeLimit={5}
+          upgradePlan={role === 'founder' ? 'Builder' : 'Pro'}
+          upgradePrice="₹299/mo"
+        />
       </div>
     )
   }
@@ -1425,6 +1450,16 @@ export default function InterviewPage() {
             <button onClick={() => { resetAll(); setTimeout(() => setMode('chat'), 50) }} style={{ flex: 1, background: 'transparent', border: `1px solid ${C.border}`, color: C.accentL, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>💬 Switch to Chat</button>
           </div>
         </div>
+
+        <UpgradeNudgeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          featureName="Mock Interviews"
+          currentLimit={1}
+          upgradeLimit={5}
+          upgradePlan={role === 'founder' ? 'Builder' : 'Pro'}
+          upgradePrice="₹299/mo"
+        />
       </div>
     )
   }
@@ -1481,6 +1516,16 @@ export default function InterviewPage() {
           </div>
         )
       })()}
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Mock Interviews"
+        currentLimit={1}
+        upgradeLimit={5}
+        upgradePlan={role === 'founder' ? 'Builder' : 'Pro'}
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 
@@ -1521,6 +1566,16 @@ export default function InterviewPage() {
           🎙️ Switch to Voice
         </button>
       </div>
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Mock Interviews"
+        currentLimit={1}
+        upgradeLimit={5}
+        upgradePlan={role === 'founder' ? 'Builder' : 'Pro'}
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 }

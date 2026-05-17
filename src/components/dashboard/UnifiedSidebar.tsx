@@ -2,7 +2,6 @@
 
 import React, { memo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePersonaStore } from '@/lib/stores/personaStore'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus,
@@ -59,7 +58,6 @@ function UnifiedSidebar({
   onCloseMobileSidebar,
 }: SidebarProps) {
   const { user } = useAuth()
-  const { persona } = usePersonaStore()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -142,18 +140,6 @@ function UnifiedSidebar({
           >
             Thinkior AI
           </h1>
-          {persona && (
-            <span
-              className="inline-block text-[11px] mt-2 px-2.5 py-0.5 rounded-[20px]"
-              style={{
-                background: '#1E1B4B',
-                color: '#A78BFA',
-                border: '1px solid #4338CA',
-              }}
-            >
-              {persona === 'student' ? '📚 Student' : '💼 Founder'}
-            </span>
-          )}
         </div>
 
         {/* New Chat Button */}

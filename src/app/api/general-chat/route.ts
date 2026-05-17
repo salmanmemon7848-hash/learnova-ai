@@ -257,12 +257,20 @@ Rules:
       remaining: usageResult.remaining,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[GeneralChat] Fatal error:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+
+    console.error('[GeneralChat API] Fatal error:', {
+      message: errorMessage,
+      stack: errorStack,
+      timestamp: new Date().toISOString()
+    });
+
     return NextResponse.json({ 
       success: false,
       error: 'service_unavailable',
-      message: 'The AI service is currently unavailable. Please try again later.' 
+      message: 'The AI service is currently unavailable. Please try again later.',
+      debug: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     }, { status: 500 });
   }
 }

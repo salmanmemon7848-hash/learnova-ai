@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import type { PowerfulModeSources as PowerfulModeSourcesType } from '@/hooks/usePowerfulMode';
 
 export function PowerfulModeBadge() {
   return <div style={styles.answerBadge}>POWERFUL MODE ANSWER</div>;

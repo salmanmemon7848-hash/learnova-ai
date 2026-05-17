@@ -54,10 +54,16 @@ async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userI
 
   if (!pendingRole || !VALID_ROLES.includes(pendingRole as PendingRole)) return null
 
+  const updateData: any = { role: pendingRole }
+  if (pendingRole === 'general') {
+    updateData.has_seen_pricing = true
+    updateData.plan = 'free'
+  }
+
   // User explicitly chose a role on the landing page → always apply it
   await supabase
     .from('profiles')
-    .upsert({ id: userId, role: pendingRole }, { onConflict: 'id' })
+    .upsert({ id: userId, ...updateData }, { onConflict: 'id' })
 
   localStorage.removeItem('thinkior_pending_role')
   return pendingRole
@@ -99,12 +105,18 @@ export default function AuthPage() {
     }
   }, [])
 
-  // Already logged in → save role then hard-navigate to redirect handler
-  // Hard navigation (window.location) ensures RoleContext fully re-initializes
+  // Already logged-in user landed on auth page.
+  // Save their pending role first, then redirect correctly.
   useEffect(() => {
     if (authLoading) return
     if (!user) return
-    saveRoleIfNeeded(supabase, user.id).then(() => {
+
+    saveRoleIfNeeded(supabase, user.id).then((savedRole) => {
+      if (savedRole === 'general') {
+        window.location.href = '/chat'
+        return
+      }
+
       window.location.href = '/auth/redirect'
     })
   }, [user, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -191,12 +203,12 @@ export default function AuthPage() {
     <div className="auth-page min-h-screen flex">
       {/* ── Left brand panel ── */}
       <div
-        className="hidden lg:flex lg:w-2/5 flex-col justify-center items-center p-12 relative"
-        style={{ backgroundColor: '#534AB7' }}
+        className="hidden lg:flex lg:w-2/5 flex-col justify-center items-center p-12 relative auth-left-panel"
+        style={{ backgroundColor: '#534AB7', color: '#ffffff' }}
       >
         <div className="max-w-sm text-center">
-          <h1 className="text-[26px] font-semibold text-white mb-3">Thinkior AI</h1>
-          <p className="text-base text-white mb-8" style={{ opacity: 0.85 }}>
+          <h1 className="text-[26px] font-semibold mb-3" style={{ color: '#ffffff' }}>Thinkior AI</h1>
+          <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.85)' }}>
             The AI that studies with you and builds with you
           </p>
           <div className="space-y-4 text-left mb-8">
@@ -209,11 +221,11 @@ export default function AuthPage() {
                 <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <p className="text-white text-sm">{f}</p>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.9)' }}>{f}</p>
               </div>
             ))}
           </div>
-          <p className="text-white/50 text-xs">Built for Indian students & young entrepreneurs</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.75)' }}>Built for Indian students & young entrepreneurs</p>
         </div>
       </div>
 

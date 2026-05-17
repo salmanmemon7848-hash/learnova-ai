@@ -105,10 +105,9 @@ export async function aiHandler(input: AIHandlerInput): Promise<AIHandlerOutput>
     }
   }
 
-  console.error('[AI Handler] All providers in chain failed or loop broken early.', {
+  console.error('[AI Handler] ALL text providers failed.', {
     failedProviders,
     featureName: input.featureName,
-    isSearch: input.isSearchFeature
   });
 
   return {
@@ -161,6 +160,13 @@ export async function aiVisionHandler(input: AIVisionHandlerInput): Promise<AIHa
       }
     }
   }
+
+  console.error('[Vision Handler] ALL vision providers failed. Image cannot be processed.', {
+    failedProviders,
+    featureName: input.featureName,
+    mimeType: input.mimeType,
+    imageSizeBytes: input.imageBase64?.length ?? 0,
+  });
 
   return {
     result: UNAVAILABLE_MESSAGE,

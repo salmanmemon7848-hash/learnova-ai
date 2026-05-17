@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { EXAM_SYLLABUS, getSubjects, getTopics } from '@/lib/examSyllabus'
 import { buildRateLimitMessage } from '@/lib/rateLimitClient'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface PYQQuestion {
@@ -51,6 +52,7 @@ export default function PracticeTestsPage() {
   const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<Date | null>(null)
@@ -106,7 +108,11 @@ export default function PracticeTestsPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(res.status === 429 ? buildRateLimitMessage(data) : (data.error || 'Failed to generate questions'))
+        if (res.status === 429 || data?.error === 'limit_reached' || data?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
+        } else {
+          setError(data.error || 'Failed to generate questions')
+        }
         return
       }
       if (!Array.isArray(data.questions) || data.questions.length === 0) {
@@ -143,6 +149,16 @@ export default function PracticeTestsPage() {
         <button onClick={() => router.push('/chat')} style={{ color: '#A78BFA', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 16 }}>← Back</button>
         <h1 style={{ color: '#F5F3FF', fontSize: 28, fontWeight: 700, marginBottom: 4 }}>📚 Practice Tests</h1>
         <p style={{ color: '#C4B5FD', fontSize: 14, marginBottom: 28 }}>PYQ-based questions for every major Indian exam</p>
+
+        <UpgradeNudgeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          featureName="Practice Tests"
+          currentLimit={1}
+          upgradeLimit={10}
+          upgradePlan="Pro"
+          upgradePrice="₹299/mo"
+        />
 
         <div style={{ ...card, marginBottom: 16 }}>
           <h2 style={{ color: '#F5F3FF', fontSize: 16, marginBottom: 20 }}>Configure your test</h2>
@@ -395,3 +411,4 @@ export default function PracticeTestsPage() {
     </div>
   )
 }
+

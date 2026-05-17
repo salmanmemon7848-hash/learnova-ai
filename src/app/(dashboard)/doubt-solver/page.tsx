@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import ImageUploader from '@/components/features/DoubtSolver/ImageUploader'
-import { Camera, Sparkles, BookOpen, Target, Lightbulb, Save } from 'lucide-react'
+import { Sparkles, BookOpen, Target, Lightbulb, Save } from 'lucide-react'
 import { validateInput, buildRateLimitMessage } from '@/lib/rateLimitClient'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DoubtResult {
@@ -84,7 +84,6 @@ function parseSectionedResponse(raw: string): { intro: string; sections: DoubtSe
 
 export default function DoubtSolverPage() {
   const { user } = useAuth()
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [subject, setSubject] = useState('')
   const [questionText, setQuestionText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -95,14 +94,15 @@ export default function DoubtSolverPage() {
   const [language, setLanguage] = useState<'en' | 'hi' | 'hinglish'>('en')
   const [level, setLevel] = useState<Level>('auto')
   const [warning, setWarning] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const handleSubmit = async () => {
-    if (!selectedImageFile && !questionText.trim()) {
-      setError('Please upload an image or type your question')
+    if (!questionText.trim()) {
+      setError('Please type your question')
       return
     }
-    const inputError = validateInput(questionText || 'image-input', 'doubt-solver')
-    if (!selectedImageFile && inputError) {
+    const inputError = validateInput(questionText, 'doubt-solver')
+    if (inputError) {
       setError(inputError)
       return
     }
@@ -116,34 +116,23 @@ export default function DoubtSolverPage() {
     try {
       let response: Response
 
-      if (selectedImageFile) {
-        const formData = new FormData()
-        formData.append('image', selectedImageFile)
-        formData.append('question', questionText.trim())
-        formData.append('subject', subject.trim())
-        console.log('[DoubtSolver] Fixed: image request sends FormData without manual Content-Type')
-
-        response = await fetch('/api/doubt-solver', {
-          method: 'POST',
-          body: formData,
-        })
-      } else {
-        response = await fetch('/api/doubt-solver', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionText: questionText.trim(),
-            subject: subject.trim(),
-            language,
-            level,
-          }),
-        })
-      }
+      response = await fetch('/api/doubt-solver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionText: questionText.trim(),
+          subject: subject.trim(),
+          language,
+          level,
+        }),
+      })
 
       if (!response.ok) {
         const errData = await response.json()
-        if (response.status === 429 || errData?.error === 'rate_limit_exceeded') {
-          throw new Error(buildRateLimitMessage(errData))
+        if (response.status === 429 || errData?.error === 'limit_reached' || errData?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
+          setLoading(false)
+          return
         }
         throw new Error(errData.error || 'Failed to solve doubt')
       }
@@ -171,7 +160,6 @@ export default function DoubtSolverPage() {
   }
 
   const handleReset = () => {
-    setSelectedImageFile(null)
     setSubject('')
     setQuestionText('')
     setRawSolution('')
@@ -186,12 +174,11 @@ export default function DoubtSolverPage() {
     <div className="page-container doubt-page max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl">
-          <Camera className="w-6 h-6 sm:w-8 sm:h-8" />
+        <h1 className="text-2xl sm:text-3xl font-bold flex gap-2 items-center text-white">
           AI Doubt Solver
         </h1>
-        <p className="subtitle">
-          Upload a photo of your question or type it below — get step-by-step solutions instantly
+        <p className="subtitle text-[#A78BFA]">
+          Type your question below — get step-by-step solutions instantly
         </p>
       </div>
 
@@ -235,16 +222,7 @@ export default function DoubtSolverPage() {
             </div>
           </div>
 
-          {/* Image Upload */}
-          <div className="upload-card">
-            <label className="language-label">Upload Question Image</label>
-            <ImageUploader
-              onImageSelect={(file) => {
-                setSelectedImageFile(file)
-              }}
-              onError={setError}
-            />
-          </div>
+
 
           {/* Subject Input */}
           <div className="upload-card">
@@ -273,7 +251,7 @@ export default function DoubtSolverPage() {
           <div className="flex gap-2 sm:gap-3">
             <button
               onClick={handleSubmit}
-              disabled={loading || (!selectedImageFile && !questionText.trim())}
+              disabled={loading || (!questionText.trim())}
               className="btn-secondary flex-1 py-2.5 sm:py-3.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               {loading ? (
@@ -593,6 +571,16 @@ export default function DoubtSolverPage() {
           )}
         </div>
       </div>
+
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Doubt Solver"
+        currentLimit={3}
+        upgradeLimit={10}
+        upgradePlan="Pro"
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 }

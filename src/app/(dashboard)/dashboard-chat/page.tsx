@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePersonaStore } from '@/lib/stores/personaStore'
+import { useRole } from '@/contexts/RoleContext'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import UpgradeNudgeModal from '@/components/UpgradeNudgeModal'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -154,7 +155,9 @@ interface Conversation {
 
 function ChatContent() {
   const { user } = useAuth()
-  const { persona } = usePersonaStore()
+  const { role } = useRole()
+  // Map DB role to persona-style string for prompt building
+  const persona = role === 'founder' ? 'founder' : 'student'
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -170,6 +173,7 @@ function ChatContent() {
   const [streak, setStreak] = useState<StreakData>({ currentStreak: 0, longestStreak: 0, lastActiveDate: '', milestonesShown: [] })
   const [milestone, setMilestone] = useState<number | null>(null)
   const [limitWarning, setLimitWarning] = useState('')
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -190,12 +194,8 @@ function ChatContent() {
     }
   }, [])
 
-  // Redirect to persona selection if not set
-  useEffect(() => {
-    if (!persona) {
-      router.push('/persona')
-    }
-  }, [persona, router])
+  // Redirect to persona selection if not set — REMOVED (persona screen deleted)
+  // Now handled by middleware via has_seen_pricing
 
   // Auto-send prompt from URL query param
   useEffect(() => {
@@ -286,9 +286,9 @@ function ChatContent() {
     return []
   }
 
-  const handleSendMessage = async (text?: string, image?: File) => {
+  const handleSendMessage = async (text?: string) => {
     const messageText = text || input.trim()
-    if ((!messageText && !image) || loading) return
+    if (!messageText || loading) return
     const inputError = validateInput(messageText, 'chat')
     if (inputError) {
       setMessages((prev) => [...prev, { role: 'assistant', content: inputError, id: Date.now().toString() }])
@@ -328,23 +328,13 @@ function ChatContent() {
       let bodyInit: RequestInit['body']
       let headersInit: Record<string, string> = {}
 
-      if (image) {
-        const formData = new FormData()
-        formData.append('message', messageText)
-        formData.append('messages', JSON.stringify(newMessages.map(m => ({ role: m.role, content: m.content }))))
-        formData.append('persona', persona || '')
-        formData.append('language', language || '')
-        formData.append('image', image)
-        bodyInit = formData
-      } else {
-        bodyInit = JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          persona,
-          language,
-          systemPrompt: getSystemPrompt(),
-        })
-        headersInit['Content-Type'] = 'application/json'
-      }
+      bodyInit = JSON.stringify({
+        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        persona,
+        language,
+        systemPrompt: getSystemPrompt(),
+      })
+      headersInit['Content-Type'] = 'application/json'
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -354,8 +344,10 @@ function ChatContent() {
 
       if (!response.ok) {
         const error = await response.json()
-        if (response.status === 429 || error?.error === 'rate_limit_exceeded') {
-          throw new Error(buildRateLimitMessage(error))
+        if (response.status === 429 || error?.error === 'limit_reached' || error?.error === 'rate_limit_exceeded') {
+          setShowUpgradeModal(true)
+          setLoading(false)
+          return
         }
         throw new Error(error.error || 'Failed to send message')
       }
@@ -728,7 +720,7 @@ function ChatContent() {
             {/* Input Container */}
             <div className="mt-auto w-full">
               <ChatInput 
-                onSend={(text, image) => handleSendMessage(text, image)} 
+                onSend={(text) => handleSendMessage(text)} 
                 disabled={loading} 
                 placeholder={language === 'hindi' ? 'Thinkior से कुछ भी पूछें...' : 'Ask Thinkior anything...'}
               />
@@ -755,6 +747,17 @@ function ChatContent() {
           }
         `}</style>
       </main>
+
+      {/* Upgrade Nudge Modal */}
+      <UpgradeNudgeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="AI Chat"
+        currentLimit={10}
+        upgradeLimit={20}
+        upgradePlan="Pro"
+        upgradePrice="₹299/mo"
+      />
     </div>
   )
 }

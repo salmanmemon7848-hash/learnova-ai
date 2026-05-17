@@ -7,9 +7,10 @@ import { useAuth } from '@/contexts/AuthContext'
 
 /**
  * Smart Auth Redirect Page
- * 
- * This page runs immediately after sign-in and decides where to send the user.
- * It prevents the login loop by ensuring users never redirect back to /login after auth.
+ *
+ * Runs immediately after sign-in and decides where to send the user:
+ * - New user (has_seen_pricing = false) → /welcome-pricing
+ * - Returning user → /dashboard
  */
 export default function AuthRedirect() {
   const router = useRouter()
@@ -18,123 +19,65 @@ export default function AuthRedirect() {
   const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
-    // Prevent multiple redirects
     if (redirecting) return
 
     const handleRedirect = async () => {
-      // Wait for auth to finish loading
-      if (loading) {
-        return
-      }
+      if (loading) return
 
-      // Not signed in - send back to login (shouldn't happen if coming from OAuth)
       if (!user) {
-        console.warn('⚠️ No user session found, redirecting to login...')
+        console.warn('⚠️ No user session found, redirecting to auth...')
         setRedirecting(true)
-        router.replace('/login')
+        router.replace('/auth')
         return
       }
 
-      // User is authenticated - check if they have a persona set
-      console.log('✅ User authenticated, checking persona status...')
+      console.log('✅ User authenticated, checking pricing status...')
 
       try {
-        // Check localStorage for persona (set during onboarding)
-        const localStoragePersona = localStorage.getItem('thinkior_persona')
-
-        if (localStoragePersona) {
-          // User has persona in localStorage - go straight to chat
-          console.log('🎯 Persona found in localStorage, redirecting to chat...')
-          setRedirecting(true)
-          router.replace('/chat')
-          return
-        }
-
-        // Check database for user preferences
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select('has_seen_pricing')
           .eq('id', user.id)
           .single()
 
-        if (profileData?.role) {
-          console.log('✅ User has a role set (profiles check), redirecting...')
-          setRedirecting(true)
-          router.replace(profileData.role === 'general' ? '/chat' : '/dashboard')
-          return
-        }
+        setRedirecting(true)
 
-        // Fallback check database for user preferences (old table name if exists)
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('userType, toneMode, language')
-          .eq('id', user.id)
-          .single()
-
-        // If user has non-default values in DB, they've completed onboarding
-        const hasCompletedOnboarding = 
-          userData && 
-          !error &&
-          !(userData.userType === 'student' && 
-            userData.toneMode === 'balanced' && 
-            userData.language === 'en')
-
-        if (hasCompletedOnboarding) {
-          console.log('✅ User has completed onboarding (DB check), redirecting to chat...')
-          setRedirecting(true)
-          router.replace('/chat')
+        if (!profile || !profile.has_seen_pricing) {
+          console.log('🆕 New user — redirecting to /welcome-pricing')
+          router.replace('/welcome-pricing')
         } else {
-          console.log('🆕 New user or incomplete onboarding, redirecting to onboarding...')
-          setRedirecting(true)
-          router.replace('/onboarding')
+          console.log('✅ Returning user — redirecting to /dashboard')
+          router.replace('/dashboard')
         }
       } catch (err) {
         console.error('❌ Error checking user status:', err)
-        // On error, default to onboarding for safety
         setRedirecting(true)
-        router.replace('/onboarding')
+        router.replace('/dashboard')
       }
     }
 
     handleRedirect()
   }, [user, loading, router, supabase, redirecting])
 
-  // Show a loading screen while redirecting (dark theme matching app)
   return (
-    <div 
+    <div
       className="min-h-screen flex items-center justify-center"
-      style={{ 
+      style={{
         background: '#080412',
-        backgroundImage: 'radial-gradient(ellipse 700px 300px at 50% 0%, #7C3AED0D, transparent)'
+        backgroundImage: 'radial-gradient(ellipse 700px 300px at 50% 0%, #7C3AED0D, transparent)',
       }}
     >
       <div className="text-center">
-        {/* Spinning loader */}
-        <div 
+        <div
           className="inline-block animate-spin rounded-full h-12 w-12 border-4 mb-4"
-          style={{ 
-            borderColor: '#7C3AED',
-            borderTopColor: 'transparent'
-          }}
+          style={{ borderColor: '#7C3AED', borderTopColor: 'transparent' }}
         />
-        
-        {/* Loading text */}
-        <p 
-          className="text-lg font-medium"
-          style={{ color: '#C4B5FD' }}
-        >
+        <p className="text-lg font-medium" style={{ color: '#C4B5FD' }}>
           Setting up your account...
         </p>
-        
-        {/* Subtitle */}
-        <p 
-          className="text-sm mt-2"
-          style={{ color: '#9CA3AF' }}
-        >
+        <p className="text-sm mt-2" style={{ color: '#9CA3AF' }}>
           Please wait while we prepare your experience
         </p>
-
-        {/* Animated dots */}
         <div className="flex justify-center gap-1 mt-4">
           {[0, 1, 2].map((i) => (
             <div
@@ -142,14 +85,12 @@ export default function AuthRedirect() {
               className="w-2 h-2 rounded-full"
               style={{
                 background: '#7C3AED',
-                animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`
+                animation: `pulse 1.4s ease-in-out ${i * 0.2}s infinite`,
               }}
             />
           ))}
         </div>
       </div>
-
-      {/* Pulse animation */}
       <style>{`
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -159,3 +100,4 @@ export default function AuthRedirect() {
     </div>
   )
 }
+
