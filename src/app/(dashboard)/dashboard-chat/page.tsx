@@ -84,7 +84,7 @@ const MessageBubble = React.memo(({ message, onCopy, isCopied }: {
                 border: '1px solid #4338CA',
               }}
             >
-              Thinkior
+              Learnova
             </span>
             <button
               onClick={() => onCopy(message.content, message.id)}
@@ -180,7 +180,7 @@ function ChatContent() {
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('thinkior_language')
+    const savedLanguage = localStorage.getItem('learnova_language')
     if (savedLanguage === 'hindi' || savedLanguage === 'english') {
       setLanguage(savedLanguage)
     }
@@ -188,7 +188,7 @@ function ChatContent() {
     const savedStreak = loadStreak()
     setStreak(savedStreak)
 
-    const savedConvs = localStorage.getItem('thinkior_conversations')
+    const savedConvs = localStorage.getItem('learnova_conversations')
     if (savedConvs) {
       setConversations(JSON.parse(savedConvs))
     }
@@ -210,7 +210,7 @@ function ChatContent() {
   // Save conversations to localStorage
   useEffect(() => {
     if (conversations.length > 0) {
-      localStorage.setItem('thinkior_conversations', JSON.stringify(conversations))
+      localStorage.setItem('learnova_conversations', JSON.stringify(conversations))
     }
   }, [conversations])
 
@@ -235,9 +235,9 @@ function ChatContent() {
     let prompt = ''
     
     if (persona === 'student') {
-      prompt = "You are Thinkior, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient."
+      prompt = "You are Learnova, an AI tutor built specifically for Indian students. You explain concepts in simple English using Indian curriculum (CBSE, NCERT, JEE, NEET). Show step-by-step solutions. Use Indian examples and context. Be encouraging and patient."
     } else if (persona === 'founder') {
-      prompt = "You are Thinkior, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context."
+      prompt = "You are Learnova, an AI business advisor for Indian entrepreneurs. You understand Indian market conditions, GST, MSME policies, UPI, Tier 2/3 city challenges. Give practical, honest, actionable advice in Indian context."
     }
 
     if (language === 'hindi') {
@@ -410,7 +410,7 @@ function ChatContent() {
   const toggleLanguage = () => {
     const newLang = language === 'english' ? 'hindi' : 'english'
     setLanguage(newLang)
-    localStorage.setItem('thinkior_language', newLang)
+    localStorage.setItem('learnova_language', newLang)
   }
 
   const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'
@@ -632,7 +632,7 @@ function ChatContent() {
                     />
                   </div>
                   <span className="text-[13px]" style={{ color: '#9CA3AF' }}>
-                    Thinkior is thinking...
+                    Learnova is thinking...
                   </span>
                 </div>
               </div>
@@ -722,7 +722,7 @@ function ChatContent() {
               <ChatInput 
                 onSend={(text) => handleSendMessage(text)} 
                 disabled={loading} 
-                placeholder={language === 'hindi' ? 'Thinkior से कुछ भी पूछें...' : 'Ask Thinkior anything...'}
+                placeholder={language === 'hindi' ? 'Learnova से कुछ भी पूछें...' : 'Ask Learnova anything...'}
               />
             </div>
 

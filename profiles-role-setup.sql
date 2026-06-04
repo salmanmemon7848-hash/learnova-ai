@@ -1,5 +1,5 @@
 -- ============================================================
--- Thinkior AI — profiles table with role-based access
+-- Learnova AI — profiles table with role-based access
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages.filter((message) => message.role === 'user').at(-1)?.content || '';
 
-    const systemPrompt = `You are Thinkior — an intelligent AI assistant built for Indian students and founders.
+    const systemPrompt = `You are Learnova — an intelligent AI assistant built for Indian students and founders.
 
 For STUDENTS you help with:
 - Explaining complex concepts in simple language

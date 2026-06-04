@@ -7,11 +7,11 @@ import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import { LANGUAGE_CONFIGS, getLanguageInstruction, normalizeLanguage, validateLanguage } from '@/lib/languageConfig';
 import {
   sanitizeJsonPostBody,
@@ -98,8 +98,8 @@ export async function POST(req: NextRequest) {
 
     const isFounderInterview = userType === 'founder' || ['startup_founder','investor_pitch'].includes(interviewType || '');
     const knowledgeBlock = isFounderInterview
-      ? `${THINKIOR_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}`
-      : `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n${CAREER_GUIDE_KNOWLEDGE}`;
+      ? `${LEARNOVA_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}`
+      : `${LEARNOVA_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n${CAREER_GUIDE_KNOWLEDGE}`;
 
     // â”€â”€ VOICE MODE: conversational turn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (action === 'voice_turn') {
@@ -214,7 +214,7 @@ Voice rules: max 2 sentences, no bullets or markdown.
 Never repeat a question already asked.`;
 
       const studentPrompt = `${knowledgeBlock}\n${strictLangRule}
-You are Thinkior's AI Interviewer â€” strict, professional, conducting a voice interview.
+You are Learnova's AI Interviewer â€” strict, professional, conducting a voice interview.
 Interview type: ${roleLabel}
 ${candidateName !== 'the candidate' ? `Address the candidate as ${candidateName}.` : ''}
 Voice rules â€” responses will be spoken aloud:
@@ -233,13 +233,13 @@ Interview structure:
 Never repeat a question already asked.`;
 
       const hindiPrompt = `${knowledgeBlock}\n${strictLangRule}
-à¤†à¤ª Thinkior à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚à¥¤ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤ªà¥à¤°à¤•à¤¾à¤°: ${roleLabel}
+à¤†à¤ª Learnova à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚à¥¤ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤ªà¥à¤°à¤•à¤¾à¤°: ${roleLabel}
 ${candidateName !== 'the candidate' ? `à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤° à¤•à¥‹ ${candidateName} à¤¨à¤¾à¤® à¤¸à¥‡ à¤¸à¤‚à¤¬à¥‹à¤§à¤¿à¤¤ à¤•à¤°à¥‡à¤‚à¥¤` : ''}
 à¤¹à¤° à¤œà¤µà¤¾à¤¬ 2 à¤µà¤¾à¤•à¥à¤¯à¥‹à¤‚ à¤®à¥‡à¤‚, à¤•à¥‹à¤ˆ formatting à¤¨à¤¹à¥€à¤‚à¥¤ à¤ªà¤¹à¤²à¥‡ à¤¸à¥‡ à¤ªà¥‚à¤›à¥‡ à¤¸à¤µà¤¾à¤² à¤¦à¥‹à¤¬à¤¾à¤°à¤¾ à¤¨ à¤ªà¥‚à¤›à¥‡à¤‚à¥¤`;
 
       const hinglishPrompt = `${knowledgeBlock}
 CRITICAL: Respond in HINGLISH ONLY â€” mix Hindi and English naturally.
-You are Thinkior's AI Interviewer. Interview type: ${roleLabel}
+You are Learnova's AI Interviewer. Interview type: ${roleLabel}
 ${candidateName !== 'the candidate' ? `Address the candidate as ${candidateName}.` : ''}
 Max 2 sentences, no bullets. Never repeat a question.`;
 
@@ -247,7 +247,7 @@ Max 2 sentences, no bullets. Never repeat a question.`;
 
         english: `${knowledgeBlock}
 
-You are Thinkior's AI Interviewer â€” a professional interviewer conducting a real voice interview in Indian English.
+You are Learnova's AI Interviewer â€” a professional interviewer conducting a real voice interview in Indian English.
 
 CRITICAL LANGUAGE RULE: You MUST respond ONLY in English. Every single word must be English.
 
@@ -272,7 +272,7 @@ Never repeat a question already asked. Track conversation history carefully.`,
 
         hindi: `${knowledgeBlock}
 
-à¤†à¤ª Thinkior à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚ â€” à¤à¤• à¤ªà¥‡à¤¶à¥‡à¤µà¤° à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤œà¥‹ à¤ªà¥‚à¤°à¥€ à¤¤à¤°à¤¹ à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤²à¥‡ à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚à¥¤
+à¤†à¤ª Learnova à¤•à¥‡ AI à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤¹à¥ˆà¤‚ â€” à¤à¤• à¤ªà¥‡à¤¶à¥‡à¤µà¤° à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚à¤…à¤° à¤œà¥‹ à¤ªà¥‚à¤°à¥€ à¤¤à¤°à¤¹ à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤‡à¤‚à¤Ÿà¤°à¤µà¥à¤¯à¥‚ à¤²à¥‡ à¤°à¤¹à¥‡ à¤¹à¥ˆà¤‚à¥¤
 
 à¤…à¤¤à¥à¤¯à¤‚à¤¤ à¤®à¤¹à¤¤à¥à¤µà¤ªà¥‚à¤°à¥à¤£ à¤­à¤¾à¤·à¤¾ à¤¨à¤¿à¤¯à¤®: à¤†à¤ªà¤•à¥‹ à¤•à¥‡à¤µà¤² à¤”à¤° à¤•à¥‡à¤µà¤² à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤œà¤µà¤¾à¤¬ à¤¦à¥‡à¤¨à¤¾ à¤¹à¥ˆà¥¤ à¤à¤• à¤­à¥€ à¤…à¤‚à¤—à¥à¤°à¥‡à¤œà¥€ à¤¶à¤¬à¥à¤¦ à¤¨à¤¹à¥€à¤‚à¥¤ à¤¹à¤° à¤¶à¤¬à¥à¤¦ à¤¹à¤¿à¤‚à¤¦à¥€ à¤®à¥‡à¤‚ à¤¹à¥‹à¤¨à¤¾ à¤šà¤¾à¤¹à¤¿à¤à¥¤
 
@@ -297,7 +297,7 @@ Never repeat a question already asked. Track conversation history carefully.`,
 
         hinglish: `${knowledgeBlock}
 
-You are Thinkior's AI Interviewer â€” a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
+You are Learnova's AI Interviewer â€” a friendly startup interviewer who speaks in Hinglish, naturally mixing Hindi and English the way Indians speak in offices.
 
 CRITICAL LANGUAGE RULE: You MUST respond in Hinglish ONLY â€” every response must mix Hindi and English naturally. Example: "Accha, that's a good point. Ab batao, aapne koi challenging project handle kiya hai?" Never respond in pure English or pure Hindi.
 

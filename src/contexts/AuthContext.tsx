@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        <p style={{ fontSize: '14px', color: '#C4B5FD' }}>Loading Thinkior...</p>
+        <p style={{ fontSize: '14px', color: '#C4B5FD' }}>Loading Learnova...</p>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }

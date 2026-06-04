@@ -1,4 +1,4 @@
-# Thinkior AI - Project Summary
+# Learnova AI - Project Summary
 
 ## ✅ What's Been Built
 

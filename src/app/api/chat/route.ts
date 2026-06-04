@@ -7,11 +7,11 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { runPowerMode } from '@/lib/powerMode';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   FOUNDER_KNOWLEDGE,
   getLanguageInstruction,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import { sanitizeMessages, sanitizeString, validateLanguage } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
@@ -142,11 +142,11 @@ try {
       systemPrompt = searchContext ? `${searchContext}\n\n${latestUserMessage}` : latestUserMessage;
     } else {
       if (persona === 'student') {
-        systemPrompt = `${THINKIOR_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
+        systemPrompt = `${LEARNOVA_FULL_CONTEXT}\n${STUDENT_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
       } else if (persona === 'founder') {
-        systemPrompt = `${THINKIOR_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
+        systemPrompt = `${LEARNOVA_FULL_CONTEXT}\n${FOUNDER_KNOWLEDGE}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
       } else {
-        systemPrompt = `${THINKIOR_FULL_CONTEXT}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
+        systemPrompt = `${LEARNOVA_FULL_CONTEXT}\n\nLANGUAGE FOR THIS RESPONSE: ${languageInstruction}\n\n${basePrompt}`;
       }
 
       // Append live search context + usage instructions to the enriched system prompt

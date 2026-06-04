@@ -83,7 +83,7 @@ export default function PaymentSuccessPage() {
             boxShadow: '0 4px 20px #7C3AED40'
           }}
         >
-          Start Using Thinkior
+          Start Using Learnova
           <ArrowRight size={18} />
         </button>
       </div>

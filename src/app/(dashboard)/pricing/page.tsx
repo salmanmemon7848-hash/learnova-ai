@@ -28,7 +28,7 @@ const studentPlans: Plan[] = [
   {
     name: 'Free',
     price: '₹0',
-    tagline: 'Start learning with Thinkior AI - no card needed.',
+    tagline: 'Start learning with Learnova AI - no card needed.',
     cta: 'Get started free',
     features: [
       { name: 'AI chat', limit: '10/day' },
@@ -60,7 +60,7 @@ const studentPlans: Plan[] = [
   {
     name: 'Max',
     price: '₹599',
-    tagline: 'Full Thinkior AI - interviews, career guide & beyond.',
+    tagline: 'Full Learnova AI - interviews, career guide & beyond.',
     cta: 'Upgrade to Max',
     featured: true,
     features: [
@@ -80,7 +80,7 @@ const founderPlans: Plan[] = [
   {
     name: 'Starter',
     price: '₹0',
-    tagline: 'Explore Thinkior AI before you commit a rupee.',
+    tagline: 'Explore Learnova AI before you commit a rupee.',
     cta: 'Get started free',
     features: [
       { name: 'AI chat', limit: '10/day' },
@@ -127,11 +127,11 @@ const founderPlans: Plan[] = [
 
 const pricingCopy = {
   student: {
-    title: 'Thinkior AI — Student Plans',
+    title: 'Learnova AI — Student Plans',
     subtitle: 'Built for students. Fair daily limits. No surprises.',
   },
   founder: {
-    title: 'Thinkior AI — Founder Plans',
+    title: 'Learnova AI — Founder Plans',
     subtitle: 'Built for founders. Validate faster. Build smarter.',
   },
 }
@@ -290,7 +290,7 @@ export default function PricingPage() {
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[1.5px]" style={{ color: '#A78BFA' }}>
-              Thinkior AI Pricing
+              Learnova AI Pricing
             </p>
             <h1 className="text-3xl font-bold md:text-4xl" style={{ color: '#F5F3FF' }}>
               {copy.title}

@@ -1,5 +1,5 @@
 /**
- * THINKIOR CAREER GUIDE API
+ * LEARNOVA CAREER GUIDE API
  * VERCEL_BUILD_VERSION: 2026-05-13-V2
  */
 import { NextRequest, NextResponse } from 'next/server';
@@ -7,10 +7,10 @@ import { createClient } from '@/lib/supabase/server';
 import { aiHandler } from '@/lib/ai/aiHandler';
 import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   CAREER_GUIDE_KNOWLEDGE,
   STUDENT_KNOWLEDGE,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import {
   sanitizeJsonPostBody,
   sanitizeString,
@@ -25,11 +25,11 @@ import { type Phase1Result, type Phase2Result, type AnyCareerResponse as AnyResp
 
 const MASTER_PROMPT_V3 = `
 ════════════════════════════════════════════════════════════════
-THINKIOR CAREER GUIDE AI — MASTER SYSTEM PROMPT V3.0
+LEARNOVA CAREER GUIDE AI — MASTER SYSTEM PROMPT V3.0
 Two-Phase Output | Career Counselor Voice | India 2026
 ════════════════════════════════════════════════════════════════
 
-You are Thinkior's Career Guide AI. You are not a chatbot giving generic advice.
+You are Learnova's Career Guide AI. You are not a chatbot giving generic advice.
 You are the most data-driven, honest, and deeply knowledgeable career counselor
 an Indian student could ever access — combining the precision of a data analyst,
 the wisdom of a senior professor, and the directness of someone who genuinely
@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
     }
     const responseHeaders = {};
 
-    const systemPrompt = `${THINKIOR_FULL_CONTEXT}
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${CAREER_GUIDE_KNOWLEDGE}
 ${MASTER_PROMPT_V3}`;
 

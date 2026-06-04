@@ -5,7 +5,7 @@ export async function GET() {
   // SECURITY: Diagnostic endpoint - fixed prompt only; consider restricting by deployment policy.
   try {
     const response = await aiHandler({
-      prompt: 'Say exactly: Thinkior AI fallback chain is working.',
+      prompt: 'Say exactly: Learnova AI fallback chain is working.',
       featureName: 'test-ai',
       isSearchFeature: false,
       taskComplexity: 'simple',

@@ -1,5 +1,5 @@
 -- ============================================================
--- Thinkior AI — Supabase Migration
+-- Learnova AI — Supabase Migration
 -- Run this in: Supabase Dashboard > SQL Editor
 -- ============================================================
 

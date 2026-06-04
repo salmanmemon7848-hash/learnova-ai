@@ -115,7 +115,7 @@ export default function WelcomePage() {
 
       {/* Subtitle */}
       <p className="max-w-sm mb-10 text-base leading-7" style={{ color: '#C4B5FD' }}>
-        You&apos;re all set. Thinkior AI is ready to help you{' '}
+        You&apos;re all set. Learnova AI is ready to help you{' '}
         {roleParam === 'founder' || role === 'founder'
           ? 'build, validate, and grow your ideas.'
           : 'study smarter and ace your exams.'}
@@ -133,7 +133,7 @@ export default function WelcomePage() {
         onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
       >
-        Start using Thinkior →
+        Start using Learnova →
       </button>
 
       {/* Countdown */}

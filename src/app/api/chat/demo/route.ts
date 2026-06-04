@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     // Simple rate limiting via cookies (1 demo per session)
     const cookieStore = await cookies();
-    const demoUsed = cookieStore.get('thinkior-demo-used');
+    const demoUsed = cookieStore.get('learnova-demo-used');
     
     if (demoUsed) {
       return NextResponse.json(
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = getBasePrompt('class', 'english') + `
 
 IMPORTANT: This is a demo interaction. Provide a helpful, concise response that showcases your capabilities.
-Keep responses under 300 words for the demo. Be engaging and show the value of Thinkior AI.`;
+Keep responses under 300 words for the demo. Be engaging and show the value of Learnova AI.`;
 
     // Call AI with the message
     const aiResponse = await aiHandler({
@@ -73,7 +73,7 @@ Keep responses under 300 words for the demo. Be engaging and show the value of T
     });
 
     // Set cookie to prevent unlimited demo usage
-    response.cookies.set('thinkior-demo-used', 'true', {
+    response.cookies.set('learnova-demo-used', 'true', {
       maxAge: 60 * 60 * 24, // 24 hours
       httpOnly: true,
       sameSite: 'lax',

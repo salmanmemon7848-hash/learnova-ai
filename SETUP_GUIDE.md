@@ -1,4 +1,4 @@
-# Thinkior AI - Setup & Run Guide
+# Learnova AI - Setup & Run Guide
 
 ## 🚀 Quick Start
 

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const orderPayload = {
       amount,
       currency: 'INR',
-      receipt: `thinkior_${user.id.slice(0, 8)}_${Date.now()}`,
+      receipt: `learnova_${user.id.slice(0, 8)}_${Date.now()}`,
       notes: {
         userId: user.id,
         plan: normalizedPlan,

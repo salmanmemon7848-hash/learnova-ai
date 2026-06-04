@@ -3,7 +3,7 @@ import { aiHandler } from '@/lib/ai/aiHandler';
 import { searchWebMultiple } from '@/lib/searxng';
 import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracker';
 import { sanitizeString, sanitizeEnum, stripUnexpectedFields, checkBodySize } from '@/lib/validation';
-import { THINKIOR_FULL_CONTEXT, FOUNDER_KNOWLEDGE } from '@/lib/thinkiorKnowledge';
+import { LEARNOVA_FULL_CONTEXT, FOUNDER_KNOWLEDGE } from '@/lib/learnovaKnowledge';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -196,10 +196,10 @@ export async function POST(req: NextRequest) {
     const indians = marketScope !== 'global';
     const globals = marketScope !== 'india';
 
-    const systemPrompt = `${THINKIOR_FULL_CONTEXT}
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}
 
-You are Thinkior's Competitor Intelligence AI — a world-class business analyst and market researcher. You provide brutally honest, deeply researched, actionable competitor analysis for founders and business owners.
+You are Learnova's Competitor Intelligence AI — a world-class business analyst and market researcher. You provide brutally honest, deeply researched, actionable competitor analysis for founders and business owners.
 
 Your analysis must be based on the web search results provided. Use real company names, real data, real market information. Never make up companies or statistics.
 

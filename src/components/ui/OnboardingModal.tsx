@@ -192,7 +192,7 @@ export default function OnboardingModal({ isOpen, onClose }: OnboardingModalProp
                   <Sparkles className="w-8 h-8" style={{ color: '#534AB7' }} />
                 </div>
                 <h2 className="text-3xl font-bold mb-2" style={{ color: '#F5F3FF' }}>
-                  Welcome to Thinkior! 👋
+                  Welcome to Learnova! 👋
                 </h2>
                 <p style={{ color: '#9ca3af' }}>
                   Let's personalize your experience. What best describes you?

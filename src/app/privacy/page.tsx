@@ -30,13 +30,13 @@ export default function PrivacyPage() {
               1. Introduction
             </h2>
             <p className="mb-3">
-              Thinkior AI (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is an AI-powered educational and business platform built for Indian students and entrepreneurs. This Privacy Policy explains what personal data we collect, why we collect it, how we use it, who we share it with, and what your rights are regarding your data.
+              Learnova AI (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is an AI-powered educational and business platform built for Indian students and entrepreneurs. This Privacy Policy explains what personal data we collect, why we collect it, how we use it, who we share it with, and what your rights are regarding your data.
             </p>
             <p className="mb-3">
-              This Policy applies to all Thinkior services including our website, AI chat, exam simulator, doubt solver, mock interview, career guide, business validator, competitor research, and all other features.
+              This Policy applies to all Learnova services including our website, AI chat, exam simulator, doubt solver, mock interview, career guide, business validator, competitor research, and all other features.
             </p>
             <p>
-              By using Thinkior AI, you agree to the collection and use of information as described in this Privacy Policy. If you do not agree, please do not use the Service. We operate from Gariyaband, Chhattisgarh, India.
+              By using Learnova AI, you agree to the collection and use of information as described in this Privacy Policy. If you do not agree, please do not use the Service. We operate from Gariyaband, Chhattisgarh, India.
             </p>
           </section>
 
@@ -268,8 +268,8 @@ export default function PrivacyPage() {
             </ul>
             <p>
               To exercise any of these rights, contact us at:{' '}
-              <a href="mailto:thinkior.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                thinkior.ai@gmail.com
+              <a href="mailto:learnova.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                learnova.ai@gmail.com
               </a>
             </p>
             <p className="mt-2">We will respond to your request within 30 days. We may ask you to verify your identity before processing your request.</p>
@@ -279,14 +279,14 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
               9. Children&apos;s Privacy
             </h2>
-            <p className="mb-3"><strong>Minimum Age:</strong> You must be at least 13 years old to use Thinkior AI.</p>
+            <p className="mb-3"><strong>Minimum Age:</strong> You must be at least 13 years old to use Learnova AI.</p>
             <p className="mb-3">
               We recognize that many of our users are students between the ages of 13 and 18. For users under 18, we recommend parental awareness and involvement in their use of the Service.
             </p>
             <p>
               We do not knowingly collect personal data from children under 13. If we become aware that we have collected personal data from a child under 13 without verifiable parental consent, we will delete that data promptly. If you are a parent or guardian and believe your child under 13 has created an account, please contact us immediately at{' '}
-              <a href="mailto:thinkior.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                thinkior.ai@gmail.com
+              <a href="mailto:learnova.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                learnova.ai@gmail.com
               </a>{' '}
               and we will delete the account within 5 business days.
             </p>
@@ -297,7 +297,7 @@ export default function PrivacyPage() {
               10. International Data Transfers
             </h2>
             <p>
-              Thinkior AI operates from India. However, the third-party services we use (Groq, Google, Vercel, Supabase) may process your data on servers located outside India including in the United States and European Union. By using Thinkior, you consent to this international transfer of data as necessary to provide the Service. We ensure that such transfers are made only to services with adequate data protection policies.
+              Learnova AI operates from India. However, the third-party services we use (Groq, Google, Vercel, Supabase) may process your data on servers located outside India including in the United States and European Union. By using Learnova, you consent to this international transfer of data as necessary to provide the Service. We ensure that such transfers are made only to services with adequate data protection policies.
             </p>
           </section>
 
@@ -312,7 +312,7 @@ export default function PrivacyPage() {
               <li>Send an email notification to registered users where reasonably practicable</li>
             </ul>
             <p style={{ color: 'var(--foreground-muted)' }}>
-              Your continued use of Thinkior after changes are posted constitutes acceptance of the updated Policy. If you do not agree to the updated Policy, please stop using the Service and request deletion of your account.
+              Your continued use of Learnova after changes are posted constitutes acceptance of the updated Policy. If you do not agree to the updated Policy, please stop using the Service and request deletion of your account.
             </p>
           </section>
 
@@ -325,8 +325,8 @@ export default function PrivacyPage() {
             </p>
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <p className="mb-1"><strong>Email:</strong>{' '}
-                <a href="mailto:thinkior.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
-                  thinkior.ai@gmail.com
+                <a href="mailto:learnova.ai@gmail.com" className="hover:underline" style={{ color: 'var(--accent)' }}>
+                  learnova.ai@gmail.com
                 </a>
               </p>
               <p className="mb-1"><strong>Address:</strong> Gariyaband, Chhattisgarh, India</p>

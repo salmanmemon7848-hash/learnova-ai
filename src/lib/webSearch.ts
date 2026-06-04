@@ -109,7 +109,7 @@ export async function searchWeb(query: string): Promise<SearchResult[]> {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'Thinkior AI Chatbot',
+          'User-Agent': 'Learnova AI Chatbot',
         },
         signal: AbortSignal.timeout(5000),
       });

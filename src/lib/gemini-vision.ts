@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genai = new GoogleGenerativeAI(apiKey);
 
-const THINKIOR_VISION_PROMPT = `
-You are Thinkior AI — an elite visual intelligence assistant built for students and founders.
+const LEARNOVA_VISION_PROMPT = `
+You are Learnova AI — an elite visual intelligence assistant built for students and founders.
 When you receive an image, you MUST:
 1. Scan the entire image completely — every corner, label, and detail.
 2. Extract all visible text (OCR) — handwritten or printed.
@@ -69,7 +69,7 @@ export async function analyzeImageWithGemini({
 
   const model = genai.getGenerativeModel({
     model: "gemini-1.5-flash", // free tier
-    systemInstruction: THINKIOR_VISION_PROMPT,
+    systemInstruction: LEARNOVA_VISION_PROMPT,
   });
 
   let imagePart;

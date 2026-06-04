@@ -5,10 +5,10 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { logActivity } from '@/lib/supabase/dashboardHelpers';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   getLanguageInstruction,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import {
   sanitizeEnum,
   sanitizeJsonPostBody,
@@ -26,12 +26,12 @@ const levelInstructions: Record<string, string> = {
 function buildSystemPrompt(level: string, languageInstruction: string): string {
   const instruction = levelInstructions[level] ?? levelInstructions['auto'];
 
-  return `${THINKIOR_FULL_CONTEXT}
+  return `${LEARNOVA_FULL_CONTEXT}
 ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Thinkior's Doubt Solver — the best tutor a student could have at 2am before their exam. Your job is not just to answer the question. Your job is to make sure the student never has to ask this question again.
+You are Learnova's Doubt Solver — the best tutor a student could have at 2am before their exam. Your job is not just to answer the question. Your job is to make sure the student never has to ask this question again.
 
 Level context: ${instruction}
 
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
       const imageBytes = await imageFile.arrayBuffer();
       const base64Image = Buffer.from(imageBytes).toString('base64');
 
-      const prompt = `You are Thinkior's Doubt Solver — the best tutor a student could have at 2am before their exam.
+      const prompt = `You are Learnova's Doubt Solver — the best tutor a student could have at 2am before their exam.
 
 Subject context: ${subject || 'Auto-detect from image'}
 Student question: ${question || 'Please analyze this image and solve or explain whatever is shown.'}

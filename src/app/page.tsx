@@ -9,17 +9,17 @@ function LandingContent() {
   const router = useRouter();
 
   const handleStudentClick = () => {
-    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'student');
+    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'student');
     router.push('/auth?role=student');
   };
 
   const handleFounderClick = () => {
-    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'founder');
+    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'founder');
     router.push('/auth?role=founder');
   };
 
   const handleGeneralClick = () => {
-    if (typeof window !== 'undefined') localStorage.setItem('thinkior_pending_role', 'general');
+    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'general');
     router.push('/auth?role=general');
   };
 
@@ -61,17 +61,17 @@ function LandingContent() {
 
   const testimonials = [
     {
-      quote: '"Thinkior helped me crack JEE Advanced with a top 500 rank. The step-by-step explanations are better than my coaching classes."',
+      quote: '"Learnova helped me crack JEE Advanced with a top 500 rank. The step-by-step explanations are better than my coaching classes."',
       name: 'Arjun Sharma',
       role: 'Class 12 Student, Jaipur',
     },
     {
-      quote: '"I was struggling with NEET preparation. Thinkior made complex biology concepts so simple. Scored 680/720 in my mock test!"',
+      quote: '"I was struggling with NEET preparation. Learnova made complex biology concepts so simple. Scored 680/720 in my mock test!"',
       name: 'Priya Nair',
       role: 'NEET Aspirant, Kochi',
     },
     {
-      quote: '"Validated my startup idea in 5 minutes. Thinkior gave me insights about Indian market that I never considered. Launched last month!"',
+      quote: '"Validated my startup idea in 5 minutes. Learnova gave me insights about Indian market that I never considered. Launched last month!"',
       name: 'Rahul Gupta',
       role: 'Founder, Indore',
     },
@@ -123,7 +123,7 @@ function LandingContent() {
             }}
             onClick={() => router.push('/')}
           >
-            Thinkior AI
+            Learnova AI
           </h1>
 
           {/* Right Buttons */}
@@ -281,7 +281,7 @@ function LandingContent() {
 
           {/* Social Proof */}
           <p className="text-sm text-center mb-8" style={{ color: '#A78BFA' }}>
-            Join 1,000+ students and founders using Thinkior AI
+            Join 1,000+ students and founders using Learnova AI
           </p>
         </div>
       </section>
@@ -360,7 +360,7 @@ function LandingContent() {
       <section className="px-6" style={{ background: '#0F0A1E', padding: '80px 24px' }}>
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-[28px] font-semibold" style={{ color: '#F5F3FF' }}>
-            See what Thinkior can do
+            See what Learnova can do
           </h3>
           <p className="text-[14px] mt-2" style={{ color: '#9CA3AF' }}>
             Click any prompt to try it instantly
@@ -452,7 +452,7 @@ function LandingContent() {
                 backgroundClip: 'text',
               }}
             >
-              Thinkior AI
+              Learnova AI
             </h4>
             <p className="text-[13px] mt-1" style={{ color: '#9CA3AF' }}>
               Made with love for India 🇮🇳
@@ -495,7 +495,7 @@ function LandingContent() {
         {/* Copyright Line */}
         <div className="max-w-7xl mx-auto mt-6 pt-4 border-t" style={{ borderColor: '#1E1B4B' }}>
           <p className="text-[11px] text-center" style={{ color: '#4B5563' }}>
-            © 2026 Thinkior AI. All rights reserved.
+            © 2026 Learnova AI. All rights reserved.
           </p>
         </div>
       </footer>

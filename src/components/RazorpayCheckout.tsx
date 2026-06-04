@@ -61,7 +61,8 @@ export default function RazorpayCheckout({
       // Load Razorpay script
       const loaded = await loadRazorpay();
       if (!loaded) {
-        setError('Failed to load payment gateway. If you are using Brave or an Adblocker extension, please disable Brave Shields or pause Adblock for "http://localhost:3000" to allow the payment gateway to load.');
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'our website';
+        setError(`Failed to load payment gateway. If you are using Brave or an Adblocker extension, please disable Brave Shields or pause Adblock for "${currentOrigin}" to allow the payment gateway to load.`);
         setLoading(false);
         return;
       }
@@ -71,7 +72,7 @@ export default function RazorpayCheckout({
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Thinkior AI',
+        name: 'Learnova AI',
         description: `${planLabel} — Monthly Plan`,
         order_id: orderData.orderId,
         handler: async (response: any) => {

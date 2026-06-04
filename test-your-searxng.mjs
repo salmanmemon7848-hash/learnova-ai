@@ -18,7 +18,7 @@ try {
     method: 'GET',
     headers: {
       'Accept': 'application/json',
-      'User-Agent': 'Thinkior AI Test',
+      'User-Agent': 'Learnova AI Test',
     },
     signal: AbortSignal.timeout(15000), // 15 seconds (cold start)
   });

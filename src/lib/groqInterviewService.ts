@@ -47,7 +47,7 @@ If both answers are not YES — rewrite the question before outputting.
 const getSystemPrompt = (language: string) => {
   if (language === 'Hinglish') {
     return `
-You are a mock interview conductor for Thinkior AI.
+You are a mock interview conductor for Learnova AI.
 
 🔴 CRITICAL RULE — SCRIPT: You must use ENGLISH/ROMAN ALPHABET ONLY.
 Do NOT use Devanagari script (क ख ग) under ANY circumstance.
@@ -65,7 +65,7 @@ Any response containing Devanagari characters is a complete failure.
 
   if (language === 'Hindi') {
     return `
-You are a mock interview conductor for Thinkior AI.
+You are a mock interview conductor for Learnova AI.
 
 🔴 CRITICAL RULE: Write EVERYTHING in Hindi using Devanagari script only.
 Example: "आप अपने अनुभव के बारे में बताइए।"
@@ -75,7 +75,7 @@ Do NOT write Hinglish — write pure Devanagari Hindi only.
   }
 
   return `
-You are a mock interview conductor for Thinkior AI.
+You are a mock interview conductor for Learnova AI.
 Write everything in clear professional English only.
   `;
 };
@@ -255,7 +255,7 @@ function parseAndValidateQuestions(
         languageValid = langConfig.validationRegex.test(q.question!);
         if (!languageValid) {
           console.warn(
-            `[Thinkior] ⚠️ Question ${i + 1} failed ${language} validation:`,
+            `[Learnova] ⚠️ Question ${i + 1} failed ${language} validation:`,
             q.question!.substring(0, 80)
           );
         }
@@ -270,17 +270,17 @@ function parseAndValidateQuestions(
       final = final.filter((q) => validateHinglishQuestion(String(q.question || '')));
       if (final.length < before) {
         console.error(
-          `[Thinkior] ${before - final.length} Hinglish questions failed validation and were removed`
+          `[Learnova] ${before - final.length} Hinglish questions failed validation and were removed`
         );
       }
     }
 
-    console.log(`[Thinkior] ✅ Generated ${final.length} valid ${language} questions`);
+    console.log(`[Learnova] ✅ Generated ${final.length} valid ${language} questions`);
     return final;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[Thinkior] Question parse error:', msg);
-    console.error('[Thinkior] Raw response was:', rawText.substring(0, 300));
+    console.error('[Learnova] Question parse error:', msg);
+    console.error('[Learnova] Raw response was:', rawText.substring(0, 300));
     return [];
   }
 }

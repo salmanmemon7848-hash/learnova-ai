@@ -1,4 +1,4 @@
-# 🚀 Quick Start - Thinkior AI
+# 🚀 Quick Start - Learnova AI
 
 ## Get Running in 3 Steps
 

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply: response.result });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[__PROTECT_API_THINKIOR__] Unexpected error:', message);
+    console.error('[__PROTECT_API_LEARNOVA__] Unexpected error:', message);
     return NextResponse.json(
       { error: 'Our AI is temporarily unavailable. Please try again in a moment.' },
       { status: 500 }

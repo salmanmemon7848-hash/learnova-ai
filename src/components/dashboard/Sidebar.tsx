@@ -178,7 +178,7 @@ export default function DashboardLayout({ role, children }: DashboardLayoutProps
           <div className="p-5 border-b border-[#2a2d3a]">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-2xl font-bold" style={{ color: '#a78bfa' }}>
-                Thinkior
+                Learnova
               </Link>
               <InstallButton />
             </div>

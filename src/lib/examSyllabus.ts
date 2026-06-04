@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// THINKIOR — Indian Exam Syllabus Map
+// LEARNOVA — Indian Exam Syllabus Map
 // Used by: Practice Tests page + /api/exam route
 // ═══════════════════════════════════════════════════════════
 

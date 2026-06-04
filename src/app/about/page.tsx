@@ -22,7 +22,7 @@ export default function AboutPage() {
           {/* Founder Story */}
           <section>
             <h2 className="text-3xl font-bold mb-6 font-heading" style={{ color: 'var(--foreground)' }}>
-              The Story Behind Thinkior
+              The Story Behind Learnova
             </h2>
             <div className="prose" style={{ color: 'var(--foreground-secondary)' }}>
               <p className="text-lg mb-4">
@@ -32,7 +32,7 @@ export default function AboutPage() {
               </p>
 
               <p className="mb-4">
-                I built Thinkior AI because I lived the problem myself. Growing up in a small town, I saw
+                I built Learnova AI because I lived the problem myself. Growing up in a small town, I saw
                 students around me struggling with:
               </p>
 
@@ -61,7 +61,7 @@ export default function AboutPage() {
               My Mission
             </h3>
             <p className="text-lg mb-4" style={{ color: 'var(--foreground-secondary)' }}>
-              Thinkior is not just another AI tool. It is built from the ground up for India.
+              Learnova is not just another AI tool. It is built from the ground up for India.
             </p>
             <ul className="space-y-3">
               {[
@@ -80,10 +80,10 @@ export default function AboutPage() {
             </ul>
           </section>
 
-          {/* What Makes Thinkior Different */}
+          {/* What Makes Learnova Different */}
           <section>
             <h3 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              What Makes Thinkior Different
+              What Makes Learnova Different
             </h3>
             <div className="grid md:grid-cols-2 gap-6">
               {[
@@ -137,7 +137,7 @@ export default function AboutPage() {
               Built With Purpose
             </h3>
             <p className="mb-4" style={{ color: 'var(--foreground-secondary)' }}>
-              Thinkior is built by a solo developer who understands the Indian student and founder experience firsthand. Every feature is designed with one question in mind: does this actually help someone in Gariyaband, or Jaipur, or Patna — not just someone in Bangalore or Delhi?
+              Learnova is built by a solo developer who understands the Indian student and founder experience firsthand. Every feature is designed with one question in mind: does this actually help someone in Gariyaband, or Jaipur, or Patna — not just someone in Bangalore or Delhi?
             </p>
             <p style={{ color: 'var(--foreground-secondary)' }}>
               If you want a polished corporate product with a large team behind it, there are other options. If you want something built by someone who genuinely understands your struggle and is working every day to make it better — you are in the right place.
@@ -152,9 +152,9 @@ export default function AboutPage() {
             <div className="p-6 rounded-lg" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
               <h4 className="font-semibold mb-4" style={{ color: 'var(--foreground)' }}>Get in touch, share feedback, or just say hello:</h4>
               <div className="space-y-3">
-                <a href="mailto:thinkior.ai@gmail.com" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <a href="mailto:learnova.ai@gmail.com" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                   <Mail className="w-5 h-5" style={{ color: 'var(--accent)' }} />
-                  <span style={{ color: 'var(--foreground-secondary)' }}>thinkior.ai@gmail.com</span>
+                  <span style={{ color: 'var(--foreground-secondary)' }}>learnova.ai@gmail.com</span>
                 </a>
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5" style={{ color: 'var(--accent)' }} />
@@ -167,7 +167,7 @@ export default function AboutPage() {
           {/* CTA */}
           <section className="text-center py-8">
             <h3 className="text-2xl font-bold mb-4 font-heading" style={{ color: 'var(--foreground)' }}>
-              Try Thinkior AI
+              Try Learnova AI
             </h3>
             <p className="mb-6" style={{ color: 'var(--foreground-muted)' }}>
               Free to start. No credit card required.

@@ -136,7 +136,7 @@ export default function CompetitorResearchPage() {
       <p style={{opacity:0.6,marginBottom:24,fontSize:'0.9rem'}}>Discover what your competitors are doing — and what they are missing.</p>
       {error&&<div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:8,padding:'10px 14px',marginBottom:16,color:'#ef4444',fontSize:'0.875rem'}}>{error}</div>}
       <div className="result-card" style={S.card}>
-        {[{k:'businessName',l:'Business Name *',p:'e.g. Thinkior AI',max:100},{k:'businessCategory',l:'Business Category / Industry *',p:'e.g. EdTech, SaaS, Food Delivery',max:150},{k:'targetAudience',l:'Your Target Audience *',p:'e.g. College students in India',max:200},{k:'keyProduct',l:'Key Product or Service *',p:'e.g. AI-powered study platform',max:200},{k:'usp',l:'Unique Selling Point (optional)',p:'What makes you different?',max:300}].map(f=>(
+        {[{k:'businessName',l:'Business Name *',p:'e.g. Learnova AI',max:100},{k:'businessCategory',l:'Business Category / Industry *',p:'e.g. EdTech, SaaS, Food Delivery',max:150},{k:'targetAudience',l:'Your Target Audience *',p:'e.g. College students in India',max:200},{k:'keyProduct',l:'Key Product or Service *',p:'e.g. AI-powered study platform',max:200},{k:'usp',l:'Unique Selling Point (optional)',p:'What makes you different?',max:300}].map(f=>(
           <div key={f.k} style={{marginBottom:16}}>
             <label style={S.label}>{f.l}</label>
             <input value={(form as any)[f.k]} onChange={set(f.k)} placeholder={f.p} maxLength={f.max} style={S.input}/>

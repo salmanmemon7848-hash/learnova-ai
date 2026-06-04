@@ -128,7 +128,7 @@ export default function LoginPage() {
         <div className="max-w-sm text-center">
           {/* Logo */}
           <h1 className="text-[26px] font-semibold text-white mb-3">
-            Thinkior
+            Learnova
           </h1>
           
           {/* Tagline */}
@@ -175,7 +175,7 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold mb-2" style={{ color: '#0F0F1A' }}>
-              Welcome to Thinkior
+              Welcome to Learnova
             </h2>
             <p className="text-sm" style={{ color: '#5A5A72' }}>
               Sign in to start learning and building

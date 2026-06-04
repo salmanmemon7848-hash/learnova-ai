@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(__dirname, 'src/lib/thinkiorKnowledge.ts');
+const filePath = path.join(__dirname, 'src/lib/learnovaKnowledge.ts');
 let c = fs.readFileSync(filePath, 'utf8');
 
 const NEW_KNOWLEDGE = `
@@ -235,4 +235,4 @@ c = c.replace(
 );
 
 fs.writeFileSync(filePath, c, 'utf8');
-console.log('thinkiorKnowledge.ts patched. Lines:', c.split('\n').length);
+console.log('learnovaKnowledge.ts patched. Lines:', c.split('\n').length);

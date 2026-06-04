@@ -263,7 +263,7 @@ If you encounter any issues:
 
 ## 🎊 **CONGRATULATIONS!**
 
-Your Thinkior AI now runs on **Google AI (Gemini)** instead of OpenAI!
+Your Learnova AI now runs on **Google AI (Gemini)** instead of OpenAI!
 
 **Benefits:**
 - ✅ 97% cost savings
@@ -277,4 +277,4 @@ Your Thinkior AI now runs on **Google AI (Gemini)** instead of OpenAI!
 ---
 
 **Built with ❤️ using Google AI Studio**  
-**Thinkior AI - The AI that studies with you and builds with you**
+**Learnova AI - The AI that studies with you and builds with you**

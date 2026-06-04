@@ -25,7 +25,7 @@ for (const instance of instances) {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Thinkior AI Chatbot',
+        'User-Agent': 'Learnova AI Chatbot',
       },
       signal: AbortSignal.timeout(8000),
     });

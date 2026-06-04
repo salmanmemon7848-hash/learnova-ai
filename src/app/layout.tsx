@@ -28,32 +28,32 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 export const metadata: Metadata = {
-  title: "Thinkior AI - The AI built for India's students and builders",
+  title: "Learnova AI - The AI built for India's students and builders",
   description: "Prepare for UPSC, JEE, NEET & CAT — or validate your startup idea — with AI that speaks your language. Free to start.",
   keywords: ["AI tutor", "exam prep", "business validator", "student AI", "startup AI", "UPSC", "JEE", "NEET", "CAT"],
   authors: [{ name: "Salman Memon" }],
-  creator: "Thinkior AI",
-  publisher: "Thinkior AI",
-  metadataBase: new URL("https://thinkior.ai"),
+  creator: "Learnova AI",
+  publisher: "Learnova AI",
+  metadataBase: new URL("https://learnova.ai"),
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Thinkior AI',
+    title: 'Learnova AI',
   },
   icons: {
     apple: '/icons/icon-192.png',
   },
   openGraph: {
-    title: "Thinkior AI - The AI built for India's students and builders",
+    title: "Learnova AI - The AI built for India's students and builders",
     description: "Prepare for competitive exams or validate your startup idea with AI. Built for India. Free to start.",
     type: "website",
     locale: "en_US",
-    siteName: "Thinkior AI",
+    siteName: "Learnova AI",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Thinkior AI",
+    title: "Learnova AI",
     description: "The AI built for India's students and builders",
   },
 };
@@ -72,7 +72,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Thinkior AI" />
+        <meta name="apple-mobile-web-app-title" content="Learnova AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />

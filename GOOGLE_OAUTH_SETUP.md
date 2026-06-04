@@ -6,7 +6,7 @@
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Click **"Select a project"** → **"New Project"**
-3. Name it "Thinkior" and click **Create**
+3. Name it "Learnova" and click **Create**
 
 ### Step 2: Enable Google+ API
 
@@ -20,7 +20,7 @@
 2. Click **+ CREATE CREDENTIALS** → **OAuth client ID**
 3. If prompted, configure the **OAuth consent screen**:
    - User Type: **External**
-   - App name: **Thinkior**
+   - App name: **Learnova**
    - User support email: Your email
    - Developer contact: Your email
    - Click **Save and Continue**
@@ -30,7 +30,7 @@
 
 4. Create OAuth Client ID:
    - Application type: **Web application**
-   - Name: **Thinkior Web**
+   - Name: **Learnova Web**
    - Authorized JavaScript origins: 
      - `http://localhost:3000`
      - `http://localhost:3001`

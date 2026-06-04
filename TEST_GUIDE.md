@@ -1,4 +1,4 @@
-# 🧪 Thinkior AI - Complete Feature Test Guide
+# 🧪 Learnova AI - Complete Feature Test Guide
 
 ## Server Status
 ✅ **Development Server Running**: http://localhost:3000
@@ -16,7 +16,7 @@
 - [ ] **Hero Section**: Check headline, beta badge, CTA buttons work
 - [ ] **Live Demo**: Click any of the 3 example prompts, verify AI response appears
 - [ ] **Features Grid**: All 6 feature cards display with icons
-- [ ] **Who is Thinkior for?**: Two columns (Students/Builders) with checkmarks
+- [ ] **Who is Learnova for?**: Two columns (Students/Builders) with checkmarks
 - [ ] **How It Works**: 3-step visual flow
 - [ ] **About Section**: Salman Memon, Gariyaband info displays
 - [ ] **Footer**: All links work (Terms, Privacy, Beta Disclaimer)
@@ -103,7 +103,7 @@ Test each page loads correctly:
 - Form validation (required fields)
 - Beautiful report with color-coded scores
 - PDF includes header, scores, risks, action plan
-- File name: `Thinkior-Business-Report-[idea].pdf`
+- File name: `Learnova-Business-Report-[idea].pdf`
 
 ---
 
@@ -194,7 +194,7 @@ Test each page loads correctly:
 - Slides are professional and investor-ready
 - Content is specific to your startup
 - PDF is landscape orientation
-- File name: `thinkior-pitch-deck.pdf`
+- File name: `learnova-pitch-deck.pdf`
 
 ---
 

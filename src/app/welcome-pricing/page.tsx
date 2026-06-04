@@ -28,7 +28,7 @@ const studentPlans: Plan[] = [
   {
     name: 'Free',
     price: '₹0',
-    tagline: 'Start learning with Thinkior AI - no card needed.',
+    tagline: 'Start learning with Learnova AI - no card needed.',
     cta: 'Get started free',
     features: [
       { name: 'AI chat', limit: '10/day' },
@@ -60,7 +60,7 @@ const studentPlans: Plan[] = [
   {
     name: 'Max',
     price: '₹599',
-    tagline: 'Full Thinkior AI - interviews, career guide & beyond.',
+    tagline: 'Full Learnova AI - interviews, career guide & beyond.',
     cta: 'Upgrade to Max',
     featured: true,
     features: [
@@ -80,7 +80,7 @@ const founderPlans: Plan[] = [
   {
     name: 'Starter',
     price: '₹0',
-    tagline: 'Explore Thinkior AI before you commit a rupee.',
+    tagline: 'Explore Learnova AI before you commit a rupee.',
     cta: 'Get started free',
     features: [
       { name: 'AI chat', limit: '10/day' },
@@ -257,7 +257,7 @@ export default function WelcomePricingPage() {
     const detectRole = async () => {
       // First priority: localStorage set by landing page button click
       const pendingRole = typeof window !== 'undefined'
-        ? localStorage.getItem('thinkior_pending_role')
+        ? localStorage.getItem('learnova_pending_role')
         : null
 
       if (pendingRole === 'student' || pendingRole === 'founder') {
@@ -323,7 +323,7 @@ export default function WelcomePricingPage() {
     }, { onConflict: 'user_id' })
 
     // Clear pending role from localStorage
-    localStorage.removeItem('thinkior_pending_role')
+    localStorage.removeItem('learnova_pending_role')
 
     // Redirect to welcome
     router.push(`/welcome?role=${selectedRole}`)
@@ -348,7 +348,7 @@ export default function WelcomePricingPage() {
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' })
 
-    localStorage.removeItem('thinkior_pending_role')
+    localStorage.removeItem('learnova_pending_role')
     router.push(`/welcome?role=${selectedRole}`)
   }
 
@@ -364,8 +364,8 @@ export default function WelcomePricingPage() {
   // ── Step 3: Render — NO role toggle shown, just the correct plans ──
   const plans = role === 'founder' ? founderPlans : studentPlans
   const heading = role === 'founder'
-    ? 'Thinkior AI — Founder Plans'
-    : 'Thinkior AI — Student Plans'
+    ? 'Learnova AI — Founder Plans'
+    : 'Learnova AI — Student Plans'
   const subheading = role === 'founder'
     ? 'Built for founders. Validate faster. Build smarter.'
     : 'Built for students. Study smarter. Score higher.'
@@ -464,7 +464,7 @@ export default function WelcomePricingPage() {
                   }).eq('id', (await supabase.auth.getUser()).data.user?.id)
 
                   setSelectedCheckoutPlan(null)
-                  localStorage.removeItem('thinkior_pending_role')
+                  localStorage.removeItem('learnova_pending_role')
                   router.push(`/welcome?role=${selectedRole}`)
                 }}
                 onClose={() => {

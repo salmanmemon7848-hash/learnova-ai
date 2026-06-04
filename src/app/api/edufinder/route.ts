@@ -4,12 +4,12 @@ import { checkAndTrackUsage, buildUsageBlockedResponse } from '@/lib/usageTracke
 import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearch';
 import { getAIResponse } from '@/lib/aiRouter';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   EDUFINDER_KNOWLEDGE,
   STUDENT_KNOWLEDGE,
   getLanguageInstruction,
   buildIndianSearchQuery,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import { sanitizeArray, sanitizeJsonPostBody, sanitizeString, validateLanguage } from '@/lib/validation';
 
 // â”€â”€â”€ POST handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     // â”€â”€ Step C: Build upgraded system prompt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    const systemPrompt = `${THINKIOR_FULL_CONTEXT}
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${EDUFINDER_KNOWLEDGE}
 ${STUDENT_KNOWLEDGE}
 

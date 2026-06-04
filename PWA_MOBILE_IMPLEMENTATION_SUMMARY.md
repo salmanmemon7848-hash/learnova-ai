@@ -1,4 +1,4 @@
-# Thinkior AI - PWA & Mobile Responsiveness Implementation Summary
+# Learnova AI - PWA & Mobile Responsiveness Implementation Summary
 
 ## ✅ Completed Fixes
 
@@ -172,7 +172,7 @@ You must create and add these files before PWA will work fully:
 
 **Recommended Design**:
 - Background: `#534AB7` (purple)
-- Logo: White "L" or Thinkior logo
+- Logo: White "L" or Learnova logo
 - Style: Clean, modern, recognizable at small sizes
 
 ### iOS Safari Considerations

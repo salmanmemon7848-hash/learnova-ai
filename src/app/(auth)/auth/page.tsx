@@ -49,7 +49,7 @@ function getRedirectForRole(role: string | null | undefined) {
 
 async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userId: string) {
   const pendingRole = typeof window !== 'undefined'
-    ? localStorage.getItem('thinkior_pending_role')
+    ? localStorage.getItem('learnova_pending_role')
     : null
 
   if (!pendingRole || !VALID_ROLES.includes(pendingRole as PendingRole)) return null
@@ -65,7 +65,7 @@ async function saveRoleIfNeeded(supabase: ReturnType<typeof createClient>, userI
     .from('profiles')
     .upsert({ id: userId, ...updateData }, { onConflict: 'id' })
 
-  localStorage.removeItem('thinkior_pending_role')
+  localStorage.removeItem('learnova_pending_role')
   return pendingRole
 }
 
@@ -88,9 +88,9 @@ export default function AuthPage() {
     const params = new URLSearchParams(window.location.search)
     const roleFromUrl = params.get('role')
     if (roleFromUrl && VALID_ROLES.includes(roleFromUrl as PendingRole)) {
-      localStorage.setItem('thinkior_pending_role', roleFromUrl)
+      localStorage.setItem('learnova_pending_role', roleFromUrl)
     }
-    const stored = localStorage.getItem('thinkior_pending_role')
+    const stored = localStorage.getItem('learnova_pending_role')
     setPendingRole(stored)
     // Default to signup when arriving from a CTA button
     if (stored) setTab('signup')
@@ -182,9 +182,9 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     // Read directly from localStorage to avoid any React state timing issues
-    const role = localStorage.getItem('thinkior_pending_role')
+    const role = localStorage.getItem('learnova_pending_role')
     if (role) {
-      document.cookie = `thinkior_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
+      document.cookie = `learnova_pending_role=${role}; path=/; max-age=300; SameSite=Lax`
     }
     const nextPath = getRedirectForRole(role)
     const { error: err } = await supabase.auth.signInWithOAuth({
@@ -207,7 +207,7 @@ export default function AuthPage() {
         style={{ backgroundColor: '#534AB7', color: '#ffffff' }}
       >
         <div className="max-w-sm text-center">
-          <h1 className="text-[26px] font-semibold mb-3" style={{ color: '#ffffff' }}>Thinkior AI</h1>
+          <h1 className="text-[26px] font-semibold mb-3" style={{ color: '#ffffff' }}>Learnova AI</h1>
           <p className="text-base mb-8" style={{ color: 'rgba(255,255,255,0.85)' }}>
             The AI that studies with you and builds with you
           </p>
@@ -239,7 +239,7 @@ export default function AuthPage() {
               {tab === 'signin' ? 'Welcome back' : 'Create your account'}
             </h2>
             <p className="text-sm" style={{ color: '#5A5A72' }}>
-              {tab === 'signin' ? 'Sign in to continue to Thinkior' : 'Start learning and building with Thinkior'}
+              {tab === 'signin' ? 'Sign in to continue to Learnova' : 'Start learning and building with Learnova'}
             </p>
           </div>
 

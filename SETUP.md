@@ -1,4 +1,4 @@
-# Thinkior AI - Quick Setup Guide
+# Learnova AI - Quick Setup Guide
 
 ## 🚀 Getting Started in 5 Minutes
 
@@ -11,7 +11,7 @@ npm install
 
 **Option A: Using Local PostgreSQL**
 1. Install PostgreSQL on your machine
-2. Create a database named `thinkior`
+2. Create a database named `learnova`
 3. Update `DATABASE_URL` in `.env.local`
 
 **Option B: Using Supabase (Recommended for beginners)**

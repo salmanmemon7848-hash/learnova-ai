@@ -138,7 +138,7 @@ function UnifiedSidebar({
               backgroundClip: 'text',
             }}
           >
-            Thinkior AI
+            Learnova AI
           </h1>
         </div>
 

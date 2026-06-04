@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     if (data?.user) {
       console.log('✅ Session established for user:', data.user.id)
 
-      const pendingRoleCookie = cookieStore.get('thinkior_pending_role')?.value
+      const pendingRoleCookie = cookieStore.get('learnova_pending_role')?.value
 
       // Check if this user has already gone through pricing selection
       const { data: profile } = await supabase
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
 
       const response = NextResponse.redirect(`${origin}${redirectPath}`)
-      response.cookies.set('thinkior_pending_role', '', { maxAge: 0, path: '/' })
+      response.cookies.set('learnova_pending_role', '', { maxAge: 0, path: '/' })
       return response
     }
   }

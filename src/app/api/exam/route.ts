@@ -4,13 +4,13 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { createClient } from '@/lib/supabase/server'
 import { checkAndIncrementUsage, buildBlockedResponse, buildRateLimitHeaders } from '@/lib/rateLimit'
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   STUDENT_KNOWLEDGE,
   CAREER_GUIDE_KNOWLEDGE,
   EDUFINDER_KNOWLEDGE,
   getLanguageInstruction,
   buildIndianSearchQuery,
-} from '@/lib/thinkiorKnowledge'
+} from '@/lib/learnovaKnowledge'
 import {
   sanitizeEnum,
   sanitizeJsonPostBody,
@@ -82,12 +82,12 @@ export async function POST(req: NextRequest) {
     const sampleMsg = `${subject} ${chapter || ''} ${examType}`.trim();
     const languageInstruction = getLanguageInstruction(language === 'hindi' ? 'Ã Â¤Â¨Ã Â¤Â®Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¤Ã Â¥â€¡' : sampleMsg);
 
-    const baseSystemPrompt = `${THINKIOR_FULL_CONTEXT}
+    const baseSystemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${STUDENT_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Thinkior's adaptive exam engine for Indian students.
+You are Learnova's adaptive exam engine for Indian students.
 
 Student level: ${levelInstruction}
 Subject: ${subject}

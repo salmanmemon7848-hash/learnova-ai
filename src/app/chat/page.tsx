@@ -98,7 +98,7 @@ function ChatSidebar({
     >
       <div style={{ padding: '20px 16px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#a78bfa' }}>Thinkior</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#a78bfa' }}>Learnova</span>
           <span style={{ fontSize: '0.72rem', opacity: 0.5, marginTop: 2 }}>General Chat</span>
         </div>
 
@@ -352,7 +352,7 @@ function ChatMain({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {message.role === 'user' ? <>You <span>👤</span></> : <><span>🤖</span> Thinkior</>}
+                  {message.role === 'user' ? <>You <span>👤</span></> : <><span>🤖</span> Learnova</>}
                 </div>
                 {message.role === 'assistant' && (
                   <MessageActions messageText={message.content} />
@@ -391,7 +391,7 @@ function ChatMain({
           {(isLoading || isPowerfulLoading) && (
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: '0.72rem', opacity: 0.45, marginBottom: 6 }}>
-                🤖 Thinkior
+                🤖 Learnova
               </div>
               <div
                 style={{
@@ -448,7 +448,7 @@ function ChatMain({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Message Thinkior..."
+              placeholder="Message Learnova..."
               className="chat-input-box"
               rows={1}
               style={{
@@ -506,7 +506,7 @@ function ChatMain({
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.72rem', opacity: 0.3, marginTop: 8 }}>
-          Thinkior can make mistakes. Verify important information.
+          Learnova can make mistakes. Verify important information.
         </p>
       </div>
 

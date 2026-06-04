@@ -42,12 +42,12 @@ export default function BetaBanner() {
         <div className="flex items-center gap-2 flex-1 pr-4">
           <MessageSquare className="w-4 h-4 flex-shrink-0" />
           <p className="leading-tight">
-            <strong>Thinkior is actively improving.</strong>{' '}
+            <strong>Learnova is actively improving.</strong>{' '}
             <span className="hidden sm:inline">You may encounter occasional issues. Your feedback helps us improve.</span>
             <span className="sm:hidden">Help us improve with your feedback.</span>
             {' '}
             <a
-              href="mailto:feedback@thinkior.ai"
+              href="mailto:feedback@learnova.ai"
               className="underline font-semibold hover:opacity-80 transition-opacity"
             >
               Send feedback →

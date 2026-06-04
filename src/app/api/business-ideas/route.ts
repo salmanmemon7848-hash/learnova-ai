@@ -7,11 +7,11 @@ import { getSearchContext, buildSearchUsageInstruction } from '@/lib/aiWithSearc
 import { BUSINESS_IDEA_PROMPT } from '@/lib/systemPrompts';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  THINKIOR_FULL_CONTEXT,
+  LEARNOVA_FULL_CONTEXT,
   FOUNDER_KNOWLEDGE,
   getLanguageInstruction,
   buildIndianSearchQuery,
-} from '@/lib/thinkiorKnowledge';
+} from '@/lib/learnovaKnowledge';
 import {
   sanitizeArray,
   sanitizeJsonPostBody,
@@ -114,12 +114,12 @@ export async function POST(req: NextRequest) {
       typeof ctx === 'object' ? Object.values(ctx as Record<string, string>).join(' ') : String(ctx)
     );
 
-    const systemPrompt = `${THINKIOR_FULL_CONTEXT}
+    const systemPrompt = `${LEARNOVA_FULL_CONTEXT}
 ${FOUNDER_KNOWLEDGE}
 
 LANGUAGE FOR THIS RESPONSE: ${languageInstruction}
 
-You are Thinkior's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
+You are Learnova's Business Mentor â€” a practical startup advisor with deep knowledge of the Indian market. You think like a smart mentor, not a generic AI.
 
 Everything you know about this founder:
 ${JSON.stringify(ctx, null, 2)}

@@ -524,7 +524,7 @@ export default function CareerGuidePage() {
         <p style={{ opacity: 0.6, marginBottom: 24, fontSize: '0.875rem' }}>Finding your best-fit career paths...</p>
         <div className="result-card" style={{ padding: 24, textAlign: 'center' }}>
           <div className="w-12 h-12 border-4 rounded-full animate-spin mx-auto mb-4" style={{ borderColor: '#7c3aed', borderTopColor: 'transparent' }} />
-          <p style={{ opacity: 0.7 }}>Thinkior is building your personalized roadmap.</p>
+          <p style={{ opacity: 0.7 }}>Learnova is building your personalized roadmap.</p>
         </div>
       </div>
     );

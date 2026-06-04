@@ -1,5 +1,5 @@
 -- =====================================================
--- THINKIOR AI - FINAL DATABASE SETUP (Run This!)
+-- LEARNOVA AI - FINAL DATABASE SETUP (Run This!)
 -- =====================================================
 -- This script creates all tables required for the Chat,
 -- Usage Tracking, and Subscription features.

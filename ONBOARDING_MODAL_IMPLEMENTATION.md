@@ -1,6 +1,6 @@
 # 🎉 ONBOARDING MODAL SUCCESSFULLY IMPLEMENTED!
 
-Your Thinkior AI now has a beautiful, premium onboarding experience that guides new users through personalization!
+Your Learnova AI now has a beautiful, premium onboarding experience that guides new users through personalization!
 
 ## ✨ WHAT'S NEW:
 

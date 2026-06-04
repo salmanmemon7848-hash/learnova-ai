@@ -1,4 +1,4 @@
-# Thinkior AI - Supabase Migration Guide
+# Learnova AI - Supabase Migration Guide
 
 ## ✅ Changes Made
 
