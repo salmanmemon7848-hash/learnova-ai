@@ -27,7 +27,7 @@ export default function AuthRedirect() {
       if (!user) {
         console.warn('⚠️ No user session found, redirecting to auth...')
         setRedirecting(true)
-        router.replace('/auth')
+        router.replace('/login')
         return
       }
 

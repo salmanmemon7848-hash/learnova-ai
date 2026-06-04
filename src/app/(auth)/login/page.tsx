@@ -17,6 +17,14 @@ export default function LoginPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const roleFromUrl = params.get('role')
+    if (roleFromUrl && ['student', 'founder', 'general'].includes(roleFromUrl)) {
+      localStorage.setItem('learnova_pending_role', roleFromUrl)
+    }
+  }, [])
+
   // Check if user needs onboarding after login
   useEffect(() => {
     if (authLoading) return // wait for auth to initialize

@@ -10,17 +10,17 @@ function LandingContent() {
 
   const handleStudentClick = () => {
     if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'student');
-    router.push('/auth?role=student');
+    router.push('/signup?role=student');
   };
 
   const handleFounderClick = () => {
     if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'founder');
-    router.push('/auth?role=founder');
+    router.push('/signup?role=founder');
   };
 
   const handleGeneralClick = () => {
     if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'general');
-    router.push('/auth?role=general');
+    router.push('/signup?role=general');
   };
 
   const handlePromptClick = (prompt: string) => {
@@ -28,7 +28,7 @@ function LandingContent() {
   };
 
   const handleGetStarted = () => {
-    router.push('/auth');
+    router.push('/signup');
   };
 
   const features = [
@@ -129,7 +129,7 @@ function LandingContent() {
           {/* Right Buttons */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push('/auth')}
+              onClick={() => router.push('/login')}
               className="text-[14px] font-medium transition-all hover:bg-[#1E1B4B]"
               style={{
                 color: '#A78BFA',

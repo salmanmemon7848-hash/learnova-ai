@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +14,14 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const roleFromUrl = params.get('role')
+    if (roleFromUrl && ['student', 'founder', 'general'].includes(roleFromUrl)) {
+      localStorage.setItem('learnova_pending_role', roleFromUrl)
+    }
+  }, [])
 
   const validateForm = () => {
     const errors: {[key: string]: string} = {}

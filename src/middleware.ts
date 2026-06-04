@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
-  const publicRoutes = ['/', '/login', '/signup', '/auth', '/auth/callback', '/about', '/privacy', '/terms', '/beta-disclaimer']
-  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth'))
+  const publicRoutes = ['/', '/login', '/signup', '/auth/callback', '/about', '/privacy', '/terms', '/beta-disclaimer']
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith('/auth/'))
   const pricingBypassRoutes = ['/welcome-pricing', '/welcome', '/chat', '/auth/redirect', '/api']
   const shouldBypassPricingGate = pricingBypassRoutes.some(route => pathname === route || pathname.startsWith(route))
 
@@ -32,14 +32,14 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Not logged in → redirect to /auth
+  // Not logged in → redirect to /login
   if (!user && !isPublicRoute) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Logged in on auth page → redirect to dashboard (unless specific auth sub-routes)
-  if (user && (pathname === '/login' || pathname === '/signup' || pathname === '/auth')) {
-    if (pathname === '/auth' && request.nextUrl.searchParams.has('role')) {
+  if (user && (pathname === '/login' || pathname === '/signup')) {
+    if (pathname === '/signup' && request.nextUrl.searchParams.has('role')) {
       return response
     }
     return NextResponse.redirect(new URL('/dashboard', request.url))
