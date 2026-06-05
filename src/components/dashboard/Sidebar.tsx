@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   MessageSquare, GraduationCap, Lightbulb, Settings, LogOut,
   CreditCard, X, LayoutDashboard, Sparkles, Camera, Target,
-  Navigation, Telescope, Users, CheckCircle, Menu,
+  Navigation, Telescope, CheckCircle, Menu,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import InstallButton from '@/components/InstallButton'
@@ -29,7 +29,6 @@ const studentNav: DashboardNavItem[] = [
   { icon: MessageSquare,   label: 'AI Chat',        href: '/dashboard-chat', prominent: false },
   { icon: Target,          label: 'Practice Tests', href: '/exam',           prominent: false },
   { icon: GraduationCap,   label: 'EduFinder',      href: '/edufinder',      prominent: false },
-  { icon: Users,           label: 'Mock Interview', href: '/interview',      prominent: false },
   { icon: Navigation,      label: 'Career Guide',   href: '/career',         prominent: false },
   { icon: CreditCard,      label: 'Pricing',        href: '/pricing',        prominent: false },
   { icon: Settings,        label: 'Settings',       href: '/settings',       prominent: false },
@@ -38,7 +37,6 @@ const studentNav: DashboardNavItem[] = [
 const founderNav: DashboardNavItem[] = [
   { icon: LayoutDashboard, label: 'Home',               href: '/dashboard',                prominent: false },
   { icon: MessageSquare,   label: 'AI Chat',            href: '/dashboard-chat',           prominent: false },
-  { icon: Users,           label: 'Mock Interview',     href: '/interview',                prominent: false },
   { icon: CheckCircle,     label: 'Business Validator', href: '/tools/business-validator', prominent: true  },
   { icon: Telescope,       label: 'Competitor Research',href: '/competitor-research',       prominent: false, isNew: true },
   { icon: Lightbulb,       label: 'Business Ideas',     href: '/business-ideas',           prominent: false },
