@@ -116,7 +116,7 @@ export default function SignupPage() {
             Start your journey today — free forever
           </h2>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 32 }}>
-            Join India's fastest-growing AI platform for students and founders.
+            An AI platform for students and founders — built for India.
           </p>
 
           {/* What you get */}

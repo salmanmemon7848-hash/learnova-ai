@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { BookOpen, Lightbulb, Telescope, ArrowRight, Zap, Star, Shield } from 'lucide-react';
+import { BookOpen, Lightbulb, Telescope, ArrowRight, Zap, Shield } from 'lucide-react';
 import { Suspense } from 'react';
 
 function LandingContent() {
@@ -37,7 +37,6 @@ function LandingContent() {
       icon: <Lightbulb size={20} color="#2DD4BF" />,
       title: 'Business Validator',
       description: 'Validate your startup idea against real Indian market conditions and competition.',
-      badge: 'Most Used',
       accent: 'teal',
     },
     {
@@ -56,27 +55,6 @@ function LandingContent() {
     "Explain Newton's Laws step by step",
   ];
 
-  const testimonials = [
-    {
-      quote: 'Learnova helped me crack JEE Advanced with a top 500 rank. The step-by-step explanations are better than my coaching classes.',
-      name: 'Arjun Sharma',
-      role: 'Class 12 Student, Jaipur',
-      emoji: '🎓',
-    },
-    {
-      quote: 'I was struggling with NEET preparation. Learnova made complex biology concepts so simple. Scored 680/720 in my mock test!',
-      name: 'Priya Nair',
-      role: 'NEET Aspirant, Kochi',
-      emoji: '🔬',
-    },
-    {
-      quote: 'Validated my startup idea in 5 minutes. Learnova gave me insights about Indian market that I never considered. Launched last month!',
-      name: 'Rahul Gupta',
-      role: 'Founder, Indore',
-      emoji: '🚀',
-    },
-  ];
-
   const roleOptions = [
     {
       icon: '🎓',
@@ -85,7 +63,6 @@ function LandingContent() {
       description: 'JEE, NEET, CBSE, college prep, study plans, and step-by-step learning.',
       buttonText: 'Start Learning',
       onClick: handleStudentClick,
-      badge: 'Most Popular',
       accentColor: '#A78BFA',
       borderColor: 'rgba(124,58,237,0.35)',
       glowColor: 'rgba(124,58,237,0.15)',
@@ -97,7 +74,6 @@ function LandingContent() {
       description: 'Validate ideas, research competitors, practice pitches, and build better business plans.',
       buttonText: 'Start Building',
       onClick: handleFounderClick,
-      badge: null,
       accentColor: '#2DD4BF',
       borderColor: 'rgba(13,148,136,0.35)',
       glowColor: 'rgba(13,148,136,0.12)',
@@ -109,17 +85,10 @@ function LandingContent() {
       description: 'No exam prep, no startup tools. Just a powerful AI you can talk to about anything.',
       buttonText: 'Start Chatting',
       onClick: handleGeneralClick,
-      badge: null,
       accentColor: '#A78BFA',
       borderColor: 'rgba(124,58,237,0.25)',
       glowColor: 'rgba(124,58,237,0.08)',
     },
-  ];
-
-  const stats = [
-    { value: '1,000+', label: 'Active Users' },
-    { value: '50K+', label: 'Doubts Solved' },
-    { value: '99%', label: 'Satisfaction' },
   ];
 
   return (
@@ -208,19 +177,9 @@ function LandingContent() {
         </h1>
 
         {/* Subheadline */}
-        <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', textAlign: 'center', color: '#9CA3AF', maxWidth: 520, lineHeight: 1.7, margin: '0 0 16px' }}>
+        <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', textAlign: 'center', color: '#9CA3AF', maxWidth: 520, lineHeight: 1.7, margin: '0 0 48px' }}>
           Your AI-powered companion for academic excellence and startup success — built exclusively for India.
         </p>
-
-        {/* Stats row */}
-        <div style={{ display: 'flex', gap: 32, marginBottom: 48, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, background: 'linear-gradient(135deg, #A78BFA, #2DD4BF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
 
         {/* Role Cards */}
         <div style={{
@@ -237,7 +196,7 @@ function LandingContent() {
                 background: `linear-gradient(135deg, rgba(16,13,34,0.9) 0%, rgba(22,13,46,0.9) 100%)`,
                 backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                 border: `1px solid ${option.borderColor}`,
-                boxShadow: `0 4px 24px ${option.glowColor}, 0 0 0 0px transparent`,
+                boxShadow: `0 4px 24px ${option.glowColor}`,
                 transition: 'all 0.25s ease',
               }}
               onMouseEnter={e => {
@@ -249,15 +208,6 @@ function LandingContent() {
                 e.currentTarget.style.boxShadow = `0 4px 24px ${option.glowColor}`;
               }}
             >
-              {option.badge && (
-                <span style={{
-                  position: 'absolute', top: 14, right: 14,
-                  background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
-                  color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                }}>
-                  {option.badge}
-                </span>
-              )}
               <div style={{
                 width: 44, height: 44, borderRadius: 12,
                 background: `rgba(${option.accentColor === '#2DD4BF' ? '13,148,136' : '124,58,237'}, 0.15)`,
@@ -304,7 +254,7 @@ function LandingContent() {
                   background: 'rgba(255,255,255,0.03)',
                   backdropFilter: 'blur(20px)',
                   border: `1px solid ${feature.accent === 'teal' ? 'rgba(13,148,136,0.25)' : 'rgba(255,255,255,0.07)'}`,
-                  borderRadius: 16, padding: 24, position: 'relative',
+                  borderRadius: 16, padding: 24,
                   transition: 'all 0.2s ease',
                   cursor: 'default',
                 }}
@@ -319,15 +269,6 @@ function LandingContent() {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                {feature.badge && (
-                  <span style={{
-                    position: 'absolute', top: 14, right: 14,
-                    background: 'linear-gradient(135deg, #0D9488, #0891B2)',
-                    color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                  }}>
-                    {feature.badge}
-                  </span>
-                )}
                 <div style={{
                   width: 40, height: 40, borderRadius: 10, marginBottom: 16,
                   background: feature.accent === 'teal' ? 'rgba(13,148,136,0.12)' : 'rgba(124,58,237,0.12)',
@@ -385,47 +326,8 @@ function LandingContent() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '40px 20px 60px', background: 'rgba(13,9,32,0.4)' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 8 }}>
-              <Star size={14} color="#FBBF24" fill="#FBBF24" />
-              <Star size={14} color="#FBBF24" fill="#FBBF24" />
-              <Star size={14} color="#FBBF24" fill="#FBBF24" />
-              <Star size={14} color="#FBBF24" fill="#FBBF24" />
-              <Star size={14} color="#FBBF24" fill="#FBBF24" />
-            </div>
-            <p style={{ fontSize: 13, color: '#6B7280' }}>Trusted by students and founders across India</p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            {testimonials.map((t, idx) => (
-              <div key={idx} style={{
-                background: 'rgba(255,255,255,0.03)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 16, padding: 24,
-              }}>
-                <div style={{ fontSize: 28, marginBottom: 12 }}>{t.emoji}</div>
-                <p style={{ fontSize: 13, color: '#C4B5FD', lineHeight: 1.7, fontStyle: 'italic', marginBottom: 16 }}>
-                  "{t.quote}"
-                </p>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#F5F3FF' }}>{t.name}</div>
-                <span style={{
-                  display: 'inline-block', marginTop: 6, fontSize: 11, padding: '3px 10px', borderRadius: 999,
-                  background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)', color: '#A78BFA',
-                }}>
-                  {t.role}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA BANNER ──────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', zIndex: 1, padding: '40px 20px' }}>
+      <section style={{ position: 'relative', zIndex: 1, padding: '40px 20px 60px' }}>
         <div style={{
           maxWidth: 640, margin: '0 auto', textAlign: 'center',
           background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(13,148,136,0.12) 100%)',
@@ -442,7 +344,7 @@ function LandingContent() {
             Ready to learn smarter &amp; build faster?
           </h2>
           <p style={{ fontSize: 14, color: '#9CA3AF', marginBottom: 28, lineHeight: 1.6 }}>
-            Join 1,000+ students and founders using Learnova AI — no credit card required.
+            Start for free — no credit card required.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button

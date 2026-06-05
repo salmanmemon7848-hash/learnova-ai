@@ -165,7 +165,7 @@ export default function LoginPage() {
             background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.25)',
             borderRadius: 999, padding: '6px 14px', fontSize: 12, color: '#2DD4BF', fontWeight: 500,
           }}>
-            🇮🇳 1,000+ students & founders trust Learnova
+            🇮🇳 Built for Indian students & founders
           </div>
         </div>
       </div>
