@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
@@ -25,29 +26,21 @@ export default function LoginPage() {
     }
   }, [])
 
-  // Check if user needs onboarding after login
   useEffect(() => {
-    if (authLoading) return // wait for auth to initialize
-    if (!user) return       // no user, stay on login page
-
-    // User is already logged in — always send them to /auth/redirect
+    if (authLoading) return
+    if (!user) return
     router.replace('/auth/redirect')
-  }, [user, authLoading, router]) // IMPORTANT: minimal deps — do NOT add supabase here
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password.')
       return
     }
-
     setLoading(true)
-
     try {
-      // SECURITY: Application-level brute-force check before Supabase password auth.
-      // OWASP Reference: A07:2021 Identification and Authentication Failures
       const checkRes = await fetch('/api/auth/login-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -61,20 +54,14 @@ export default function LoginPage() {
       }
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+        email: email.trim(), password,
       })
 
       if (signInError) {
-        const invalidCreds =
-          signInError.message.includes('Invalid login credentials') ||
-          signInError.message.includes('invalid_credentials')
-        // SECURITY: Record failed attempt for IP-based lockout tracking (server-side).
-        // OWASP Reference: A07:2021 Identification and Authentication Failures
+        const invalidCreds = signInError.message.includes('Invalid login credentials') || signInError.message.includes('invalid_credentials')
         if (invalidCreds) {
           void fetch('/api/auth/failed-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email.trim() }),
           })
           setError('Invalid credentials, please try again.')
@@ -83,21 +70,18 @@ export default function LoginPage() {
         } else {
           setError(signInError.message || 'Sign in failed. Please try again.')
         }
-        console.error('Login error:', signInError)
         setLoading(false)
         return
       }
 
       if (data?.user) {
-        // Redirect directly to chat — no onboarding
         router.replace('/chat')
       } else {
         setError('Sign in failed. Please try again.')
         setLoading(false)
       }
-    } catch (err: any) {
+    } catch {
       setError('Something went wrong. Please try again.')
-      console.error('Unexpected error:', err)
       setLoading(false)
     }
   }
@@ -109,244 +93,230 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${origin}/auth/callback?next=/auth/redirect`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       })
-
-      if (error) {
-        setError('Google sign-in failed. Please try again.')
-        console.error('Google sign-in error:', error)
-      }
-    } catch (err) {
+      if (error) setError('Google sign-in failed. Please try again.')
+    } catch {
       setError('Google sign-in failed. Please try again.')
-      console.error('Google sign-in error:', err)
     }
   }
 
   return (
-    <div className="auth-page min-h-screen flex">
-      {/* Left Panel - Brand */}
-      <div
-        className="hidden lg:flex lg:w-2/5 flex-col justify-center items-center p-12 relative"
-        style={{ backgroundColor: '#534AB7' }}
-      >
-        <div className="max-w-sm text-center">
+    <div style={{
+      minHeight: '100vh', display: 'flex', background: '#060210',
+      fontFamily: 'var(--font-body), Inter, system-ui, sans-serif',
+    }}>
+      {/* Ambient glows */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60vw', height: '60vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', bottom: '0%', right: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+      </div>
+
+      {/* ── Left Panel ── */}
+      <div className="hidden lg:flex" style={{
+        width: '42%', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+        padding: '48px 40px', position: 'relative', zIndex: 1,
+        background: 'linear-gradient(160deg, rgba(124,58,237,0.12) 0%, rgba(13,148,136,0.08) 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ maxWidth: 340 }}>
           {/* Logo */}
-          <h1 className="text-[26px] font-semibold text-white mb-3">
-            Learnova
-          </h1>
-          
-          {/* Tagline */}
-          <p className="text-base text-white mb-8" style={{ opacity: 0.85 }}>
-            The AI that studies with you and builds with you
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 11,
+              background: 'linear-gradient(135deg, #7C3AED, #0D9488)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20, fontWeight: 800, color: '#fff',
+            }}>L</div>
+            <span style={{ fontSize: 20, fontWeight: 700, background: 'linear-gradient(135deg, #A78BFA, #2DD4BF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              Learnova AI
+            </span>
+          </div>
+
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: '#F5F3FF', marginBottom: 10, lineHeight: 1.2 }}>
+            The AI that studies &amp; builds with you
+          </h2>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: 32 }}>
+            Built for India's students and entrepreneurs — Hindi, English, or Hinglish.
           </p>
 
-          {/* Feature List */}
-          <div className="space-y-4 text-left mb-8">
+          {/* Feature list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              'Exam simulator with instant feedback',
-              'Business idea validator & market insights',
-              'Doubt solver & session recaps',
-            ].map((feature, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <svg
-                  className="w-5 h-5 text-white flex-shrink-0 mt-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <p className="text-white text-sm">{feature}</p>
+              { icon: '📝', text: 'Exam simulator with instant AI feedback' },
+              { icon: '✅', text: 'Business idea validator & market insights' },
+              { icon: '🤔', text: 'Doubt solver & session recaps' },
+            ].map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
+                }}>{f.icon}</span>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: 0, paddingTop: 6 }}>{f.text}</p>
               </div>
             ))}
           </div>
 
-          {/* Trust Note */}
-          <p className="text-white/50 text-xs">
-            Built for Indian students & young entrepreneurs
-          </p>
+          {/* Trust badge */}
+          <div style={{
+            marginTop: 36, display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.25)',
+            borderRadius: 999, padding: '6px 14px', fontSize: 12, color: '#2DD4BF', fontWeight: 500,
+          }}>
+            🇮🇳 1,000+ students & founders trust Learnova
+          </div>
         </div>
       </div>
 
-      {/* Right Panel - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-4 lg:p-8" style={{ backgroundColor: '#FFFFFF' }}>
-        <div className="w-full max-w-[380px]">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold mb-2" style={{ color: '#0F0F1A' }}>
-              Welcome to Learnova
-            </h2>
-            <p className="text-sm" style={{ color: '#5A5A72' }}>
-              Sign in to start learning and building
-            </p>
+      {/* ── Right Panel — Form ── */}
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '32px 20px', position: 'relative', zIndex: 1,
+      }}>
+        <div style={{ width: '100%', maxWidth: 380 }}>
+
+          {/* Mobile logo */}
+          <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28, justifyContent: 'center' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #7C3AED, #0D9488)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#fff' }}>L</div>
+            <span style={{ fontSize: 18, fontWeight: 700, background: 'linear-gradient(135deg, #A78BFA, #2DD4BF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Learnova AI</span>
           </div>
 
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F5F3FF', marginBottom: 6 }}>Welcome back</h1>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 28 }}>Sign in to continue your journey</p>
+
           {error && (
-            <div
-              className="px-4 py-3 rounded-lg mb-4 text-sm"
-              style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}
-            >
+            <div style={{
+              padding: '12px 16px', borderRadius: 10, marginBottom: 18, fontSize: 13,
+              background: 'rgba(239,68,68,0.1)', color: '#F87171', border: '1px solid rgba(239,68,68,0.25)',
+            }}>
               {error}
             </div>
           )}
 
-          {/* Google Sign In Button */}
+          {/* Google */}
           <button
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-[10px] font-medium text-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed mb-4"
             style={{
-              backgroundColor: '#FFFFFF',
-              border: '1.5px solid #E0E0E0',
-              color: '#0F0F1A',
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: '12px 16px', borderRadius: 12, fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3FF',
+              transition: 'all 0.2s', marginBottom: 20,
+              opacity: loading ? 0.6 : 1,
             }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="currentColor"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
+            <svg style={{ width: 18, height: 18, flexShrink: 0 }} viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
             Continue with Google
           </button>
 
           {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div style={{ borderTop: '1px solid rgba(83,74,183,0.12)', width: '100%' }} />
+          <div style={{ position: 'relative', marginBottom: 20 }}>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center' }}>
+              <div style={{ width: '100%', borderTop: '1px solid rgba(255,255,255,0.08)' }} />
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span
-                className="px-4 text-xs"
-                style={{ backgroundColor: '#FFFFFF', color: '#5A5A72' }}
-              >
-                or continue with email
+            <div style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+              <span style={{ padding: '0 14px', background: '#060210', fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                or sign in with email
               </span>
             </div>
           </div>
 
-          {/* Email/Password Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-1.5" style={{ color: '#0F0F1A' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 7 }}>
                 Email address
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                type="email" value={email} onChange={e => setEmail(e.target.value)} required
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:border-transparent"
                 style={{
-                  borderColor: 'rgba(83,74,183,0.2)',
-                  backgroundColor: '#FAFAFA',
-                  color: '#0F0F1A',
+                  width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
+                  background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3FF',
+                  outline: 'none', transition: 'all 0.2s',
                 }}
+                onFocus={e => { e.target.style.borderColor = 'rgba(124,58,237,0.5)'; e.target.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.12)'; }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
               />
             </div>
-
             <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-1.5" style={{ color: '#0F0F1A' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 7 }}>
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 rounded-lg border text-sm transition-all focus:outline-none focus:ring-2 focus:border-transparent"
-                style={{
-                  borderColor: 'rgba(83,74,183,0.2)',
-                  backgroundColor: '#FAFAFA',
-                  color: '#0F0F1A',
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required
+                  placeholder="Enter your password"
+                  style={{
+                    width: '100%', padding: '11px 44px 11px 14px', borderRadius: 10, fontSize: 14,
+                    background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.1)', color: '#F5F3FF',
+                    outline: 'none', transition: 'all 0.2s',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = 'rgba(124,58,237,0.5)'; e.target.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.12)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.boxShadow = 'none'; }}
+                />
+                <button
+                  type="button" onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', fontSize: 13 }}
+                >
+                  {showPassword ? '👁️' : '🙈'}
+                </button>
+              </div>
             </div>
 
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-lg font-medium text-sm text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ backgroundColor: '#534AB7' }}
+              type="submit" disabled={loading}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg, #7C3AED, #4F46E5)', border: 'none',
+                boxShadow: '0 4px 20px rgba(124,58,237,0.4)', transition: 'all 0.2s',
+                opacity: loading ? 0.7 : 1, marginTop: 4,
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+              onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <svg style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} viewBox="0 0 24 24">
+                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   Signing in...
                 </span>
-              ) : (
-                'Continue with email'
-              )}
+              ) : 'Sign In'}
             </button>
           </form>
 
-          {/* Terms */}
-          <p className="mt-6 text-center text-[11px]" style={{ color: '#8888A0' }}>
+          <p style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.25)' }}>
             By continuing you agree to our{' '}
-            <a href="/terms" className="hover:underline">
-              Terms of Service
-            </a>{' '}
+            <a href="/terms" style={{ color: '#A78BFA', textDecoration: 'none' }}>Terms</a>{' '}
             and{' '}
-            <a href="/privacy" className="hover:underline">
-              Privacy Policy
-            </a>
+            <a href="/privacy" style={{ color: '#A78BFA', textDecoration: 'none' }}>Privacy Policy</a>
           </p>
 
-          {/* Sign Up Link */}
-          <p className="mt-6 text-center text-sm" style={{ color: '#5A5A72' }}>
+          <p style={{ marginTop: 16, textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
             Don't have an account?{' '}
-            <Link href="/signup" className="font-medium hover:underline" style={{ color: '#534AB7' }}>
-              Sign up
-            </Link>
+            <Link href="/signup" style={{ color: '#A78BFA', fontWeight: 600, textDecoration: 'none' }}>Sign up free</Link>
           </p>
         </div>
       </div>
 
-      {/* Onboarding Modal */}
-      <OnboardingModal
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-      />
+      <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
