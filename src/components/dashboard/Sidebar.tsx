@@ -4,7 +4,7 @@ import { useSubscription } from '@/hooks/useSubscription'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  MessageSquare, GraduationCap, Lightbulb, Settings, LogOut,
+  GraduationCap, Lightbulb, Settings, LogOut,
   CreditCard, X, LayoutDashboard, Sparkles, Camera, Target,
   Navigation, Telescope, CheckCircle, Menu,
 } from 'lucide-react'
@@ -26,7 +26,6 @@ type DashboardNavItem = {
 const studentNav: DashboardNavItem[] = [
   { icon: LayoutDashboard, label: 'Home',           href: '/dashboard',      prominent: false },
   { icon: Camera,          label: 'Doubt Solver',   href: '/doubt-solver',   prominent: true  },
-  { icon: MessageSquare,   label: 'AI Chat',        href: '/dashboard-chat', prominent: false },
   { icon: Target,          label: 'Practice Tests', href: '/exam',           prominent: false },
   { icon: GraduationCap,   label: 'EduFinder',      href: '/edufinder',      prominent: false },
   { icon: Navigation,      label: 'Career Guide',   href: '/career',         prominent: false },
@@ -36,7 +35,6 @@ const studentNav: DashboardNavItem[] = [
 
 const founderNav: DashboardNavItem[] = [
   { icon: LayoutDashboard, label: 'Home',               href: '/dashboard',                prominent: false },
-  { icon: MessageSquare,   label: 'AI Chat',            href: '/dashboard-chat',           prominent: false },
   { icon: CheckCircle,     label: 'Business Validator', href: '/tools/business-validator', prominent: true  },
   { icon: Telescope,       label: 'Competitor Research',href: '/competitor-research',       prominent: false, isNew: true },
   { icon: Lightbulb,       label: 'Business Ideas',     href: '/business-ideas',           prominent: false },

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, MessageSquare, Settings, Camera,
+  LayoutDashboard, Settings, Camera,
   CheckCircle, Target, Telescope,
 } from 'lucide-react'
 import type { UserRole } from '@/contexts/RoleContext'
@@ -11,7 +11,6 @@ import type { UserRole } from '@/contexts/RoleContext'
 const studentItems = [
   { icon: LayoutDashboard, label: 'Home',    href: '/dashboard' },
   { icon: Camera,          label: 'Doubt',   href: '/doubt-solver' },
-  { icon: MessageSquare,   label: 'Chat',    href: '/dashboard-chat' },
   { icon: Target,          label: 'Exam',    href: '/exam' },
   { icon: Settings,        label: 'Settings',href: '/settings' },
 ]
@@ -19,7 +18,6 @@ const studentItems = [
 const founderItems = [
   { icon: LayoutDashboard, label: 'Home',      href: '/dashboard' },
   { icon: CheckCircle,     label: 'Validate',  href: '/tools/business-validator' },
-  { icon: MessageSquare,   label: 'Chat',      href: '/dashboard-chat' },
   { icon: Telescope,       label: 'Research',  href: '/competitor-research' },
   { icon: Settings,        label: 'Settings',  href: '/settings' },
 ]
@@ -56,7 +54,6 @@ export default function MobileBottomNav({ role }: { role?: UserRole }) {
               transition: 'opacity 0.15s',
             }}
           >
-            {/* Active indicator pill */}
             {isActive && (
               <span style={{
                 position: 'absolute', top: 8,

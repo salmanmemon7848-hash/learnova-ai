@@ -17,11 +17,6 @@ function LandingContent() {
     router.push('/signup?role=founder');
   };
 
-  const handleGeneralClick = () => {
-    if (typeof window !== 'undefined') localStorage.setItem('learnova_pending_role', 'general');
-    router.push('/signup?role=general');
-  };
-
   const handlePromptClick = (prompt: string) => {
     router.push(`/chat?prompt=${encodeURIComponent(prompt)}`);
   };
@@ -77,17 +72,6 @@ function LandingContent() {
       accentColor: '#2DD4BF',
       borderColor: 'rgba(13,148,136,0.35)',
       glowColor: 'rgba(13,148,136,0.12)',
-    },
-    {
-      icon: '💬',
-      title: 'Just Chat',
-      subtitle: 'General AI — ask anything',
-      description: 'No exam prep, no startup tools. Just a powerful AI you can talk to about anything.',
-      buttonText: 'Start Chatting',
-      onClick: handleGeneralClick,
-      accentColor: '#A78BFA',
-      borderColor: 'rgba(124,58,237,0.25)',
-      glowColor: 'rgba(124,58,237,0.08)',
     },
   ];
 
@@ -392,7 +376,6 @@ function LandingContent() {
           </div>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
             {[
-              { label: 'Chat', onClick: () => router.push('/chat') },
               { label: 'About', onClick: () => router.push('/about') },
             ].map(link => (
               <button key={link.label} onClick={link.onClick} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#6B7280', transition: 'color 0.2s' }}
